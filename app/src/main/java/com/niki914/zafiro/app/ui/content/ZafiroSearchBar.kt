@@ -55,6 +55,8 @@ import com.niki914.uikit.infra.interaction.LiquidInteractiveStyle
 import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
 import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.uikit.motion.springSquish
+import com.niki914.uikit.text.BidiText
+import com.niki914.uikit.text.withBidiDirection
 import com.niki914.zafiro.app.R
 
 private val SearchBarLiquidInteractiveStyle =
@@ -170,7 +172,7 @@ internal fun ZafiroSearchBar(
                         textStyle = MaterialTheme.typography.bodyMedium.copy(
                             color = colorScheme.onSurface,
                             fontSize = 14.sp,
-                        ),
+                        ).withBidiDirection(BidiText.fieldDirectionOf(query)),
                         singleLine = true,
                         cursorBrush = SolidColor(colorScheme.primary),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),

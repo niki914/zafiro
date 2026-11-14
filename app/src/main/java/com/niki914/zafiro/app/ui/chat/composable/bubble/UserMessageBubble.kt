@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +34,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
 import com.niki914.uikit.infra.shape.G2FieldShape
+import com.niki914.uikit.text.BidiSelectionContainer
+import com.niki914.uikit.text.rememberBidiDisplayText
+import com.niki914.uikit.text.withContentDirection
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.viewer.LocalViewerOpener
 import com.niki914.zafiro.app.ui.viewer.ViewerContent
@@ -143,12 +145,14 @@ fun UserMessageBubble(
             modifier = bubbleModifier,
             contentAlignment = Alignment.CenterEnd,
         ) {
-            SelectionContainer(
+            val displayText = rememberBidiDisplayText(text)
+            BidiSelectionContainer(
+                stripMarks = displayText != text,
                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
             ) {
                 Text(
-                    text = text,
-                    style = textStyle,
+                    text = displayText,
+                    style = textStyle.withContentDirection(),
                     color = colorScheme.onSurface,
                     textAlign = TextAlign.Start,
                     maxLines = maxLines,

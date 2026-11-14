@@ -54,12 +54,15 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.niki914.uikit.dialog.ZafiroConfirmationDialog
@@ -75,6 +78,10 @@ import com.niki914.uikit.screen.zafiroScreenBottomPadding
 import com.niki914.uikit.screen.zafiroScreenTopPadding
 import com.niki914.uikit.scroll.ZafiroOverscrollContainer
 import com.niki914.uikit.scroll.rememberZafiroOverscrollController
+import com.niki914.uikit.text.BidiDirection
+import com.niki914.uikit.text.BidiText
+import com.niki914.uikit.text.isolateLtrIslands
+import com.niki914.uikit.text.toTextDirection
 import com.niki914.uikit.textfield.ZafiroTextField
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.conversation.ConversationFormatter
@@ -151,9 +158,11 @@ internal fun ConversationHistoryPageContent(
         visible = sheetConversation != null && renamingConversation == null && deleteConfirmation == null,
         onDismissRequest = { sheetConversation = null },
         title = sheetConversation?.let {
-            ConversationFormatter.sanitizeDisplayTitle(it.title).ifBlank {
-                stringResource(R.string.ui_conversation_history_untitled)
-            }
+            BidiText.isolate(
+                ConversationFormatter.sanitizeDisplayTitle(it.title).ifBlank {
+                    stringResource(R.string.ui_conversation_history_untitled)
+                },
+            )
         },
     ) { dismissThen ->
         OptionRow(
@@ -493,21 +502,24 @@ private fun ConversationHistoryItem(
         )
     }
 
-    val displayTitleAnnotated = remember(displayTitle, searchQuery, titleHighlightStyle) {
+    // 方向按原文判断：带显示标记的文字不参与投票
+    val titleDirection = remember(displayTitle) { BidiText.directionOf(displayTitle) }
+    val displayTitleAnnotated = remember(displayTitle, searchQuery, titleHighlightStyle, titleDirection) {
         if (searchQuery.isNotBlank()) {
             SearchHighlightHelper.highlight(displayTitle, searchQuery, titleHighlightStyle)
         } else {
             AnnotatedString(displayTitle)
-        }
+        }.withIslandMarks(titleDirection)
     }
 
     val previewText = matchedSnippet ?: conversation.lastMessagePreview
-    val displayPreviewAnnotated = remember(previewText, searchQuery, bodyHighlightStyle) {
+    val previewDirection = remember(previewText) { BidiText.directionOf(previewText) }
+    val displayPreviewAnnotated = remember(previewText, searchQuery, bodyHighlightStyle, previewDirection) {
         if (searchQuery.isNotBlank() && previewText.isNotBlank()) {
             SearchHighlightHelper.highlight(previewText, searchQuery, bodyHighlightStyle)
         } else {
             AnnotatedString(previewText)
-        }
+        }.withIslandMarks(previewDirection)
     }
     // 置顶段独占样式：高亮底色 + 隐去派生前缀图标，右上角只留时间；
     // 时间桶里的同一会话照旧普通样式，另用图钉标识它是置顶项。
@@ -599,7 +611,8 @@ private fun ConversationHistoryItem(
                 ) {
                     Text(
                         text = displayTitleAnnotated,
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
+                            .withListBidi(titleDirection),
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -666,7 +679,8 @@ private fun ConversationHistoryItem(
                 if (previewText.isNotBlank()) {
                     Text(
                         text = displayPreviewAnnotated,
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp),
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp)
+                            .withListBidi(previewDirection),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -676,6 +690,20 @@ private fun ConversationHistoryItem(
             }
         }
     }
+}
+
+/** RTL 的标题与预览在 LTR 孤岛（区间、算式、路径）两端加显示标记，搜索高亮随原文保留。 */
+private fun AnnotatedString.withIslandMarks(direction: BidiDirection?): AnnotatedString =
+    if (direction == BidiDirection.Rtl) isolateLtrIslands() else this
+
+/** 列表里的标题与预览：词序按文字自身方向，对齐仍跟随界面，列表保持整齐。 */
+@Composable
+private fun TextStyle.withListBidi(direction: BidiDirection?): TextStyle {
+    val alignLeft = LocalLayoutDirection.current == LayoutDirection.Ltr
+    return copy(
+        textDirection = direction.toTextDirection(),
+        textAlign = if (alignLeft) TextAlign.Left else TextAlign.Right,
+    )
 }
 
 private fun originKindToIcon(kind: ConversationOriginKind): ImageVector = when (kind) {
@@ -1002,7 +1030,7 @@ private fun ConversationDeleteConfirmationDialog(
         visible = conversation != null,
         onDismissRequest = onDismissRequest,
         title = stringResource(R.string.ui_conversation_history_delete_dialog_title),
-        text = stringResource(R.string.ui_conversation_history_delete_dialog_text, title),
+        text = stringResource(R.string.ui_conversation_history_delete_dialog_text, BidiText.isolate(title)),
         negativeButtonText = stringResource(R.string.ui_conversation_history_delete_dialog_cancel),
         positiveButtonText = stringResource(R.string.ui_conversation_history_delete_dialog_confirm),
         onNegativeClick = onDismissRequest,

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,9 +17,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.shape.G2FieldShape
+import com.niki914.uikit.text.BidiSelectionContainer
+import com.niki914.uikit.text.BidiText
+import com.niki914.uikit.text.rememberBidiDisplayText
+import com.niki914.uikit.text.withContentDirection
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.chat.helper.CopyBtnGap
 import com.niki914.zafiro.app.ui.chat.helper.MiniCopyButton
@@ -61,8 +65,12 @@ internal fun CodeToolBody(
     val openViewer = LocalViewerOpener.current
     val commandText = ui.copyText ?: ui.command
     val canOpenCommandViewer = !ui.isRunning && commandText.isNotBlank()
+    // 输出是任意的 stdout/错误文字，按内容逐段判定方向（命令本身固定 LTR）；
+    // 完整命令（不只是首行预览）自带方向控制符时不插入，保证整块的复制清理（含复制按钮）不误伤原文
+    val bidiOutput = rememberBidiDisplayText(ui.output)
+    val outputMarked = bidiOutput != ui.output && !BidiText.hasBidiControls(commandText)
 
-    SelectionContainer(modifier = modifier.fillMaxWidth()) {
+    BidiSelectionContainer(stripMarks = outputMarked, modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // 上段：命令行（单行文本占满可用宽度，垂直居中对齐复制按钮，超出尾部省略，整体裁剪 G2 圆角）
             Row(
@@ -79,7 +87,7 @@ internal fun CodeToolBody(
             ) {
                 Text(
                     text = ui.command,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(textDirection = TextDirection.Ltr),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Start,
                     maxLines = 1,
@@ -99,7 +107,8 @@ internal fun CodeToolBody(
             // 下段：控制台输出（垂直居中对齐复制按钮，超出尾部省略，整体裁剪 G2 圆角）
             val hasOutput = ui.output.isNotBlank()
             val runningPlaceholder = stringResource(R.string.ui_tool_status_running) + "..."
-            val displayText = if (hasOutput) ui.output else if (ui.isRunning) runningPlaceholder else ""
+            val outputText = if (outputMarked) bidiOutput else ui.output
+            val displayText = if (hasOutput) outputText else if (ui.isRunning) runningPlaceholder else ""
             val canOpenOutputViewer = !ui.isRunning && hasOutput
             Row(
                 modifier = Modifier
@@ -115,7 +124,11 @@ internal fun CodeToolBody(
             ) {
                 Text(
                     text = displayText,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = if (hasOutput) {
+                        MaterialTheme.typography.bodyMedium.withContentDirection()
+                    } else {
+                        MaterialTheme.typography.bodyMedium
+                    },
                     color = when {
                         ui.isError -> MaterialTheme.colorScheme.error
                         !hasOutput && ui.isRunning -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)

@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +22,9 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
+import com.niki914.uikit.text.BidiSelectionContainer
+import com.niki914.uikit.text.rememberBidiDisplayText
+import com.niki914.uikit.text.withContentDirection
 import com.niki914.zafiro.app.ui.chat.composable.spacing.ResultScrollMaxHeight
 import com.niki914.zafiro.app.ui.chat.helper.rememberScrollFollowState
 
@@ -82,14 +84,16 @@ internal fun ToolResultText(
             },
         contentAlignment = Alignment.TopStart,
     ) {
-        SelectionContainer {
+        val displayText = rememberBidiDisplayText(text)
+        BidiSelectionContainer(stripMarks = displayText != text) {
             Text(
-                text = text,
-                style = style,
+                text = displayText,
+                style = style.withContentDirection(),
                 color = color,
                 maxLines = if (overflow) Int.MAX_VALUE else 1,
                 overflow = TextOverflow.Ellipsis,
                 softWrap = overflow,
+                modifier = Modifier.fillMaxWidth(),
                 onTextLayout = { layoutResult ->
                     if (!overflow && layoutResult.hasVisualOverflow) {
                         overflow = true

@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.niki914.uikit.infra.shape.G2CardShape
+import com.niki914.uikit.text.BidiText
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.home.HomeChatFile
 import com.niki914.zafiro.app.ui.model.home.HomeChatImage
@@ -192,7 +193,7 @@ internal fun HomeChatFileCard(
     ) {
         if (isCompact) {
             // 待发条 60dp：纯图标（无背景容器，尺寸放大至 20dp）+ 底部单行截断文字
-            val displayName = formatFileNameMiddleTruncated(file.name, 11)
+            val displayName = BidiText.isolate(formatFileNameMiddleTruncated(file.name, 11))
             Icon(
                 imageVector = category.icon,
                 contentDescription = null,
@@ -216,7 +217,7 @@ internal fun HomeChatFileCard(
             )
         } else {
             // 消息卡片 120dp：实心图标（30dp）+ 底部 2 行文件名（字号 12sp）+ 粗粒度分类说明（完全展示不截断）
-            val displayName = formatFileNameMiddleTruncated(file.name, 32)
+            val displayName = BidiText.isolate(formatFileNameMiddleTruncated(file.name, 32))
             Column(
                 modifier = Modifier
                     .fillMaxSize()
