@@ -79,6 +79,8 @@ private const val LANGUAGE_TAG_EN = "en"
 private const val LANGUAGE_TAG_ES = "es"
 private const val LANGUAGE_TAG_JA = "ja"
 private const val LANGUAGE_TAG_RU = "ru"
+private const val LANGUAGE_TAG_AR = "ar"
+private const val LANGUAGE_TAG_FA = "fa"
 
 /**
  * 引导外观页标题下的说明，同一行。
@@ -181,6 +183,8 @@ private fun languageOptions(): List<LanguageOption> {
         LanguageOption(tag = LANGUAGE_TAG_ES, label = "Español"),
         LanguageOption(tag = LANGUAGE_TAG_JA, label = "日本語"),
         LanguageOption(tag = LANGUAGE_TAG_RU, label = "Русский"),
+        LanguageOption(tag = LANGUAGE_TAG_AR, label = "العربية"),
+        LanguageOption(tag = LANGUAGE_TAG_FA, label = "فارسی"),
     )
 }
 

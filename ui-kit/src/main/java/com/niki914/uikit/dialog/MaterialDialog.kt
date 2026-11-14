@@ -54,6 +54,9 @@ import com.niki914.uikit.infra.LocalLiquidDialogHostState
 import com.niki914.uikit.infra.nextLiquidDialogHostEntryId
 import com.niki914.uikit.infra.shape.G2FieldShape
 
+/** 选项列表过高时只滚正文，标题和按钮留在外面。 */
+private val DialogBodyMaxHeight = 288.dp
+
 @Composable
 internal fun MaterialDialog(
     visible: Boolean,
@@ -220,14 +223,24 @@ private fun MaterialDialogSurface(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .verticalScroll(scrollState)
                         .padding(horizontal = 24.dp, vertical = 24.dp),
                     horizontalAlignment = Alignment.Start,
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     title?.invoke()
-                    text?.invoke()
-                    content?.invoke(this)
+                    if (text != null || content != null) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .heightIn(max = DialogBodyMaxHeight)
+                                .verticalScroll(scrollState)
+                                .fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            text?.invoke()
+                            content?.invoke(this)
+                        }
+                    }
                     if (actions != null) {
                         Row(
                             modifier = Modifier
