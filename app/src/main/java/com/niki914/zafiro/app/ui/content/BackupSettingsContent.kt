@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -46,6 +47,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
@@ -398,9 +400,22 @@ private fun IncludeSecretsRow(
     enabled: Boolean,
     onIncludeSecrets: (Boolean) -> Unit,
 ) {
+    val haptics = LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .toggleable(
+                value = includeSecrets,
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                role = Role.Switch,
+                onValueChange = { include ->
+                    haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    onIncludeSecrets(include)
+                },
+            )
             .padding(horizontal = 24.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -417,12 +432,14 @@ private fun IncludeSecretsRow(
                 modifier = Modifier.padding(top = 2.dp),
             )
         }
-        ZafiroSwitch(
-            checked = includeSecrets,
-            onCheckedChange = if (enabled) onIncludeSecrets else null,
-            enabled = enabled,
-            modifier = Modifier.padding(start = 16.dp),
-        )
+        Box(Modifier.clearAndSetSemantics {}) {
+            ZafiroSwitch(
+                checked = includeSecrets,
+                onCheckedChange = null,
+                enabled = enabled,
+                modifier = Modifier.padding(start = 16.dp),
+            )
+        }
     }
 }
 
