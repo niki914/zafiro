@@ -55,18 +55,15 @@ class App : Application() {
         applicationScope.launch {
             UpdateCheckHolder.runOnce(BuildConfig.VERSION_NAME)
         }
-        applicationScope.launch {
-            XRepo.tryPutDefaultSettings()
-        }
+        StartupWrites.track(
+            applicationScope,
+            { XRepo.tryPutDefaultSettings() },
+            { XRepo.skills.seedDefaults() },
+            { XRepo.seedPyTools() },
+        )
         // OpenRouter 公共目录预热：免鉴权后台抓，30 分钟内不重拉；失败保留旧缓存
         applicationScope.launch {
             XRepo.cloudFacts.refreshOpenRouterIfStale()
-        }
-        applicationScope.launch {
-            XRepo.skills.seedDefaults()
-        }
-        applicationScope.launch {
-            XRepo.seedPyTools()
         }
         applicationScope.launch {
             PyRuntime.warmUp()

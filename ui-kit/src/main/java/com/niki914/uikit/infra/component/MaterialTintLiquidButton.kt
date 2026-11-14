@@ -1,11 +1,15 @@
 package com.niki914.uikit.infra.component
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,6 +25,7 @@ fun MaterialTintLiquidButton(
     enabled: Boolean = true,
     containerColor: Color = MaterialTheme.colorScheme.primary,
     contentColor: Color = MaterialTheme.colorScheme.onPrimary,
+    leadingIcon: (@Composable () -> Unit)? = null,
 ) {
     val backdrop = rememberLayerBackdrop()
     val disabledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.45f)
@@ -41,13 +46,32 @@ fun MaterialTintLiquidButton(
             tint = if (enabled) containerColor else disabledContainerColor,
             surfaceColor = if (enabled) liquidButtonSurfaceColor(containerColor) else Color.Transparent,
         ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.titleMedium,
-                color = if (enabled) contentColor else disabledContentColor,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            val resolvedContentColor = if (enabled) contentColor else disabledContentColor
+            CompositionLocalProvider(LocalContentColor provides resolvedContentColor) {
+                if (leadingIcon == null) {
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = resolvedContentColor,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        leadingIcon()
+                        Text(
+                            text = text,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = resolvedContentColor,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+            }
         }
     }
 }

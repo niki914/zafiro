@@ -29,7 +29,11 @@ class SettingsViewModelTest {
             state.sections[0].groups,
         )
         assertEquals(
-            listOf(ZafiroSettingsGroup.Theme, ZafiroSettingsGroup.GeneralSettings),
+            listOf(
+                ZafiroSettingsGroup.Theme,
+                ZafiroSettingsGroup.GeneralSettings,
+                ZafiroSettingsGroup.Backup,
+            ),
             state.sections[1].groups,
         )
         assertEquals(

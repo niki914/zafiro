@@ -100,6 +100,11 @@ fun SettingsDetailPageContent(
         return
     }
 
+    if (group == ZafiroSettingsGroup.Backup) {
+        BackupSettingsContent()
+        return
+    }
+
     if (group == ZafiroSettingsGroup.Storage) {
         StorageSettingsContent()
         return

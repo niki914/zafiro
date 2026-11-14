@@ -50,6 +50,9 @@ import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.uikit.motion.springSquish
 
+private val normalButtonShape: Shape = G2FieldShape(50.dp)
+private val expressiveButtonShape: Shape = G2FieldShape(20.dp)
+
 /**
  * Material 3 / Material 3 Expressive 规范实心主按钮：
  * - 尺寸规范：默认 56dp 大操作槽位，16dp 水平内边距（符合 M3 Expressive Recommended 标准）；
@@ -75,7 +78,7 @@ fun MaterialButton(
     val interactionSource = remember { MutableInteractionSource() }
 
     // 形状 Token：经典 M3 为标准胶囊，M3E 为表现力 Squircle 圆角
-    val buttonShape: Shape = if (isExpressive) G2FieldShape(20.dp) else CircleShape
+    val buttonShape: Shape = if (isExpressive) expressiveButtonShape else normalButtonShape
 
     val motionModifier = if (isExpressive && enabled && !isLoading) {
         Modifier.springSquish(interactionSource, targetScale = 0.95f)
@@ -170,7 +173,7 @@ fun MaterialTonalButton(
         lightContainerColor.isSpecified -> lightContainerColor
         else -> MaterialTheme.colorScheme.primaryContainer
     }
-    val buttonShape: Shape = if (isExpressive) G2FieldShape(20.dp) else CircleShape
+    val buttonShape: Shape = if (isExpressive) expressiveButtonShape else normalButtonShape
 
     val motionModifier = if (isExpressive && enabled && !isLoading) {
         Modifier.springSquish(interactionSource, targetScale = 0.95f)
