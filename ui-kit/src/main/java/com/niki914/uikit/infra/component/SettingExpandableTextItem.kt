@@ -17,13 +17,16 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import com.niki914.uikit.infra.component.settings.item.SettingCardItem
 import com.niki914.uikit.infra.component.settings.item.SettingExpandableSlot
+import com.niki914.uikit.infra.component.settings.item.SettingsTokens
 import com.niki914.uikit.infra.component.settings.item.SettingTrailingSlot
+import com.niki914.uikit.infra.shape.G2CardShape
 import com.niki914.uikit.textfield.ZafiroOutlinedTextField
 import com.niki914.uikit.textfield.ZafiroSecretTextField
 
@@ -42,6 +45,8 @@ fun SettingExpandableTextItem(
     modifier: Modifier = Modifier,
     description: String? = null,
     enabled: Boolean = true,
+    shape: Shape = G2CardShape(SettingsTokens.CardCornerRadius),
+    isStandaloneCard: Boolean = false,
     initiallyExpanded: Boolean = false,
     expanded: Boolean? = null,
     minLines: Int = 4,
@@ -98,6 +103,8 @@ fun SettingExpandableTextItem(
         summary = description,
         modifier = modifier,
         enabled = enabled,
+        shape = shape,
+        isStandaloneCard = isStandaloneCard,
         isExpanded = isExpanded,
         onExpandedChange = ::updateExpanded,
         trailingSlot = SettingTrailingSlot.Chevron(),

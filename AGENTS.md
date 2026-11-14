@@ -56,7 +56,11 @@ State 与 Effect 的区别是持久与一次性，分界的判据是「换个时
 
 ### UI 框架 / ui-kit
 
-导航、导航栏、弹窗、设置项都用 ui-kit 里既定的那套，不要另起一套。业务组件统一使用 ui-kit 导出的 Zafiro* 基础元器件（ZafiroDialog 等），底层实现了多种主题分流。实现涉及导航、ViewModel、弹窗的业务前 MUST 调研已有代码作为参考
+导航、导航栏、弹窗、设置项都用 ui-kit 里既定的那套，不要另起一套。实现涉及导航、ViewModel、弹窗的业务前 MUST 调研已有代码作为参考
+
+#### 风格
+
+业务组件统一使用 ui-kit 导出的 Zafiro* 基础元器件（ZafiroDialog 等），底层实现了多种主题分流。现存的 UI 风格有：LiquidGlass、Material3、Material3Expressive。其中 LiquidGlass 是一种设计语言，和 Material 是一样的，它使用 `kyant0:backdrop` UI 库实现，因此任何 UI 必须使用了 backdrop API 才能命名为 Liquid 或 Backdrop
 
 #### 导航
 

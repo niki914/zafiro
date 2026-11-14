@@ -18,8 +18,7 @@ import com.niki914.uikit.dialog.ZafiroSingleChoiceDialog
 import com.niki914.uikit.infra.component.SettingExpandableSliderItem
 import com.niki914.uikit.infra.component.SettingNavigationItem
 import com.niki914.uikit.infra.component.SettingToggleItem
-import com.niki914.uikit.infra.component.SettingsGroupCard
-import com.niki914.uikit.infra.component.SettingsItemDivider
+import com.niki914.uikit.infra.component.SettingsConnectedGroup
 import com.niki914.uikit.infra.component.SettingsListItem
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureUiState
@@ -37,47 +36,58 @@ internal fun ConfigureIdentitySettingsBlock(
     onProxyChange: (String) -> Unit,
     onPromptClick: (() -> Unit)? = null,
 ) {
-    SettingsGroupCard {
+    val openPrompt = onPromptClick
+    SettingsConnectedGroup {
         if (showNameField) {
+            item { shape, isStandalone, _ ->
+                SettingControlledExpandableTextItem(
+                    field = ConfigureEditableField.Name,
+                    controller = fieldController,
+                    title = stringResource(R.string.ui_settings_configure_name_label),
+                    value = uiState.configNameInput,
+                    onValueChange = onNameChange,
+                    placeholder = stringResource(R.string.ui_settings_configure_name_placeholder),
+                    description = uiState.nameErrorResId?.let { stringResource(it) },
+                    enabled = !uiState.isSaving,
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
+                    minLines = 1,
+                    maxLines = 1,
+                )
+            }
+            if (openPrompt != null) {
+                item { shape, isStandalone, _ ->
+                    SettingNavigationItem(
+                        title = stringResource(R.string.ui_settings_configure_prompt_label),
+                        currentState = if (uiState.promptInput.isNotBlank()) {
+                            stringResource(R.string.ui_settings_configure_prompt_state_custom)
+                        } else {
+                            stringResource(R.string.ui_settings_configure_prompt_state_global)
+                        },
+                        enabled = !uiState.isSaving,
+                        shape = shape,
+                        isStandaloneCard = isStandalone,
+                        onClick = openPrompt,
+                    )
+                }
+            }
+        }
+        item { shape, isStandalone, _ ->
             SettingControlledExpandableTextItem(
-                field = ConfigureEditableField.Name,
+                field = ConfigureEditableField.Proxy,
                 controller = fieldController,
-                title = stringResource(R.string.ui_settings_configure_name_label),
-                value = uiState.configNameInput,
-                onValueChange = onNameChange,
-                placeholder = stringResource(R.string.ui_settings_configure_name_placeholder),
-                description = uiState.nameErrorResId?.let { stringResource(it) },
+                title = stringResource(R.string.ui_settings_configure_proxy_label),
+                value = uiState.proxyInput,
+                onValueChange = onProxyChange,
+                placeholder = stringResource(R.string.ui_settings_configure_proxy_placeholder),
+                description = uiState.proxyErrorResId?.let { stringResource(it) },
                 enabled = !uiState.isSaving,
+                shape = shape,
+                isStandaloneCard = isStandalone,
                 minLines = 1,
                 maxLines = 1,
             )
-            SettingsItemDivider()
-            if (onPromptClick != null) {
-                SettingNavigationItem(
-                    title = stringResource(R.string.ui_settings_configure_prompt_label),
-                    currentState = if (uiState.promptInput.isNotBlank()) {
-                        stringResource(R.string.ui_settings_configure_prompt_state_custom)
-                    } else {
-                        stringResource(R.string.ui_settings_configure_prompt_state_global)
-                    },
-                    enabled = !uiState.isSaving,
-                    onClick = onPromptClick,
-                )
-                SettingsItemDivider()
-            }
         }
-        SettingControlledExpandableTextItem(
-            field = ConfigureEditableField.Proxy,
-            controller = fieldController,
-            title = stringResource(R.string.ui_settings_configure_proxy_label),
-            value = uiState.proxyInput,
-            onValueChange = onProxyChange,
-            placeholder = stringResource(R.string.ui_settings_configure_proxy_placeholder),
-            description = uiState.proxyErrorResId?.let { stringResource(it) },
-            enabled = !uiState.isSaving,
-            minLines = 1,
-            maxLines = 1,
-        )
     }
 }
 
@@ -94,101 +104,114 @@ internal fun ConfigureConnectionSettingsBlock(
     onShowModelCatalogSheet: () -> Unit = {},
 ) {
     val onClearActiveField = fieldController.clearActiveField
-    SettingsGroupCard {
+    SettingsConnectedGroup {
         // 填写顺序：API Key → Model；Model 有目录时挤左 + 右侧按钮
-        SettingControlledExpandableTextItem(
-            field = ConfigureEditableField.ApiKey,
-            controller = fieldController,
-            title = stringResource(R.string.ui_onboard_configure_api_key_label),
-            value = uiState.apiKeyInput,
-            onValueChange = onApiKeyChange,
-            placeholder = stringResource(R.string.ui_onboard_configure_api_key_placeholder),
-            description = uiState.apiKeyErrorResId?.let { stringResource(it) },
-            enabled = !uiState.isSaving,
-            minLines = 1,
-            maxLines = 1,
-            secretVisible = uiState.apiKeyVisible,
-            onToggleSecretVisibility = onToggleApiKeyVisibility,
-            toggleSecretVisibleContentDescription = stringResource(
-                R.string.ui_onboard_configure_api_key_show,
-            ),
-            toggleSecretHiddenContentDescription = stringResource(
-                R.string.ui_onboard_configure_api_key_hide,
-            ),
-        )
-        SettingsItemDivider()
+        item { shape, isStandalone, _ ->
+            SettingControlledExpandableTextItem(
+                field = ConfigureEditableField.ApiKey,
+                controller = fieldController,
+                title = stringResource(R.string.ui_onboard_configure_api_key_label),
+                value = uiState.apiKeyInput,
+                onValueChange = onApiKeyChange,
+                placeholder = stringResource(R.string.ui_onboard_configure_api_key_placeholder),
+                description = uiState.apiKeyErrorResId?.let { stringResource(it) },
+                enabled = !uiState.isSaving,
+                shape = shape,
+                isStandaloneCard = isStandalone,
+                minLines = 1,
+                maxLines = 1,
+                secretVisible = uiState.apiKeyVisible,
+                onToggleSecretVisibility = onToggleApiKeyVisibility,
+                toggleSecretVisibleContentDescription = stringResource(
+                    R.string.ui_onboard_configure_api_key_show,
+                ),
+                toggleSecretHiddenContentDescription = stringResource(
+                    R.string.ui_onboard_configure_api_key_hide,
+                ),
+            )
+        }
         // 双模式：目录为空 = 输入框占满（现状）；非空 = 输入框挤左 + 右侧按钮
-        val catalogButton: (@Composable () -> Unit)? =
-            if (uiState.modelCatalog.isEmpty()) {
-                null
-            } else {
-                {
-                    ModelCatalogButton(
+        item { shape, isStandalone, _ ->
+            val catalogButton: (@Composable () -> Unit)? =
+                if (uiState.modelCatalog.isEmpty()) {
+                    null
+                } else {
+                    {
+                        ModelCatalogButton(
+                            enabled = !uiState.isSaving,
+                            onClick = {
+                                onClearActiveField()
+                                onShowModelCatalogSheet()
+                            },
+                        )
+                    }
+                }
+            SettingControlledExpandableTextItem(
+                field = ConfigureEditableField.Model,
+                controller = fieldController,
+                title = stringResource(R.string.ui_onboard_configure_model_label),
+                value = uiState.modelInput,
+                onValueChange = onModelChange,
+                placeholder = stringResource(R.string.ui_onboard_configure_model_placeholder),
+                description = uiState.modelErrorResId?.let { stringResource(it) }
+                    ?: if (uiState.modelInput.isBlank()) {
+                        stringResource(
+                            R.string.ui_onboard_configure_model_example,
+                            uiState.providerSpec.exampleModelId,
+                        )
+                    } else {
+                        null
+                    },
+                enabled = !uiState.isSaving,
+                shape = shape,
+                isStandaloneCard = isStandalone,
+                minLines = 1,
+                maxLines = 1,
+                fieldTrailingContent = catalogButton,
+            )
+        }
+        if (policy.showEndpointSection) {
+            val endpointEditable = policy.endpointEditable &&
+                    (!policy.showEndpointOverrideToggle || uiState.endpointOverrideEnabled)
+            item { shape, isStandalone, _ ->
+                SettingControlledExpandableTextItem(
+                    field = ConfigureEditableField.Endpoint,
+                    controller = fieldController,
+                    title = stringResource(R.string.ui_onboard_configure_endpoint_label),
+                    value = uiState.endpointInput,
+                    onValueChange = onEndpointChange,
+                    placeholder = stringResource(R.string.ui_onboard_configure_endpoint_placeholder),
+                    description = uiState.endpointErrorResId?.let { stringResource(it) },
+                    enabled = endpointEditable && !uiState.isSaving,
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
+                    minLines = 3,
+                    maxLines = 6,
+                )
+            }
+            if (policy.showEndpointOverrideToggle) {
+                item { shape, isStandalone, _ ->
+                    SettingToggleItem(
+                        title = stringResource(R.string.ui_onboard_configure_endpoint_override_title),
+                        description = stringResource(
+                            if (uiState.endpointOverrideEnabled) {
+                                R.string.ui_onboard_configure_endpoint_override_description_on
+                            } else {
+                                R.string.ui_onboard_configure_endpoint_override_description_off
+                            },
+                        ),
+                        checked = uiState.endpointOverrideEnabled,
                         enabled = !uiState.isSaving,
-                        onClick = {
-                            onClearActiveField()
-                            onShowModelCatalogSheet()
+                        shape = shape,
+                        isStandaloneCard = isStandalone,
+                        onCheckedChange = { enabled ->
+                            if (!uiState.isSaving) {
+                                onClearActiveField()
+                                onEndpointOverrideChange(enabled)
+                            }
                         },
                     )
                 }
-            }
-        SettingControlledExpandableTextItem(
-            field = ConfigureEditableField.Model,
-            controller = fieldController,
-            title = stringResource(R.string.ui_onboard_configure_model_label),
-            value = uiState.modelInput,
-            onValueChange = onModelChange,
-            placeholder = stringResource(R.string.ui_onboard_configure_model_placeholder),
-            description = uiState.modelErrorResId?.let { stringResource(it) }
-                ?: if (uiState.modelInput.isBlank()) {
-                    stringResource(
-                        R.string.ui_onboard_configure_model_example,
-                        uiState.providerSpec.exampleModelId,
-                    )
-                } else {
-                    null
-                },
-            enabled = !uiState.isSaving,
-            minLines = 1,
-            maxLines = 1,
-            fieldTrailingContent = catalogButton,
-        )
-        if (policy.showEndpointSection) {
-            SettingsItemDivider()
-            val endpointEditable = policy.endpointEditable &&
-                    (!policy.showEndpointOverrideToggle || uiState.endpointOverrideEnabled)
-            SettingControlledExpandableTextItem(
-                field = ConfigureEditableField.Endpoint,
-                controller = fieldController,
-                title = stringResource(R.string.ui_onboard_configure_endpoint_label),
-                value = uiState.endpointInput,
-                onValueChange = onEndpointChange,
-                placeholder = stringResource(R.string.ui_onboard_configure_endpoint_placeholder),
-                description = uiState.endpointErrorResId?.let { stringResource(it) },
-                enabled = endpointEditable && !uiState.isSaving,
-                minLines = 3,
-                maxLines = 6,
-            )
-            if (policy.showEndpointOverrideToggle) {
-                SettingsItemDivider()
-                SettingToggleItem(
-                    title = stringResource(R.string.ui_onboard_configure_endpoint_override_title),
-                    description = stringResource(
-                        if (uiState.endpointOverrideEnabled) {
-                            R.string.ui_onboard_configure_endpoint_override_description_on
-                        } else {
-                            R.string.ui_onboard_configure_endpoint_override_description_off
-                        },
-                    ),
-                    checked = uiState.endpointOverrideEnabled,
-                    enabled = !uiState.isSaving,
-                    onCheckedChange = { enabled ->
-                        if (!uiState.isSaving) {
-                            onClearActiveField()
-                            onEndpointOverrideChange(enabled)
-                        }
-                    },
-                )
             }
         }
     }
@@ -230,84 +253,100 @@ internal fun ConfigureProtocolSettingsBlock(
 ) {
     val onClearActiveField = fieldController.clearActiveField
     var showProtocolDialog by rememberSaveable { mutableStateOf(false) }
+    val thinkingOptions = thinkingLevelOptions()
+    val currentLevelIndex = thinkingOptions.indexOfFirst { it.wire == uiState.thinkingLevelWire }
+        .takeIf { it >= 0 } ?: 0
 
-    SettingsGroupCard {
-        SettingToggleItem(
-            title = stringResource(R.string.ui_settings_configure_vision_label),
-            checked = uiState.supportsImages,
-            enabled = !uiState.isSaving,
-            onCheckedChange = { enabled ->
-                if (!uiState.isSaving) {
-                    onClearActiveField()
-                    onSupportsImagesChange(enabled)
-                }
-            },
-        )
-        SettingsItemDivider()
+    SettingsConnectedGroup {
+        item { shape, isStandalone, _ ->
+            SettingToggleItem(
+                title = stringResource(R.string.ui_settings_configure_vision_label),
+                checked = uiState.supportsImages,
+                enabled = !uiState.isSaving,
+                shape = shape,
+                isStandaloneCard = isStandalone,
+                onCheckedChange = { enabled ->
+                    if (!uiState.isSaving) {
+                        onClearActiveField()
+                        onSupportsImagesChange(enabled)
+                    }
+                },
+            )
+        }
         // 协议行：Value Row（点击弹选择弹窗）
-        SettingsListItem(
-            title = stringResource(R.string.ui_settings_configure_protocol_label),
-            currentState = uiState.protocolWireId,
-            showChevron = true,
-            onClick = {
-                onClearActiveField()
-                showProtocolDialog = true
-            },
-        )
-        SettingsItemDivider()
+        item { shape, isStandalone, _ ->
+            SettingsListItem(
+                title = stringResource(R.string.ui_settings_configure_protocol_label),
+                currentState = uiState.protocolWireId,
+                showChevron = true,
+                shape = shape,
+                isStandaloneCard = isStandalone,
+                onClick = {
+                    onClearActiveField()
+                    showProtocolDialog = true
+                },
+            )
+        }
         // 思考强度：可折叠滑块（有极 8 档）
-        val thinkingOptions = thinkingLevelOptions()
-        val currentLevelIndex = thinkingOptions.indexOfFirst { it.wire == uiState.thinkingLevelWire }
-            .takeIf { it >= 0 } ?: 0
-        SettingExpandableSliderItem(
-            title = stringResource(R.string.ui_settings_configure_thinking_label),
-            summary = stringResource(R.string.ui_settings_configure_thinking_hint),
-            value = currentLevelIndex.toFloat(),
-            onValueChange = { rawIndex ->
-                val idx = rawIndex.roundToInt().coerceIn(0, thinkingOptions.lastIndex)
-                onThinkingLevelSelected(thinkingOptions[idx].wire)
-            },
-            valueRange = 0f..thinkingOptions.lastIndex.toFloat(),
-            steps = (thinkingOptions.size - 2).coerceAtLeast(0),
-            valueLabel = thinkingOptions[currentLevelIndex].label,
-            startLabel = stringResource(R.string.ui_settings_configure_thinking_start_label),
-            endLabel = stringResource(R.string.ui_settings_configure_thinking_end_label),
-            enabled = !uiState.isSaving,
-            expanded = fieldController.expandedField == ConfigureEditableField.Thinking,
-            onExpandedChange = { expanded ->
-                fieldController.onExpandedFieldChange(
-                    if (expanded) ConfigureEditableField.Thinking else null
-                )
-            },
-        )
-        SettingsItemDivider()
+        item { shape, isStandalone, _ ->
+            SettingExpandableSliderItem(
+                title = stringResource(R.string.ui_settings_configure_thinking_label),
+                summary = stringResource(R.string.ui_settings_configure_thinking_hint),
+                value = currentLevelIndex.toFloat(),
+                onValueChange = { rawIndex ->
+                    val idx = rawIndex.roundToInt().coerceIn(0, thinkingOptions.lastIndex)
+                    onThinkingLevelSelected(thinkingOptions[idx].wire)
+                },
+                valueRange = 0f..thinkingOptions.lastIndex.toFloat(),
+                steps = (thinkingOptions.size - 2).coerceAtLeast(0),
+                valueLabel = thinkingOptions[currentLevelIndex].label,
+                startLabel = stringResource(R.string.ui_settings_configure_thinking_start_label),
+                endLabel = stringResource(R.string.ui_settings_configure_thinking_end_label),
+                enabled = !uiState.isSaving,
+                shape = shape,
+                isStandaloneCard = isStandalone,
+                expanded = fieldController.expandedField == ConfigureEditableField.Thinking,
+                onExpandedChange = { expanded ->
+                    fieldController.onExpandedFieldChange(
+                        if (expanded) ConfigureEditableField.Thinking else null
+                    )
+                },
+            )
+        }
         // Max Tokens：留空 = 云端优先，其次默认值；服务端报输出超限时调小
-        SettingControlledExpandableTextItem(
-            field = ConfigureEditableField.MaxTokens,
-            controller = fieldController,
-            title = stringResource(R.string.ui_settings_configure_max_tokens_label),
-            value = uiState.maxTokensInput,
-            onValueChange = onMaxTokensChange,
-            placeholder = stringResource(R.string.ui_settings_configure_max_tokens_placeholder),
-            description = uiState.maxTokensErrorResId?.let { stringResource(it) },
-            enabled = !uiState.isSaving,
-            minLines = 1,
-            maxLines = 1,
-        )
-        SettingsItemDivider()
+        item { shape, isStandalone, _ ->
+            SettingControlledExpandableTextItem(
+                field = ConfigureEditableField.MaxTokens,
+                controller = fieldController,
+                title = stringResource(R.string.ui_settings_configure_max_tokens_label),
+                value = uiState.maxTokensInput,
+                onValueChange = onMaxTokensChange,
+                placeholder = stringResource(R.string.ui_settings_configure_max_tokens_placeholder),
+                description = uiState.maxTokensErrorResId?.let { stringResource(it) },
+                enabled = !uiState.isSaving,
+                shape = shape,
+                isStandaloneCard = isStandalone,
+                minLines = 1,
+                maxLines = 1,
+            )
+        }
         // 上下文窗口：环的分母；留空由 gateway 兜底。
-        SettingControlledExpandableTextItem(
-            field = ConfigureEditableField.ContextWindow,
-            controller = fieldController,
-            title = stringResource(R.string.ui_settings_configure_context_window_label),
-            value = uiState.contextWindowInput,
-            onValueChange = onContextWindowChange,
-            placeholder = stringResource(R.string.ui_settings_configure_context_window_placeholder),
-            description = uiState.contextWindowErrorResId?.let { stringResource(it) },
-            enabled = !uiState.isSaving,
-            minLines = 1,
-            maxLines = 1,
-        )
+        item { shape, isStandalone, _ ->
+            SettingControlledExpandableTextItem(
+                field = ConfigureEditableField.ContextWindow,
+                controller = fieldController,
+                title = stringResource(R.string.ui_settings_configure_context_window_label),
+                value = uiState.contextWindowInput,
+                onValueChange = onContextWindowChange,
+                placeholder = stringResource(R.string.ui_settings_configure_context_window_placeholder),
+                description = uiState.contextWindowErrorResId?.let { stringResource(it) },
+                enabled = !uiState.isSaving,
+                shape = shape,
+                isStandaloneCard = isStandalone,
+                minLines = 1,
+                maxLines = 1,
+            )
+        }
     }
 
     // "deepseek" 协议与 openai-chat-completions 同壳，仅作存量存储值兼容，不再提供新选

@@ -1,5 +1,10 @@
 package com.niki914.zafiro.app.ui.content
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Build
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -8,15 +13,19 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.dialog.ZafiroConfirmationDialog
-import com.niki914.uikit.infra.component.SettingsGroupCard
-import com.niki914.uikit.infra.component.SettingsItemDivider
-import com.niki914.uikit.infra.component.SettingsListItem
-import com.niki914.uikit.infra.component.SettingsListPageContent
+import com.niki914.uikit.infra.component.settings.SettingsPageSpec
+import com.niki914.uikit.infra.component.settings.SettingsRowAction
+import com.niki914.uikit.infra.component.settings.SettingsRowLeadingIcon
+import com.niki914.uikit.infra.component.settings.SettingsRowSpec
+import com.niki914.uikit.infra.component.settings.SettingsSectionLayout
+import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
+import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
 import com.niki914.zafiro.app.R
@@ -68,6 +77,15 @@ fun StorageSettingsContent() {
     )
 }
 
+private fun StorageCategory.leadingIconVector(): ImageVector {
+    return when (this) {
+        StorageCategory.ToolOutput -> Icons.Rounded.Build
+        StorageCategory.ImageCache -> Icons.Rounded.Image
+        StorageCategory.Downloads -> Icons.Rounded.Download
+        StorageCategory.OtherCache -> Icons.Rounded.Folder
+    }
+}
+
 @Composable
 private fun StorageSettingsContentBody(
     uiState: StorageSettingsUiState,
@@ -75,42 +93,57 @@ private fun StorageSettingsContentBody(
     onConfirmationDismiss: () -> Unit,
     onConfirmationConfirm: () -> Unit,
 ) {
-    SettingsListPageContent(
-        description = stringResource(R.string.ui_settings_storage_description),
-    ) {
-        SettingsGroupCard {
-            if (uiState.isLoading && uiState.categories.isEmpty()) {
-                SettingsListItem(
-                    title = stringResource(R.string.ui_settings_storage_loading),
-                    onClick = null,
-                )
-            } else {
-                uiState.categories.forEachIndexed { index, item ->
-                    if (index > 0) {
-                        SettingsItemDivider()
-                    }
-                    SettingsListItem(
-                        title = stringResource(item.category.titleRes),
-                        summary = stringResource(item.category.descriptionRes),
-                        currentState = if (item.isClearing) {
-                            "…"
-                        } else {
-                            formatStorageBytes(item.bytes)
-                        },
-                        showChevron = true,
-                        enabled = !item.isClearing,
-                        onClick = {
-                            onRequestClear(item.category)
-                        },
-                    )
-                }
-            }
-        }
+    val categoryByRowId = remember(uiState.categories) {
+        uiState.categories.associateBy { "storage.${it.category.name}" }
+    }
 
-        uiState.inlineError?.let { error ->
-            StorageInlineErrorText(error = error)
+    val rows = if (uiState.isLoading && uiState.categories.isEmpty()) {
+        listOf(
+            SettingsRowSpec.Navigation(
+                id = "loading",
+                title = stringResource(R.string.ui_settings_storage_loading),
+                enabled = false,
+            )
+        )
+    } else {
+        uiState.categories.map { item ->
+            SettingsRowSpec.Navigation(
+                id = "storage.${item.category.name}",
+                title = stringResource(item.category.titleRes),
+                summary = stringResource(item.category.descriptionRes),
+                currentState = if (item.isClearing) "…" else formatStorageBytes(item.bytes),
+                leadingIcon = SettingsRowLeadingIcon.Vector(item.category.leadingIconVector()),
+                enabled = !item.isClearing,
+            )
         }
     }
+
+    val description = stringResource(R.string.ui_settings_storage_description)
+    val spec = remember(rows, description) {
+        SettingsPageSpec(
+            description = description,
+            sections = listOf(
+                SettingsSectionSpec(
+                    layout = SettingsSectionLayout.GroupedCard,
+                    rows = rows,
+                )
+            ),
+        )
+    }
+
+    SettingsSpecPageContent(
+        spec = spec,
+        onAction = { action ->
+            if (action is SettingsRowAction.Navigate) {
+                categoryByRowId[action.id]?.let { onRequestClear(it.category) }
+            }
+        },
+        contentAfterSections = {
+            uiState.inlineError?.let { error ->
+                StorageInlineErrorText(error = error)
+            }
+        },
+    )
 
     StorageClearConfirmationDialog(
         state = uiState.confirmation,

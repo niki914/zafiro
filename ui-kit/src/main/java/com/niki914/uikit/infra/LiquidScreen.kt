@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -68,6 +69,9 @@ private val ActionButtonBottomSpacing = 24.dp
  * Layer 2 (zIndex 2) - Action bar background (毛玻璃 + surface 渐变底色)
  * Layer 3 (zIndex 3) - Action bar foreground (LiquidTopBar)
  * Layer 4 (zIndex 4) - LiquidDialogHost 浮层与弹窗
+ *
+ * 另有一层不参与分层的 sheet 蒙版（zIndex 3.5）：盖住内容与顶栏、位于浮层之下，透明度跟 sheet 的
+ * 占屏进度走（见 [SheetProgressState]）。
  */
 @Composable
 fun LiquidScreen(
@@ -95,6 +99,7 @@ fun LiquidScreen(
     val screenBackdrop = rememberCombinedBackdrop(contentBackdrop, chromeBackdrop)
     val titleHorizontalPadding = with(density) { 12.dp * 2 + 48.sp.toDp() }
     val dialogHostState = remember { LiquidDialogHostState() }
+    val sheetProgressState = remember { SheetProgressState() }
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val buttonSlotHeight = ZafiroTopBarDefaults.ButtonSlotHeight
     val actionBarHeight = topInset + buttonSlotHeight
@@ -146,6 +151,7 @@ fun LiquidScreen(
         LocalScreenBackdrop provides screenBackdrop,
         LocalLiquidDialogHostState provides dialogHostState,
         LocalHasActiveDialog provides dialogHostState.hasActiveDialog,
+        LocalSheetProgress provides sheetProgressState,
     ) {
         val themeStyle = LocalThemeStyle.current
         val isLiquid = themeStyle == ThemeStyle.LiquidGlass
@@ -155,104 +161,122 @@ fun LiquidScreen(
             Modifier
         }
 
+        val sheetProgress = sheetProgressState.progress
+        val sheetBlurRadius = 15f * sheetProgress
+
         Box(
             modifier = modifier.fillMaxSize(),
         ) {
-            // Layer 1: page content
-            CompositionLocalProvider(
-                LocalLiquidScreenContentContext provides LiquidScreenContentContext(
-                    topPadding = actionBarHeight,
-                    bottomPadding = navigationBottom + BottomInsetSpacing,
-                    actionButtonBottomPadding = navigationBottom + ActionButtonBottomSpacing,
-                    isTitleCollapsible = state.isTitleCollapsible,
-                ),
+            // Layer 1~3 一体：页面内容与顶栏一起虚化，浮层（Layer 4）留在外层保持清晰。
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(sheetBlurRadius.dp),
             ) {
+                // Layer 1: page content
+                CompositionLocalProvider(
+                    LocalLiquidScreenContentContext provides LiquidScreenContentContext(
+                        topPadding = actionBarHeight,
+                        bottomPadding = navigationBottom + BottomInsetSpacing,
+                        actionButtonBottomPadding = navigationBottom + ActionButtonBottomSpacing,
+                        isTitleCollapsible = state.isTitleCollapsible,
+                    ),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .nestedScroll(titleBarScrollConnection)
+                            .then(backdropCaptureModifier)
+                            .background(MaterialTheme.colorScheme.background),
+                    ) {
+                        content()
+                    }
+                }
+
+                // Layer 2: action bar background
+                AnimatedVisibility(
+                    visible = state.showBlurLayer,
+                    modifier = Modifier
+                        .zIndex(2f)
+                        .align(Alignment.TopCenter),
+                    enter = fadeIn(tween(320, easing = FastOutSlowInEasing)),
+                    exit = fadeOut(tween(320, easing = FastOutSlowInEasing)),
+                ) {
+                    if (isLiquid) {
+                        LiquidTopBarBackground(
+                            contentBackdrop = contentBackdrop,
+                            chromeBackdrop = chromeBackdrop,
+                            chromeHeight = chromeHeight,
+                            buttonSlotHeight = buttonSlotHeight,
+                            topInset = topInset,
+                            barAlpha = barAlpha,
+                        )
+                    } else {
+                        MaterialTopBarBackground(
+                            chromeHeight = chromeHeight,
+                            barAlpha = barAlpha,
+                        )
+                    }
+                }
+
+                // Layer 3: action bar foreground
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .nestedScroll(titleBarScrollConnection)
-                        .then(backdropCaptureModifier)
-                        .background(MaterialTheme.colorScheme.background),
+                        .zIndex(3f)
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .height(chromeHeight),
                 ) {
-                    content()
+                    val resolvedShowLeftButton = showLeftButton ?: state.showLeftButton
+                    val resolvedShowRightButton = showRightButton ?: state.showRightButton
+                    val resolvedOnLeftClick = onLeftClick ?: state.onLeftClick
+                    val resolvedOnRightClick = onRightClick ?: state.onRightClick
+
+                    ZafiroTopBar(
+                        title = state.title,
+                        titleDirection = state.titleDirection,
+                        baseTitleAlpha = baseTitleAlpha,
+                        topInset = topInset,
+                        isOccluded = isOccluded,
+                        leftButtonAlpha = leftButtonAlpha,
+                        rightButtonAlpha = rightButtonAlpha,
+                        showLeftButton = resolvedShowLeftButton,
+                        showRightButton = resolvedShowRightButton,
+                        actionsEnabled = actionsEnabled,
+                        backdrop = screenBackdrop,
+                        titleHorizontalPadding = titleHorizontalPadding,
+                        onLeftClick = resolvedOnLeftClick,
+                        onRightClick = resolvedOnRightClick,
+                        onLeftButtonBoundsChanged = onLeftButtonBoundsChanged,
+                        onRightButtonBoundsChanged = onRightButtonBoundsChanged,
+                        leftButton = leftButton,
+                        rightButton = rightButton,
+                        overlayContent = overlayContent,
+                    )
                 }
             }
 
-        // Layer 2: action bar background
-        AnimatedVisibility(
-            visible = state.showBlurLayer,
-            modifier = Modifier
-                .zIndex(2f)
-                .align(Alignment.TopCenter),
-            enter = fadeIn(tween(320, easing = FastOutSlowInEasing)),
-            exit = fadeOut(tween(320, easing = FastOutSlowInEasing)),
-        ) {
-            if (isLiquid) {
-                LiquidTopBarBackground(
-                    contentBackdrop = contentBackdrop,
-                    chromeBackdrop = chromeBackdrop,
-                    chromeHeight = chromeHeight,
-                    buttonSlotHeight = buttonSlotHeight,
-                    topInset = topInset,
-                    barAlpha = barAlpha,
-                )
-            } else {
-                MaterialTopBarBackground(
-                    chromeHeight = chromeHeight,
-                    barAlpha = barAlpha,
-                )
-            }
-        }
-
-
-        // Layer 3: action bar foreground
-        Box(
-            modifier = Modifier
-                .zIndex(3f)
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .height(chromeHeight),
-        ) {
-            val resolvedShowLeftButton = showLeftButton ?: state.showLeftButton
-            val resolvedShowRightButton = showRightButton ?: state.showRightButton
-            val resolvedOnLeftClick = onLeftClick ?: state.onLeftClick
-            val resolvedOnRightClick = onRightClick ?: state.onRightClick
-
-            ZafiroTopBar(
-                title = state.title,
-                titleDirection = state.titleDirection,
-                baseTitleAlpha = baseTitleAlpha,
-                topInset = topInset,
-                isOccluded = isOccluded,
-                leftButtonAlpha = leftButtonAlpha,
-                rightButtonAlpha = rightButtonAlpha,
-                showLeftButton = resolvedShowLeftButton,
-                showRightButton = resolvedShowRightButton,
-                actionsEnabled = actionsEnabled,
-                backdrop = screenBackdrop,
-                titleHorizontalPadding = titleHorizontalPadding,
-                onLeftClick = resolvedOnLeftClick,
-                onRightClick = resolvedOnRightClick,
-                onLeftButtonBoundsChanged = onLeftButtonBoundsChanged,
-                onRightButtonBoundsChanged = onRightButtonBoundsChanged,
-                leftButton = leftButton,
-                rightButton = rightButton,
-                overlayContent = overlayContent,
+            // sheet 蒙版：M3 的 scrim 由锚点目标驱动，下拉过半就整块消失；这里换成 sheet 的
+            // 实际占屏进度，sheet 还在屏上蒙版就还在。没有 sheet 时 progress 为 0，等于不画。
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(3.5f)
+                    .background(Color.Black.copy(alpha = 0.32f * sheetProgress)),
             )
-        }
 
-        // Layer 4: dialog & popover host
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(4f),
-        ) {
-            dialogHostState.entries.forEach { entry ->
-                key(entry.id) {
-                    entry.content()
+            // Layer 4: dialog & popover host
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(4f),
+            ) {
+                dialogHostState.entries.forEach { entry ->
+                    key(entry.id) {
+                        entry.content()
+                    }
                 }
             }
         }
     }
-}
 }
