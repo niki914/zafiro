@@ -13,6 +13,7 @@ import com.niki914.zafiro.app.debug.DebugLogFile
 import com.niki914.zafiro.app.notification.ResidentNotificationManager
 import com.niki914.zafiro.app.notification.TurnNotificationManager
 import com.niki914.zafiro.app.overlay.FloatingBallOverlayManager
+import com.niki914.zafiro.app.screen.PhonePointer
 import com.niki914.zafiro.app.wakelock.AgentWakeLockController
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
@@ -73,6 +74,7 @@ class App : Application() {
         observeResidentNotification()
         observeMcpService()
         observeAgentWakeLock()
+        PhonePointer.watch(applicationScope)
         TurnNotificationManager.init(this)
     }
 

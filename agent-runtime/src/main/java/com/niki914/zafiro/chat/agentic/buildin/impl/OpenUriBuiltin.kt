@@ -7,6 +7,7 @@ import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.zafiro.api.util.runCatchingCancellable
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -46,25 +47,37 @@ class OpenUriBuiltin : BuiltinTool() {
             )
         }
 
-        val parsed = Uri.parse(uri)
-        if (parsed.scheme.isNullOrBlank()) {
+        return openForScreen(uri)
+    }
+
+    /** phone 的 open(Uri) 走同一条 ACTION_VIEW。 */
+    suspend fun openForScreen(uri: String): BuiltinToolResult {
+        if (uri.isBlank()) {
             return BuiltinToolResult.failure(
-                code = "INVALID_URI",
-                message = "URI must include a scheme.",
-                hint = "Use a URI such as https://example.com, tel:10086, mailto:name@example.com, or geo:0,0.",
-                data = JsonObject(mapOf("uri" to JsonPrimitive(uri))),
+                code = "MISSING_REQUIRED_FIELD",
+                message = "open_uri requires a non-blank uri.",
+                fieldErrors = mapOf("uri" to "Field 'uri' must not be blank."),
             )
         }
-
-        val context = ContextProvider.await().applicationContext
-        val intent = Intent(Intent.ACTION_VIEW, parsed).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return try {
+            val parsed = Uri.parse(uri)
+            if (parsed.scheme.isNullOrBlank()) {
+                return BuiltinToolResult.failure(
+                    code = "INVALID_URI",
+                    message = "URI must include a scheme.",
+                    hint = "Use a URI such as https://example.com, tel:10086, mailto:name@example.com, or geo:0,0.",
+                    data = JsonObject(mapOf("uri" to JsonPrimitive(uri))),
+                )
+            }
+            val context = ContextProvider.await().applicationContext
+            val intent = Intent(Intent.ACTION_VIEW, parsed).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
             BuiltinToolResult.success(
                 message = "URI opened.",
                 data = JsonObject(mapOf("uri" to JsonPrimitive(uri))),
             )
         } catch (throwable: Throwable) {
+            if (throwable is CancellationException) throw throwable
             BuiltinToolResult.failure(
                 code = "URI_OPEN_FAILED",
                 message = throwable.message ?: "Failed to open URI.",

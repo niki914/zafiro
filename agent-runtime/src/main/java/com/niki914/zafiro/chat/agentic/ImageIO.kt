@@ -53,6 +53,10 @@ internal object SharedImageCodec {
         } ?: return null
         return ImageCodec(context).also { codec = it }
     }
+
+    internal fun clearForTest() {
+        codec = null
+    }
 }
 
 /** ingest 成功 → 与 view_image/screenshot 共用的 data.image JSON 结果（契约两工具一致）。 */
