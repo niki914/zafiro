@@ -1,1 +1,1 @@
-// consumer-rules.pro for :accessibility
+# consumer-rules.pro for :accessibility
