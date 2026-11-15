@@ -62,7 +62,8 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, false)
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
             // Hints only: many recognisers ignore them, which is why the restart loop exists.
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, SILENCE_HINT_MS)
@@ -96,6 +97,6 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
 
     private companion object {
         const val LOG_TAG = "AndroidSpeechEngine"
-        const val SILENCE_HINT_MS = 3_000L
+        const val SILENCE_HINT_MS = 7_000L
     }
 }

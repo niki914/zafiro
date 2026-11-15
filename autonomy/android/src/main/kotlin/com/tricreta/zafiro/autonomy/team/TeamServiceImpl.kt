@@ -115,7 +115,7 @@ class TeamServiceImpl(
                     is Quotas.Verdict.Denied -> TeamResult(true, JSONObject().put("gate", "DENIED").put("reason", v.reason).toString())
                     is Quotas.Verdict.Allowed -> {
                         val t = dao.tier(ws, action)
-                        val gate = Tiering.gate(action, a["own_thread"]?.toBooleanStrictOrNull() ?: false, Tiering.State(t?.streak ?: 0, t?.auto ?: false))
+                        val gate = Tiering.gate(action, a["own_thread"]?.toBooleanStrictOrNull() ?: false, Tiering.State(t?.streak ?: 0, t?.auto ?: false), a["serious"]?.toBooleanStrictOrNull() ?: false)
                         val now = nowMs()
                         val id = dao.insertAction(
                             ActionLogEntity(

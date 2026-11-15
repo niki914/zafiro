@@ -8,6 +8,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -128,28 +133,43 @@ fun SkillsSettingsContent(
     )
 }
 
+/**
+ * Lazy list with a search box: with 270+ skills the old all-at-once card page froze the phone. Only visible rows are composed.
+ */
 @Composable
 private fun SkillsSettingsContentBody(
     uiState: SkillSettingsUiState,
     onOpenSkillDetail: (String, String) -> Unit,
     onEnabledChange: (String, Boolean) -> Unit,
 ) {
-    val items = uiState.items
-    SettingsSpecPageContent(
-        spec = skillSettingsSpec(uiState),
-        onAction = { action ->
-            when (action) {
-                is SettingsRowAction.Navigate -> {
-                    val item =
-                        items.firstOrNull { it.id == action.id } ?: return@SettingsSpecPageContent
-                    onOpenSkillDetail(item.id, item.title)
+    var query by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
+    val shown = androidx.compose.runtime.remember(uiState.items, query) {
+        val q = query.trim().lowercase()
+        if (q.isEmpty()) uiState.items else uiState.items.filter { it.title.lowercase().contains(q) || it.summary.orEmpty().lowercase().contains(q) }
+    }
+    androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxSize()) {
+        if (uiState.isLoading) androidx.compose.material3.Text(stringResource(R.string.skill_loading), modifier = androidx.compose.ui.Modifier.padding(16.dp))
+        androidx.compose.material3.OutlinedTextField(
+            value = query, onValueChange = { query = it }, singleLine = true,
+            placeholder = { androidx.compose.material3.Text("Search ${uiState.items.size} skills") },
+            modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+        androidx.compose.foundation.lazy.LazyColumn(androidx.compose.ui.Modifier.fillMaxSize()) {
+            items(shown.size, key = { shown[it].id }) { i ->
+                val item = shown[i]
+                androidx.compose.foundation.layout.Row(
+                    androidx.compose.ui.Modifier.fillMaxWidth().clickable { onOpenSkillDetail(item.id, item.title) }.padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.weight(1f).padding(end = 12.dp)) {
+                        androidx.compose.material3.Text(item.title, style = androidx.compose.material3.MaterialTheme.typography.titleSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        androidx.compose.material3.Text(item.summary.orEmpty(), style = androidx.compose.material3.MaterialTheme.typography.bodySmall, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    androidx.compose.material3.Switch(checked = item.enabled, onCheckedChange = { onEnabledChange(item.id, it) }, enabled = !uiState.isSaving)
                 }
-
-                is SettingsRowAction.ToggleChanged -> onEnabledChange(action.id, action.checked)
-                else -> Unit
             }
-        },
-    )
+        }
+    }
 }
 
 @Composable

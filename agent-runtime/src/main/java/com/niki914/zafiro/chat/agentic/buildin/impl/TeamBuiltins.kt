@@ -48,10 +48,10 @@ class BoardBuiltin : TeamForwardBuiltin(
 class EngageBuiltin : TeamForwardBuiltin(
     name = "engage",
     description = "Plan and record outward actions on a platform. op=plan (workspace, platform, action=post|note|comment|reply|like|restack|follow|dm, target, text, own_thread) " +
-        "checks today's cap and returns id plus gate AUTO (go ahead) or NEEDS_APPROVAL (wait for the owner) or DENIED (cap reached). " +
+        "checks today's cap and returns id plus gate AUTO (go ahead: the owner already accepted autonomous work) or NEEDS_APPROVAL (only serious actions such as dm; pass serious=true for anything irreversible) or DENIED (cap reached). " +
         "op=done (id, note) / op=fail (id, note) record the result after you act. op=approve|reject (id, reason) is the owner's decision. " +
         "op=pending lists drafts waiting for the owner. op=today (workspace) shows counts versus caps. op=pace (min_s, max_s) returns a human-style wait in seconds; wait that long between actions.",
-    inputSchemaJson = """{"type":"object","properties":{"op":{"type":"string","enum":["plan","done","fail","approve","reject","pending","today","pace"]},"id":{"type":"number"},"workspace":{"type":"string"},"platform":{"type":"string"},"action":{"type":"string"},"target":{"type":"string"},"text":{"type":"string"},"own_thread":{"type":"boolean"},"note":{"type":"string"},"reason":{"type":"string"},"min_s":{"type":"number"},"max_s":{"type":"number"}},"required":["op"]}""",
+    inputSchemaJson = """{"type":"object","properties":{"op":{"type":"string","enum":["plan","done","fail","approve","reject","pending","today","pace"]},"id":{"type":"number"},"workspace":{"type":"string"},"platform":{"type":"string"},"action":{"type":"string"},"target":{"type":"string"},"text":{"type":"string"},"own_thread":{"type":"boolean"},"serious":{"type":"boolean"},"note":{"type":"string"},"reason":{"type":"string"},"min_s":{"type":"number"},"max_s":{"type":"number"}},"required":["op"]}""",
 )
 
 /** The owner's approved and rejected samples; the Reviewer scores new drafts against them. */

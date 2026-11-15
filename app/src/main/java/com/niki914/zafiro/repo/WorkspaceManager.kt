@@ -47,7 +47,7 @@ object WorkspaceManager {
             "# ${def.name} rulebook\n\nThis is the single source of rules for this workspace. Newest corrections are at the top; they override anything older.\n\n" +
                 "- Never invent facts, results or experience. Say \"not available\" instead.\n" +
                 "- Daily caps: ${def.quotas.replace(",", ", ")}. Stop at the cap.\n" +
-                "- Replies and likes on the owner's own threads are automatic; everything else waits for approval until promoted (10 approvals in a row), and one rejection demotes it.\n" +
+                "- The owner switched this workspace on, so the team works alone. Only serious actions (direct messages, sending email, payments, deletions, applications) wait for approval; 10 approvals in a row make a type automatic, one rejection makes it ask again.\n" +
                 "- Act like a person: pause between actions, vary what you do, stop on any warning or verification.\n" +
                 "- Never bypass locks, CAPTCHAs, 2FA, consent screens or payments.\n",
         )

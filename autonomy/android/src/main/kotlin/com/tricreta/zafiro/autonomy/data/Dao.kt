@@ -216,4 +216,35 @@ interface AutonomyDao {
 
     @Query("SELECT * FROM tier")
     fun observeTiers(): Flow<List<TierEntity>>
+
+    // --- reset helpers ---
+    @Query("DELETE FROM workspace WHERE id = :id")
+    suspend fun deleteWorkspace(id: String)
+
+    @Query("DELETE FROM board_item")
+    suspend fun clearBoard()
+
+    @Query("DELETE FROM action_log")
+    suspend fun clearActions()
+
+    @Query("DELETE FROM example")
+    suspend fun clearExamples()
+
+    @Query("DELETE FROM tier")
+    suspend fun clearTiers()
+
+    @Query("DELETE FROM run_event")
+    suspend fun clearRunEvents()
+
+    @Query("DELETE FROM run WHERE state NOT IN ('QUEUED','STARTING','RUNNING','PAUSED')")
+    suspend fun clearFinishedRuns()
+
+    @Query("SELECT dayKey AS day, COUNT(*) AS n FROM action_log WHERE status = 'DONE' GROUP BY dayKey ORDER BY dayKey DESC LIMIT :days")
+    fun observeDoneByDay(days: Int): Flow<List<DayCount>>
+
+    @Query("SELECT action AS label, COUNT(*) AS n FROM action_log WHERE status = 'DONE' AND dayKey = :dayKey GROUP BY action ORDER BY n DESC")
+    fun observeDoneByKind(dayKey: String): Flow<List<KindCount>>
 }
+
+data class DayCount(val day: String, val n: Int)
+data class KindCount(val label: String, val n: Int)

@@ -150,4 +150,7 @@
     <string name="workspaces_entry_summary">Ready-made teams: Substack, LinkedIn, TikTok and more</string>
     <string name="files_entry_title">Files</string>
     <string name="files_entry_summary">Plans, drafts and reports the agents made</string>
+    <string name="manage_page_title">Manage and reset</string>
+    <string name="manage_entry_title">Manage and reset</string>
+    <string name="manage_entry_summary">Delete tasks, agents, skills, MCP servers and memories, or reset the app</string>
 </resources>

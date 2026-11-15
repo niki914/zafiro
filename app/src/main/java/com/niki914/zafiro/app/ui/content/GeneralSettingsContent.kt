@@ -15,8 +15,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.niki914.uikit.dialog.ZafiroConfirmationDialog
-import com.niki914.zafiro.backup.BackupArchive
-import com.niki914.zafiro.backup.BackupManager
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,8 +47,6 @@ private const val ALWAYS_SHOW_DETAILED_TOOL_OUTPUT_ROW_ID =
 private const val VOICE_ASSISTANT_ISOLATED_SESSION_ROW_ID =
     "general.voice_assistant_isolated_session"
 private const val DEVICE_ADMIN_ROW_ID = "general.device_admin"
-private const val BACKUP_CREATE_ROW_ID = "general.backup_create"
-private const val BACKUP_RESTORE_ROW_ID = "general.backup_restore"
 
 @Composable
 fun GeneralSettingsContent(
@@ -65,22 +61,6 @@ fun GeneralSettingsContent(
     var adminActive by remember { mutableStateOf(dpm?.isAdminActive(adminComponent) == true) }
     val adminLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         adminActive = dpm?.isAdminActive(adminComponent) == true
-    }
-    var stagedRestore by remember { mutableStateOf<BackupArchive.Summary?>(null) }
-
-    val createBackup = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
-        if (uri != null) scope.launch {
-            runCatching { BackupManager.create(context, uri) }
-                .onSuccess { Toast.makeText(context, context.getString(R.string.backup_done, it.fileCount), Toast.LENGTH_LONG).show() }
-                .onFailure { Toast.makeText(context, context.getString(R.string.backup_failed, it.message ?: "unknown"), Toast.LENGTH_LONG).show() }
-        }
-    }
-    val pickBackup = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) scope.launch {
-            runCatching { BackupManager.stageRestore(context, uri) }
-                .onSuccess { stagedRestore = it }
-                .onFailure { Toast.makeText(context, context.getString(R.string.restore_failed, it.message ?: "unknown"), Toast.LENGTH_LONG).show() }
-        }
     }
 
     LaunchedEffect(Unit) {
@@ -155,22 +135,6 @@ fun GeneralSettingsContent(
                     ),
                 ),
             ),
-            SettingsSectionSpec(
-                title = stringResource(R.string.backup_group_title),
-                layout = SettingsSectionLayout.GroupedCard,
-                rows = listOf(
-                    SettingsRowSpec.Navigation(
-                        id = BACKUP_CREATE_ROW_ID,
-                        title = stringResource(R.string.backup_create_title),
-                        summary = stringResource(R.string.backup_create_summary),
-                    ),
-                    SettingsRowSpec.Navigation(
-                        id = BACKUP_RESTORE_ROW_ID,
-                        title = stringResource(R.string.backup_restore_title),
-                        summary = stringResource(R.string.backup_restore_summary),
-                    ),
-                ),
-            ),
             // 分组 4：运行与控制已迁至独立页（RuntimeControl）
         ),
     )
@@ -194,8 +158,6 @@ fun GeneralSettingsContent(
                                 )
                             }
                         }
-                        BACKUP_CREATE_ROW_ID -> createBackup.launch(BackupManager.suggestedFileName())
-                        BACKUP_RESTORE_ROW_ID -> pickBackup.launch(arrayOf("application/zip", "application/octet-stream"))
                     }
 
                 is SettingsRowAction.ToggleChanged ->
@@ -239,33 +201,4 @@ fun GeneralSettingsContent(
             }
         },
     )
-
-    val staged = stagedRestore
-    ZafiroConfirmationDialog(
-        visible = staged != null,
-        onDismissRequest = {
-            BackupManager.cancelStagedRestore(context)
-            stagedRestore = null
-        },
-        title = stringResource(R.string.restore_confirm_title),
-        text = stringResource(R.string.restore_confirm_text, staged?.appVersion.orEmpty().ifBlank { "?" }, staged?.fileCount ?: 0),
-        negativeButtonText = stringResource(R.string.restore_confirm_cancel),
-        positiveButtonText = stringResource(R.string.restore_confirm_apply),
-        onNegativeClick = {
-            BackupManager.cancelStagedRestore(context)
-            stagedRestore = null
-        },
-        onPositiveClick = {
-            stagedRestore = null
-            restartApp(context)
-        },
-    )
-}
-
-/** Relaunches the app; the staged restore is applied by App.onCreate in the fresh process. */
-private fun restartApp(context: Context) {
-    val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
-        ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-    if (launch != null) context.startActivity(launch)
-    Runtime.getRuntime().exit(0)
 }

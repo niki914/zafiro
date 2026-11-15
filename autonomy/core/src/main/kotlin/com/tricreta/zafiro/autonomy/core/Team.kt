@@ -76,10 +76,18 @@ object Tiering {
 
     enum class Gate { AUTO, NEEDS_APPROVAL }
 
-    /** Own-thread replies and likes are automatic from day one; everything else waits for approval until promoted. */
-    fun gate(action: String, ownThread: Boolean, s: State): Gate {
+    /** Action types that always wait for the owner: they message a person directly or cannot be undone. */
+    private val SERIOUS = setOf("dm", "email_send", "payment", "delete", "apply")
+
+    /**
+     * Switching a workspace on means the owner accepts it working alone, so the default is AUTO. Only serious actions
+     * (direct messages, sending email, payments, deletions, job applications) or anything the agent flags as [serious]
+     * wait for approval, until ten approvals in a row promote that type to AUTO. One rejection demotes it again.
+     */
+    fun gate(action: String, ownThread: Boolean, s: State, serious: Boolean = false): Gate {
         val a = action.lowercase()
         if (ownThread && (a == "reply" || a == "like")) return Gate.AUTO
-        return if (s.auto) Gate.AUTO else Gate.NEEDS_APPROVAL
+        if (s.auto) return Gate.AUTO
+        return if (serious || a in SERIOUS) Gate.NEEDS_APPROVAL else Gate.AUTO
     }
 }

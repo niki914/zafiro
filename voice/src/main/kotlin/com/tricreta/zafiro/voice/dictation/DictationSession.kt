@@ -12,7 +12,7 @@ class DictationSession(private val config: Config = Config()) {
 
     data class Config(
         /** Consecutive empty sessions (no speech heard) before dictation ends quietly. */
-        val maxConsecutiveSilent: Int = 4,
+        val maxConsecutiveSilent: Int = 8,
         /** Retries when the recogniser says it is busy (usually because we restarted too fast). */
         val maxBusyRetries: Int = 4,
         /** Retries for transient network/server faults before giving up. */

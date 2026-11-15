@@ -22,6 +22,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.height
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.FileProvider
 import com.mikepenz.markdown.m3.Markdown
@@ -194,24 +196,21 @@ fun FileViewPageContent(relative: String, onDeleted: () -> Unit) {
     val uri = remember(file) { FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file) }
     val mime = remember(file) { com.niki914.zafiro.chat.agentic.buildin.impl.OutputPaths.mime(file.name) }
 
+    val body = androidx.compose.material3.MaterialTheme.typography.bodyLarge
+    val md = com.mikepenz.markdown.m3.markdownTypography(
+        h1 = body.copy(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+        h2 = body.copy(fontSize = 19.sp, lineHeight = 25.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
+        h3 = body.copy(fontSize = 17.sp, lineHeight = 23.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
+    )
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
-            Button(onClick = {
-                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType(mime).putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "Share"))
-            }) { Text("Share") }
-            OutlinedButton(onClick = {
-                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)) }
-                    .onFailure { Toast.makeText(context, "No app can open this file type.", Toast.LENGTH_SHORT).show() }
-            }) { Text("Open with") }
-            OutlinedButton(onClick = { if (file.delete()) onDeleted() }) { Text("Delete") }
-        }
+        Text(file.name, style = androidx.compose.material3.MaterialTheme.typography.titleMedium, maxLines = 1, modifier = Modifier.padding(start = 72.dp, end = 16.dp, top = 12.dp, bottom = 8.dp))
         Column(Modifier.weight(1f).fillMaxSize()) {
             when {
                 ext == "html" || ext == "htm" -> AndroidView(
                     modifier = Modifier.fillMaxSize(),
                     factory = { c -> android.webkit.WebView(c).apply { settings.javaScriptEnabled = false; loadDataWithBaseURL(null, file.readText(), "text/html", "utf-8", null) } },
                 )
-                ext == "md" || ext == "markdown" -> Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) { Markdown(content = file.readText()) }
+                ext == "md" || ext == "markdown" -> Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) { Markdown(content = file.readText(), typography = md) }
                 isImage(file.name) -> AndroidView(
                     modifier = Modifier.fillMaxSize(),
                     factory = { c -> android.widget.ImageView(c).apply { setImageURI(uri); adjustViewBounds = true } },
@@ -220,6 +219,18 @@ fun FileViewPageContent(relative: String, onDeleted: () -> Unit) {
                     androidx.compose.foundation.text.selection.SelectionContainer { Text(file.readText().take(200_000), style = androidx.compose.material3.MaterialTheme.typography.bodySmall) }
                 }
                 else -> Text("This file type opens in another app. Tap \"Open with\".", modifier = Modifier.padding(24.dp))
+            }
+        }
+        androidx.compose.material3.Surface(tonalElevation = 3.dp) {
+            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
+                Button(modifier = Modifier.weight(1f).height(52.dp), onClick = {
+                    context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType(mime).putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "Share"))
+                }) { Text("Share") }
+                OutlinedButton(modifier = Modifier.weight(1f).height(52.dp), onClick = {
+                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)) }
+                        .onFailure { Toast.makeText(context, "No app can open this file type.", Toast.LENGTH_SHORT).show() }
+                }) { Text("Open with") }
+                OutlinedButton(modifier = Modifier.weight(1f).height(52.dp), onClick = { if (file.delete()) onDeleted() }) { Text("Delete") }
             }
         }
     }

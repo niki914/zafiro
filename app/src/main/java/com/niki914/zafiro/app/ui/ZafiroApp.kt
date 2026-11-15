@@ -441,6 +441,8 @@ fun ZafiroApp(
                     }
                 }
                 currentChrome.overlay?.invoke()
+                // Approvals pop up on every page, not only on the Dashboard.
+                com.niki914.zafiro.app.ui.content.PendingApprovalHost(onOpenDashboard = { navigator.push(com.niki914.zafiro.app.ui.nav.DashboardPage) })
             }
         }
     }

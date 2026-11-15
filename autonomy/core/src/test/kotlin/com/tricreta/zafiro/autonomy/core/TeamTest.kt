@@ -35,17 +35,23 @@ class TeamTest {
         assertEquals(3000, Pacing.delayMs(5000, 1000, 0.5))
     }
 
-    @Test fun tieringPromotesAfterTenAndDemotesOnOneRejection() {
+    @Test fun tieringIsAutonomousExceptForSeriousActions() {
+        assertEquals(Tiering.Gate.AUTO, Tiering.gate("comment", false, Tiering.State()))
+        assertEquals(Tiering.Gate.AUTO, Tiering.gate("post", false, Tiering.State()))
+        assertEquals(Tiering.Gate.NEEDS_APPROVAL, Tiering.gate("dm", false, Tiering.State()))
+        assertEquals(Tiering.Gate.NEEDS_APPROVAL, Tiering.gate("comment", false, Tiering.State(), serious = true))
+        assertEquals(Tiering.Gate.AUTO, Tiering.gate("reply", true, Tiering.State(), serious = true))
+    }
+
+    @Test fun seriousActionsArePromotedAfterTenApprovalsAndDemotedByOneRejection() {
         var s = Tiering.State()
         repeat(9) { s = Tiering.approved(s) }
         assertFalse(s.auto)
         s = Tiering.approved(s)
         assertTrue(s.auto)
-        assertEquals(Tiering.Gate.AUTO, Tiering.gate("comment", false, s))
+        assertEquals(Tiering.Gate.AUTO, Tiering.gate("dm", false, s))
         s = Tiering.rejected(s)
         assertEquals(Tiering.State(0, false), s)
-        assertEquals(Tiering.Gate.NEEDS_APPROVAL, Tiering.gate("comment", false, s))
-        assertEquals(Tiering.Gate.AUTO, Tiering.gate("reply", true, s))
-        assertEquals(Tiering.Gate.NEEDS_APPROVAL, Tiering.gate("reply", false, s))
+        assertEquals(Tiering.Gate.NEEDS_APPROVAL, Tiering.gate("dm", false, s))
     }
 }

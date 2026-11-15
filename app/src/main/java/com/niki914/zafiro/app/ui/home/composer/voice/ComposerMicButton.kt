@@ -5,6 +5,8 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -22,7 +24,7 @@ internal fun ComposerMicButton(
     CompositionLocalProvider(LocalContentColor provides tint) {
         ZafiroActionButton(
             onClick = controller::toggle,
-            modifier = modifier,
+            modifier = if (listening) modifier.background(MaterialTheme.colorScheme.error.copy(alpha = 0.18f), CircleShape) else modifier,
         ) {
             Icon(
                 imageVector = if (listening) Icons.Default.Stop else Icons.Default.Mic,

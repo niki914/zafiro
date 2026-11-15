@@ -59,30 +59,35 @@ class TeamServiceTest {
         assertEquals(id, JSONObject(call("board", "op" to "next", "owner" to "A").text).getJSONObject("item").getLong("id"))
     }
 
-    @Test fun engageCapsApprovalsAndPromotion() {
+    @Test fun engageIsAutonomousUntilTheDailyCap() {
         val plan = { call("engage", "op" to "plan", "action" to "comment", "platform" to "substack", "workspace" to "s", "text" to "nice") }
-        val first = JSONObject(plan().text)
-        assertEquals("NEEDS_APPROVAL", first.getString("gate"))
-        assertFalse(call("engage", "op" to "done", "id" to "${first.getLong("id")}").ok, "cannot record done before approval")
-        assertTrue(call("engage", "op" to "approve", "id" to "${first.getLong("id")}").ok)
-        assertTrue(call("engage", "op" to "done", "id" to "${first.getLong("id")}").ok)
-        val second = JSONObject(plan().text)
-        assertEquals("NEEDS_APPROVAL", second.getString("gate"))
+        assertEquals("AUTO", JSONObject(plan().text).getString("gate"))
+        assertEquals("AUTO", JSONObject(plan().text).getString("gate"))
         assertEquals("DENIED", JSONObject(plan().text).getString("gate"), "third plan exceeds the cap of 2")
     }
 
-    @Test fun ownThreadRepliesAreAutomaticAndRejectionDemotes() {
-        val r = JSONObject(call("engage", "op" to "plan", "action" to "reply", "own_thread" to "true", "workspace" to "s").text)
-        assertEquals("AUTO", r.getString("gate"))
+    @Test fun seriousActionsWaitForApprovalAndCannotBeRecordedDoneBefore() {
+        val first = JSONObject(call("engage", "op" to "plan", "action" to "dm", "workspace" to "s", "text" to "hello").text)
+        assertEquals("NEEDS_APPROVAL", first.getString("gate"))
+        val id = first.getLong("id")
+        assertFalse(call("engage", "op" to "done", "id" to "$id").ok, "cannot record done before approval")
+        assertTrue(call("engage", "op" to "approve", "id" to "$id").ok)
+        assertTrue(call("engage", "op" to "done", "id" to "$id").ok)
+    }
+
+    @Test fun tenApprovalsPromoteASeriousTypeAndOneRejectionDemotesIt() {
         repeat(10) {
-            val id = JSONObject(call("engage", "op" to "plan", "action" to "reply", "workspace" to "p").text).getLong("id")
+            val id = JSONObject(call("engage", "op" to "plan", "action" to "dm", "workspace" to "p").text).getLong("id")
             call("engage", "op" to "approve", "id" to "$id")
         }
-        assertEquals("AUTO", JSONObject(call("engage", "op" to "plan", "action" to "reply", "workspace" to "p").text).getString("gate"))
+        assertEquals("AUTO", JSONObject(call("engage", "op" to "plan", "action" to "dm", "workspace" to "p").text).getString("gate"))
+        val id = JSONObject(call("engage", "op" to "plan", "action" to "dm", "workspace" to "q").text).getLong("id")
+        call("engage", "op" to "reject", "id" to "$id", "reason" to "no")
+        assertEquals("NEEDS_APPROVAL", JSONObject(call("engage", "op" to "plan", "action" to "dm", "workspace" to "q").text).getString("gate"))
     }
 
     @Test fun rejectionStoresABadExampleWithTheReason() {
-        val id = JSONObject(call("engage", "op" to "plan", "action" to "comment", "workspace" to "s", "platform" to "substack", "text" to "Great post!").text).getLong("id")
+        val id = JSONObject(call("engage", "op" to "plan", "action" to "comment", "workspace" to "s", "platform" to "substack", "text" to "Great post!", "serious" to "true").text).getLong("id")
         call("engage", "op" to "reject", "id" to "$id", "reason" to "generic")
         val ex = JSONArray(call("examples", "op" to "list", "platform" to "substack").text)
         assertEquals("BAD", ex.getJSONObject(0).getString("verdict")); assertEquals("generic", ex.getJSONObject(0).getString("reason"))
