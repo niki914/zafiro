@@ -42,7 +42,23 @@ data class RuntimeLlmConfig(
     val repetitionSensitivity: RepetitionSensitivity = RepetitionSensitivity.DEFAULT,
     /** 上下文自动压缩阈值百分比（例如 70 表示 70%，0 表示关闭）。 */
     val compactionThresholdPercent: Int = 70,
+    /** 环境与时态上下文注入配置。 */
+    val envContext: RuntimeEnvContextConfig = RuntimeEnvContextConfig(),
 )
+
+data class RuntimeEnvContextConfig(
+    // TODO(debug-temp): 临时调试配置，验证后待删除并恢复默认值 (enabled = false, keys = emptySet(), variables = emptyMap())
+    val enabled: Boolean = true,
+    val keys: Set<String> = setOf(KEY_DATE, KEY_TIME, KEY_DEVICE, "debug_role"),
+    val variables: Map<String, String> = mapOf("debug_role" to "Tester"),
+) {
+    companion object {
+        const val KEY_DATE = "date"
+        const val KEY_TIME = "time"
+        const val KEY_DEVICE = "device"
+        val DEFAULT_KEYS = setOf(KEY_DATE, KEY_TIME, KEY_DEVICE)
+    }
+}
 
 enum class RuntimeAgentMemoryMode {
     Disabled,
