@@ -1,7 +1,7 @@
 package com.niki914.zafiro.app.ui.content
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FormatListBulleted
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -232,7 +232,7 @@ private fun ModelCatalogButton(
             enabled = enabled,
         ) {
             Icon(
-                imageVector = Icons.Default.FormatListBulleted,
+                imageVector = Icons.AutoMirrored.Filled.FormatListBulleted,
                 contentDescription = stringResource(
                     R.string.ui_onboard_configure_model_catalog_open
                 ),

@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit 形变、预览与按钮堆叠同文件，超过单文件预算
 package com.niki914.zafiro.remoteview.floatingball
 
 import androidx.compose.animation.AnimatedContent
@@ -20,7 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -40,6 +41,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -163,6 +165,7 @@ fun FloatingBallMorphCard(
 
     val cardShape = G2CardShape(FloatingBallTokens.cardCornerRadiusDp)
 
+    // 卡片原点钉在窗口物理左上角。位移是屏幕像素：贴哪边、往哪边长由停靠侧决定。
     Box(
         modifier = modifier
             .size(
@@ -170,10 +173,11 @@ fun FloatingBallMorphCard(
                 height = FloatingBallTokens.expandedHeightDp,
             )
             .graphicsLayer { alpha = cardAlpha },
+        contentAlignment = AbsoluteAlignment.TopLeft,
     ) {
         Column(
             modifier = Modifier
-                .offset { IntOffset(containerLeft.roundToPx(), containerTop.roundToPx()) }
+                .absoluteOffset { IntOffset(containerLeft.roundToPx(), containerTop.roundToPx()) }
                 .size(width = currentWidth, height = currentHeight)
                 .clip(cardShape)
                 .background(cardBg, cardShape)
@@ -211,6 +215,7 @@ fun FloatingBallMorphCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(FloatingBallTokens.buttonDiameterDp),
+                contentAlignment = AbsoluteAlignment.TopLeft,
             ) {
                 FloatingBallActionButton(
                     icon = Icons.AutoMirrored.Filled.OpenInNew,
@@ -220,7 +225,7 @@ fun FloatingBallMorphCard(
                     contentColor = buttonIconTint,
                     enabled = progress >= 0.7f,
                     modifier = Modifier
-                        .offset { IntOffset(offsets.jumpX.roundToPx(), 0) }
+                        .absoluteOffset { IntOffset(offsets.jumpX.roundToPx(), 0) }
                         .zIndex(offsets.jumpZIndex)
                         .graphicsLayer { alpha = buttonsAlpha },
                 )
@@ -236,7 +241,7 @@ fun FloatingBallMorphCard(
                     enabled = progress >= 0.7f,
                     spinOnClick = centerConfig.isToyMode,
                     modifier = Modifier
-                        .offset { IntOffset(offsets.stopX.roundToPx(), 0) }
+                        .absoluteOffset { IntOffset(offsets.stopX.roundToPx(), 0) }
                         .zIndex(offsets.stopZIndex)
                         .graphicsLayer { alpha = buttonsAlpha },
                 )
@@ -248,7 +253,7 @@ fun FloatingBallMorphCard(
                     contentColor = buttonIconTint,
                     enabled = progress >= 0.7f,
                     modifier = Modifier
-                        .offset { IntOffset(offsets.minimizeX.roundToPx(), 0) }
+                        .absoluteOffset { IntOffset(offsets.minimizeX.roundToPx(), 0) }
                         .zIndex(offsets.minimizeZIndex)
                         .graphicsLayer { alpha = buttonsAlpha },
                 )
@@ -304,6 +309,7 @@ fun FloatingBallExpandedCardContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(FloatingBallTokens.buttonDiameterDp),
+            contentAlignment = AbsoluteAlignment.TopLeft,
         ) {
             FloatingBallActionButton(
                 icon = Icons.AutoMirrored.Filled.OpenInNew,
@@ -312,7 +318,7 @@ fun FloatingBallExpandedCardContent(
                 backgroundColor = buttonBg,
                 contentColor = buttonIconTint,
                 enabled = buttonsEnabled,
-                modifier = Modifier.offset(x = 0.dp, y = 0.dp),
+                modifier = Modifier.absoluteOffset(x = 0.dp, y = 0.dp),
             )
             val centerConfig =
                 resolveCenterButtonConfig(isApprovalPending, isStopEnabled, onAllow, onStop)
@@ -325,7 +331,7 @@ fun FloatingBallExpandedCardContent(
                 contentColor = buttonIconTint,
                 enabled = buttonsEnabled,
                 spinOnClick = centerConfig.isToyMode,
-                modifier = Modifier.offset(x = step, y = 0.dp),
+                modifier = Modifier.absoluteOffset(x = step, y = 0.dp),
             )
             FloatingBallActionButton(
                 icon = if (isApprovalPending) Icons.Filled.Close else Icons.Filled.CloseFullscreen,
@@ -334,7 +340,7 @@ fun FloatingBallExpandedCardContent(
                 backgroundColor = buttonBg,
                 contentColor = buttonIconTint,
                 enabled = buttonsEnabled,
-                modifier = Modifier.offset(x = step * 2, y = 0.dp),
+                modifier = Modifier.absoluteOffset(x = step * 2, y = 0.dp),
             )
         }
     }

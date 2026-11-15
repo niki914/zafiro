@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.CollectionInfo
 import androidx.compose.ui.semantics.CollectionItemInfo
 import androidx.compose.ui.semantics.collectionInfo
@@ -24,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.mikepenz.markdown.annotator.annotatorSettings
 import com.mikepenz.markdown.annotator.buildMarkdownAnnotatedString
@@ -95,81 +98,84 @@ internal fun AssistantMarkdownTable(
     }
     val tableWidth = columnWidths.fold(0.dp) { acc, columnWidth -> acc + columnWidth }
 
-    Column(
-        modifier = Modifier
-            .horizontalScroll(rememberScrollState())
-            .width(tableWidth)
-            .background(tableBackground)
-            .drawBehind {
-                val halfStroke = gridStroke / 2f
-                drawLine(
-                    color = gridColor,
-                    start = Offset(halfStroke, halfStroke),
-                    end = Offset(size.width - halfStroke, halfStroke),
-                    strokeWidth = gridStroke,
-                )
-            }
-            .semantics {
-                collectionInfo = CollectionInfo(rowCount = rows.size, columnCount = columnCount)
-            },
-    ) {
-        rows.forEachIndexed { rowIndex, _ ->
-            val isHeader = rowIndex == 0 && hasHeader
-            Row(
-                modifier = Modifier
-                    .width(tableWidth)
-                    .drawBehind {
-                        val halfStroke = gridStroke / 2f
-                        val rightEdge = size.width - halfStroke
-                        val bottomEdge = size.height - halfStroke
-                        drawLine(
-                            gridColor,
-                            Offset(halfStroke, 0f),
-                            Offset(halfStroke, size.height),
-                            gridStroke
-                        )
-                        var edge = 0f
-                        columnWidths.forEachIndexed { columnIndex, columnWidth ->
-                            edge += columnWidth.toPx()
-                            val x = if (columnIndex == columnWidths.lastIndex) rightEdge else edge
-                            drawLine(gridColor, Offset(x, 0f), Offset(x, size.height), gridStroke)
-                        }
-                        drawLine(
-                            gridColor,
-                            Offset(halfStroke, bottomEdge),
-                            Offset(rightEdge, bottomEdge),
-                            gridStroke
-                        )
-                    },
-            ) {
-                for (columnIndex in 0 until columnCount) {
-                    val cell = cellsByRow[rowIndex].getOrNull(columnIndex)
-                    val columnWidth = columnWidths.getOrElse(columnIndex) {
-                        TableColumnMaxContentWidth + cellPadding * 2
-                    }
-                    Column(
-                        modifier = Modifier
-                            .width(columnWidth)
-                            .padding(cellPadding)
-                            .semantics {
-                                if (isHeader) heading()
-                                collectionItemInfo = CollectionItemInfo(
-                                    rowIndex = rowIndex,
-                                    rowSpan = 1,
-                                    columnIndex = columnIndex,
-                                    columnSpan = 1,
-                                )
-                            },
-                    ) {
-                        if (cell != null) {
-                            MarkdownTableBasicText(
-                                content = content,
-                                cell = cell,
-                                style = if (isHeader) style.copy(fontWeight = FontWeight.Bold) else style,
-                                maxLines = Int.MAX_VALUE,
-                                overflow = TextOverflow.Clip,
-                                annotatorSettings = annotatorSettings,
+    // 外层从右往左时，表格仍从物理左边起滑，竖线跟着列走。
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Column(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState())
+                .width(tableWidth)
+                .background(tableBackground)
+                .drawBehind {
+                    val halfStroke = gridStroke / 2f
+                    drawLine(
+                        color = gridColor,
+                        start = Offset(halfStroke, halfStroke),
+                        end = Offset(size.width - halfStroke, halfStroke),
+                        strokeWidth = gridStroke,
+                    )
+                }
+                .semantics {
+                    collectionInfo = CollectionInfo(rowCount = rows.size, columnCount = columnCount)
+                },
+        ) {
+            rows.forEachIndexed { rowIndex, _ ->
+                val isHeader = rowIndex == 0 && hasHeader
+                Row(
+                    modifier = Modifier
+                        .width(tableWidth)
+                        .drawBehind {
+                            val halfStroke = gridStroke / 2f
+                            val rightEdge = size.width - halfStroke
+                            val bottomEdge = size.height - halfStroke
+                            drawLine(
+                                gridColor,
+                                Offset(halfStroke, 0f),
+                                Offset(halfStroke, size.height),
+                                gridStroke
                             )
+                            var edge = 0f
+                            columnWidths.forEachIndexed { columnIndex, columnWidth ->
+                                edge += columnWidth.toPx()
+                                val x = if (columnIndex == columnWidths.lastIndex) rightEdge else edge
+                                drawLine(gridColor, Offset(x, 0f), Offset(x, size.height), gridStroke)
+                            }
+                            drawLine(
+                                gridColor,
+                                Offset(halfStroke, bottomEdge),
+                                Offset(rightEdge, bottomEdge),
+                                gridStroke
+                            )
+                        },
+                ) {
+                    for (columnIndex in 0 until columnCount) {
+                        val cell = cellsByRow[rowIndex].getOrNull(columnIndex)
+                        val columnWidth = columnWidths.getOrElse(columnIndex) {
+                            TableColumnMaxContentWidth + cellPadding * 2
+                        }
+                        Column(
+                            modifier = Modifier
+                                .width(columnWidth)
+                                .padding(cellPadding)
+                                .semantics {
+                                    if (isHeader) heading()
+                                    collectionItemInfo = CollectionItemInfo(
+                                        rowIndex = rowIndex,
+                                        rowSpan = 1,
+                                        columnIndex = columnIndex,
+                                        columnSpan = 1,
+                                    )
+                                },
+                        ) {
+                            if (cell != null) {
+                                MarkdownTableBasicText(
+                                    content = content,
+                                    cell = cell,
+                                    style = if (isHeader) style.copy(fontWeight = FontWeight.Bold) else style,
+                                    maxLines = Int.MAX_VALUE,
+                                    overflow = TextOverflow.Clip,
+                                    annotatorSettings = annotatorSettings,
+                                )
+                            }
                         }
                     }
                 }
