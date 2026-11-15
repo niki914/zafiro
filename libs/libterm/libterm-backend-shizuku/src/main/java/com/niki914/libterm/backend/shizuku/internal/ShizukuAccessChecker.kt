@@ -1,7 +1,6 @@
 package com.niki914.libterm.backend.shizuku.internal
 
-import android.content.pm.PackageManager
-import rikka.shizuku.Shizuku
+import com.niki914.shizuku.ShizukuClient
 
 internal interface ShizukuAccessChecker {
     suspend fun checkAccess(): ShizukuAccessState
@@ -13,14 +12,13 @@ internal sealed interface ShizukuAccessState {
     data object Authorized : ShizukuAccessState
 }
 
-internal class RealShizukuAccessChecker : ShizukuAccessChecker {
+internal class RealShizukuAccessChecker(
+    private val client: ShizukuClient = ShizukuClient.create(),
+) : ShizukuAccessChecker {
     override suspend fun checkAccess(): ShizukuAccessState {
         return when {
-            !Shizuku.pingBinder() -> ShizukuAccessState.NotInstalledOrNotRunning
-            Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED -> {
-                ShizukuAccessState.Unauthorized
-            }
-
+            !client.isBinderAlive -> ShizukuAccessState.NotInstalledOrNotRunning
+            !client.isAuthorized -> ShizukuAccessState.Unauthorized
             else -> ShizukuAccessState.Authorized
         }
     }

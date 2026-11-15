@@ -31,8 +31,8 @@ interface ShizukuClient {
         const val DEFAULT_AUTH_TIMEOUT_MS = 30_000L
         const val DEFAULT_EXEC_TIMEOUT_MS = 10_000L
 
-        fun create(context: Context): ShizukuClient {
-            return RealShizukuClient(context.applicationContext)
+        fun create(context: Context? = null): ShizukuClient {
+            return RealShizukuClient(context?.applicationContext)
         }
     }
 }
