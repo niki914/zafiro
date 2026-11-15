@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.uikit.infra
 
 import android.view.MotionEvent
@@ -62,6 +63,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
@@ -249,6 +251,7 @@ internal fun LiquidPopoverSurface(
 
     Box(modifier = Modifier.fillMaxSize()) {
         SubcomposeLayout(modifier = Modifier.fillMaxSize()) { constraints ->
+            val isLtr = layoutDirection == LayoutDirection.Ltr
             val anchor = anchorBounds ?: run {
                 val defaultButtonSizePx = with(density) { 48.dp.toPx() }
                 val defaultTitleWidthPx = with(density) { 120.dp.toPx() }
@@ -265,23 +268,43 @@ internal fun LiquidPopoverSurface(
                     }
 
                     PopoverAlignment.BottomEnd -> {
-                        val right = screenWidthPx - with(density) { 12.dp.toPx() }
-                        Rect(
-                            right - defaultButtonSizePx,
-                            statusBarTopPx + 4f,
-                            right,
-                            statusBarTopPx + 4f + defaultButtonSizePx
-                        )
+                        if (isLtr) {
+                            val right = screenWidthPx - with(density) { 12.dp.toPx() }
+                            Rect(
+                                right - defaultButtonSizePx,
+                                statusBarTopPx + 4f,
+                                right,
+                                statusBarTopPx + 4f + defaultButtonSizePx
+                            )
+                        } else {
+                            val left = with(density) { 12.dp.toPx() }
+                            Rect(
+                                left,
+                                statusBarTopPx + 4f,
+                                left + defaultButtonSizePx,
+                                statusBarTopPx + 4f + defaultButtonSizePx
+                            )
+                        }
                     }
 
                     PopoverAlignment.BottomStart -> {
-                        val left = with(density) { 12.dp.toPx() }
-                        Rect(
-                            left,
-                            statusBarTopPx + 4f,
-                            left + defaultButtonSizePx,
-                            statusBarTopPx + 4f + defaultButtonSizePx
-                        )
+                        if (isLtr) {
+                            val left = with(density) { 12.dp.toPx() }
+                            Rect(
+                                left,
+                                statusBarTopPx + 4f,
+                                left + defaultButtonSizePx,
+                                statusBarTopPx + 4f + defaultButtonSizePx
+                            )
+                        } else {
+                            val right = screenWidthPx - with(density) { 12.dp.toPx() }
+                            Rect(
+                                right - defaultButtonSizePx,
+                                statusBarTopPx + 4f,
+                                right,
+                                statusBarTopPx + 4f + defaultButtonSizePx
+                            )
+                        }
                     }
                 }
             }
@@ -293,13 +316,23 @@ internal fun LiquidPopoverSurface(
 
             val maxAllowedWidthPx = when (alignment) {
                 PopoverAlignment.BottomEnd -> {
-                    (anchor.right - titleButtonClearancePx).coerceAtLeast(minPopoverWidthPx)
+                    if (isLtr) {
+                        (anchor.right - titleButtonClearancePx).coerceAtLeast(minPopoverWidthPx)
+                    } else {
+                        (constraints.maxWidth - titleButtonClearancePx - anchor.left).coerceAtLeast(
+                            minPopoverWidthPx
+                        )
+                    }
                 }
 
                 PopoverAlignment.BottomStart -> {
-                    (constraints.maxWidth - titleButtonClearancePx - anchor.left).coerceAtLeast(
-                        minPopoverWidthPx
-                    )
+                    if (isLtr) {
+                        (constraints.maxWidth - titleButtonClearancePx - anchor.left).coerceAtLeast(
+                            minPopoverWidthPx
+                        )
+                    } else {
+                        (anchor.right - titleButtonClearancePx).coerceAtLeast(minPopoverWidthPx)
+                    }
                 }
 
                 PopoverAlignment.BottomCenter -> {
@@ -363,12 +396,13 @@ internal fun LiquidPopoverSurface(
             val currentRadiusPx =
                 lerp(anchorHeightPx / 2f, with(density) { 20.dp.toPx() }, progress)
 
-            // 绝对锚点贴齐：BottomEnd 严格锁定在 (anchor.right, anchor.top)，不加额外位移 margin
-            val currentLeft = when (alignment) {
-                PopoverAlignment.BottomEnd -> anchor.right - currentWidthPx
+            // 绝对锚点贴齐：BottomEnd 与 BottomStart 自动适配 LTR/RTL 贴边展开方向
+            val rawLeft = when (alignment) {
+                PopoverAlignment.BottomEnd -> if (isLtr) anchor.right - currentWidthPx else anchor.left
                 PopoverAlignment.BottomCenter -> anchor.center.x - currentWidthPx / 2f
-                PopoverAlignment.BottomStart -> anchor.left
+                PopoverAlignment.BottomStart -> if (isLtr) anchor.left else anchor.right - currentWidthPx
             }
+            val currentLeft = rawLeft.coerceIn(0f, (constraints.maxWidth - currentWidthPx).coerceAtLeast(0f))
 
             val currentTop = anchor.top
 

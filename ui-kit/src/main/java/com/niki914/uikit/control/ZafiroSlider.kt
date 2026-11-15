@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
@@ -132,11 +133,12 @@ fun ZafiroSlider(
                             val targetVal = valueRange.start + i * stepSpan
                             val isCurrent = abs(activeValue - targetVal) < (stepSpan / 2f)
                             val inset = 10.dp.toPx()
-                            val x = when (i) {
+                            val rawX = when (i) {
                                 0 -> inset
                                 intervals -> size.width - inset
                                 else -> inset + (size.width - inset * 2f) * (i.toFloat() / intervals)
                             }
+                            val x = if (layoutDirection == LayoutDirection.Ltr) rawX else size.width - rawX
                             val radius = if (isCurrent) 3.dp.toPx() else 2.dp.toPx()
                             val color = if (isCurrent) primaryColor else outlineVariantColor.copy(alpha = 0.6f)
                             drawCircle(
