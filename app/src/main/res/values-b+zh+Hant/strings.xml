@@ -513,6 +513,7 @@
     <string name="ui_settings_runtime_sensitivity_stricter">更嚴格</string>
     <string name="ui_settings_runtime_sensitivity_strictest">極嚴</string>
     <string name="ui_settings_runtime_sensitivity_off">關閉</string>
+    <string name="ui_settings_runtime_stop_on_command_deny">拒絕命令後停止本回合</string>
     <string name="ui_settings_general_always_show_message_actions">總是顯示訊息操作</string>
     <string name="ui_settings_general_always_show_detailed_tool_output">總是展示工具詳細輸出</string>
     <string name="ui_settings_general_always_show_detailed_tool_output_summary">輸出內容過大可能會導致介面卡頓</string>

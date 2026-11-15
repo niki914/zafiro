@@ -99,7 +99,7 @@ class XRepoDomainSettingsTest {
     fun hydrateSettingsBackfillsAllReactiveFlows() = runTest {
         val store = FakeDomainSettingsStore(
             StoreDescriptorRegistry.APP_STATE_ID to
-                    """{"keep_screen_on":false,"always_show_message_actions":false,"floating_ball_enabled":true,"resident_notification_enabled":true,"floating_ball_auto_expand":false,"language_tag":"ja"}""",
+                    """{"keep_screen_on":false,"always_show_message_actions":false,"floating_ball_enabled":true,"resident_notification_enabled":true,"floating_ball_auto_expand":false,"stop_round_on_command_deny":false,"language_tag":"ja"}""",
         )
         XRepo.installStoreForTest(store)
         XRepo.init(context)
@@ -110,6 +110,7 @@ class XRepoDomainSettingsTest {
         assertFalse(XRepo.floatingBallEnabledSetting.value)
         assertFalse(XRepo.residentNotificationEnabledSetting.value)
         assertTrue(XRepo.floatingBallAutoExpandSetting.value)
+        assertTrue(XRepo.stopRoundOnCommandDenySetting.value)
         assertEquals("", XRepo.appLanguageTagSetting.value)
 
         XRepo.hydrateSettings()
@@ -119,6 +120,7 @@ class XRepoDomainSettingsTest {
         assertTrue(XRepo.floatingBallEnabledSetting.value)
         assertTrue(XRepo.residentNotificationEnabledSetting.value)
         assertFalse(XRepo.floatingBallAutoExpandSetting.value)
+        assertFalse(XRepo.stopRoundOnCommandDenySetting.value)
         assertEquals("ja", XRepo.appLanguageTagSetting.value)
     }
 

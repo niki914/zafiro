@@ -558,6 +558,7 @@
     <string name="ui_settings_runtime_sensitivity_stricter">سخت‌گیرتر</string>
     <string name="ui_settings_runtime_sensitivity_strictest">بسیار سخت‌گیر</string>
     <string name="ui_settings_runtime_sensitivity_off">خاموش</string>
+    <string name="ui_settings_runtime_stop_on_command_deny">توقف نوبت پس از رد فرمان</string>
     <string name="ui_settings_general_always_show_message_actions">همیشه کنش‌های پیام دیده شود</string>
     <string name="ui_settings_general_always_show_detailed_tool_output">همیشه خروجی مفصل ابزار دیده شود</string>
     <string name="ui_settings_general_always_show_detailed_tool_output_summary">خروجی خیلی بزرگ ممکن است رابط را کند کند</string>

@@ -550,6 +550,7 @@
     <string name="ui_settings_runtime_sensitivity_stricter">より厳しい</string>
     <string name="ui_settings_runtime_sensitivity_strictest">最も厳しい</string>
     <string name="ui_settings_runtime_sensitivity_off">オフ</string>
+    <string name="ui_settings_runtime_stop_on_command_deny">コマンド拒否後にターンを止める</string>
     <string name="ui_settings_general_always_show_message_actions">メッセージ操作を常に表示</string>
     <string name="ui_settings_general_always_show_detailed_tool_output">ツールの詳細出力を常に表示</string>
     <string name="ui_settings_general_always_show_detailed_tool_output_summary">出力が非常に大きい場合、画面のかくつきの原因となることがあります</string>

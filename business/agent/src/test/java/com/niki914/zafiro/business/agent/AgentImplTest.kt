@@ -1,10 +1,12 @@
-// 保护：Agent 状态机重置、草稿镜像、权限裁决与会话绑定/加载生命周期契约
+// 保护：Agent 状态机重置、草稿镜像、权限裁决与会话绑定/加载生命周期契约。
+// 命令确认上点拒绝时，只有开关打开才把本回合停成打断；屏幕授权、弃权凑成的拒绝、允许、开关关闭或没装配置都不停。
 package com.niki914.zafiro.business.agent
 
 import com.niki914.logging.Backend
 import com.niki914.logging.Level
 import com.niki914.logging.Logger
 import com.niki914.okia.conversation.ConversationEntry
+import com.niki914.xsettings.XSettings
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
@@ -16,11 +18,13 @@ import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
+import com.niki914.zafiro.api.model.TurnOutcome
 import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.api.model.Draft
 import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.chat.LlmStreamEvent
 import com.niki914.zafiro.chat.compaction.Compactor
+import com.niki914.zafiro.service.ServiceRegistry
 import com.niki914.zafiro.service.installService
 import com.niki914.zafiro.settings.MemoryMutationResult
 import com.niki914.zafiro.settings.RuntimeBridge
@@ -33,12 +37,16 @@ import com.niki914.zafiro.settings.model.RuntimeExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.zafiro.settings.model.RuntimeMcpServer
 import com.niki914.zafiro.settings.model.RuntimeToolValidation
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -248,6 +256,77 @@ class AgentImplTest {
     }
 
     @Test
+    fun deniedToolCommandStopsRoundWhenSwitchOn() = runBlocking {
+        val hung = openHungRound(
+            stopOnDeny = true,
+            request = toolRequest("rm -rf /data"),
+            approverDecisions = listOf(ApprovalDecision.Deny),
+        )
+        try {
+            val idle = awaitInterrupted(hung.agent)
+            assertEquals(TurnOutcome.Interrupted, idle.lastOutcome)
+            assertEquals("please run", hung.agent.conversation.value.turns.single().userText)
+        } finally {
+            hung.close()
+        }
+    }
+
+    @Test
+    fun deniedToolCommandLeavesRoundRunningWhenSwitchOff() = runBlocking {
+        assertDeniedCommandLeavesRoundRunning(stopOnDeny = false)
+    }
+
+    @Test
+    fun deniedToolCommandLeavesRoundRunningWhenSettingsMissing() = runBlocking {
+        assertDeniedCommandLeavesRoundRunning(stopOnDeny = null)
+    }
+
+    @Test
+    fun allowedToolCommandLeavesRoundRunningWhenSwitchOn() = runBlocking {
+        val hung = openHungRound(
+            stopOnDeny = true,
+            request = toolRequest("ls"),
+            approverDecisions = listOf(ApprovalDecision.Allow),
+        )
+        try {
+            assertEquals(ApprovalDecision.Allow, hung.decision())
+            assertRoundStillRunning(hung.agent)
+        } finally {
+            hung.close()
+        }
+    }
+
+    @Test
+    fun screenConsentDenyLeavesRoundRunningWhenSwitchOn() = runBlocking {
+        val hung = openHungRound(
+            stopOnDeny = true,
+            request = ApprovalRequest.ScreenControlConsent,
+            approverDecisions = listOf(ApprovalDecision.Deny),
+        )
+        try {
+            assertEquals(ApprovalDecision.Deny, hung.decision())
+            assertRoundStillRunning(hung.agent)
+        } finally {
+            hung.close()
+        }
+    }
+
+    @Test
+    fun abstainedApproversDoNotStopRoundWhenSwitchOn() = runBlocking {
+        val hung = openHungRound(
+            stopOnDeny = true,
+            request = toolRequest("rm -rf /data"),
+            approverDecisions = listOf(ApprovalDecision.Abstain, ApprovalDecision.Abstain),
+        )
+        try {
+            assertEquals(ApprovalDecision.Deny, hung.decision())
+            assertRoundStillRunning(hung.agent)
+        } finally {
+            hung.close()
+        }
+    }
+
+    @Test
     fun decideApproval_whenNoApprover_waitsAndResolvesUponLateAttach() = runBlocking {
         val request = toolRequest("rm -rf /")
         val scope = CoroutineScope(Dispatchers.Default)
@@ -340,6 +419,96 @@ class AgentImplTest {
         }
     }
 
+    private suspend fun assertDeniedCommandLeavesRoundRunning(stopOnDeny: Boolean?) {
+        val hung = openHungRound(
+            stopOnDeny = stopOnDeny,
+            request = toolRequest("rm -rf /data"),
+            approverDecisions = listOf(ApprovalDecision.Deny),
+        )
+        try {
+            assertEquals(ApprovalDecision.Deny, hung.decision())
+            assertRoundStillRunning(hung.agent)
+        } finally {
+            hung.close()
+        }
+    }
+
+    /**
+     * 回合卡在读配置上，并在这条回合协程里做一次裁决。
+     * 这样拒绝后的 stop() 取消的是自己所在的回合，能拦住「在回合里 join 自己」的死锁。
+     * [stopOnDeny] 为 null 表示没装配置，按关闭处理。
+     */
+    private suspend fun openHungRound(
+        stopOnDeny: Boolean?,
+        request: ApprovalRequest,
+        approverDecisions: List<ApprovalDecision>,
+    ): HungRound {
+        val settled = CompletableDeferred<ApprovalDecision>()
+        lateinit var local: AgentImpl
+        val gateway = object : RuntimeSettingsGateway by StubRuntimeSettingsGateway() {
+            override suspend fun readLlmConfig(
+                agentId: String,
+                configId: String?,
+            ): RuntimeLlmConfig {
+                val result = local.decideApproval(request)
+                settled.complete(result)
+                return suspendCancellableCoroutine { }
+            }
+        }
+        RuntimeEnvironment.install(
+            RuntimeBridge(
+                settings = gateway,
+                host = object : RuntimeHostGateway {
+                    override suspend fun postNotification(
+                        title: String,
+                        content: String,
+                        uri: String?,
+                    ): Boolean = true
+                },
+            ),
+        )
+        if (stopOnDeny != null) {
+            installService<XSettings>(object : XSettings {
+                override val floatingBallAutoExpand = MutableStateFlow(true)
+                override val appLanguageTag = MutableStateFlow("")
+                override val stopRoundOnCommandDeny = MutableStateFlow(stopOnDeny)
+            })
+        }
+        local = AgentImpl(isPersistent = false)
+        try {
+            approverDecisions.forEach { decision -> local.addApprover(approverOf(decision)) }
+            local.updateDraft { it.copy(text = "please run") }
+            check(local.stream() == TurnStart.Started)
+            return HungRound(local, settled)
+        } catch (throwable: Throwable) {
+            local.release()
+            RuntimeEnvironment.clearForTest()
+            ServiceRegistry.clearForTest()
+            throw throwable
+        }
+    }
+
+    private suspend fun awaitInterrupted(local: AgentImpl): AgentState.Idle {
+        val deadline = System.currentTimeMillis() + 2_000
+        while (System.currentTimeMillis() < deadline) {
+            val status = local.status.value
+            if (!local.isRoundActive && status is AgentState.Idle &&
+                status.lastOutcome == TurnOutcome.Interrupted
+            ) {
+                return status
+            }
+            delay(20)
+        }
+        error("round was not interrupted, status=${local.status.value} active=${local.isRoundActive}")
+    }
+
+    private suspend fun assertRoundStillRunning(local: AgentImpl) {
+        repeat(4) {
+            delay(50)
+            assertTrue(local.isRoundActive)
+        }
+    }
+
     private fun toolRequest(command: String) = ApprovalRequest.ToolExecution(
         toolName = "terminal",
         command = command,
@@ -355,6 +524,19 @@ class AgentImplTest {
             if (delayMs > 0) delay(delayMs)
             return decision
         }
+    }
+}
+
+private class HungRound(
+    val agent: AgentImpl,
+    private val settled: CompletableDeferred<ApprovalDecision>,
+) : AutoCloseable {
+    suspend fun decision(): ApprovalDecision = withTimeout(2_000) { settled.await() }
+
+    override fun close() {
+        agent.release()
+        RuntimeEnvironment.clearForTest()
+        ServiceRegistry.clearForTest()
     }
 }
 

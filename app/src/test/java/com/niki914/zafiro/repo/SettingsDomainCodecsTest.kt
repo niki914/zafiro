@@ -379,6 +379,13 @@ class SettingsDomainCodecsTest {
     }
 
     @Test
+    fun appStateStopRoundOnCommandDenyRoundTripsUnderItsDiskKey() {
+        val json = AppStateSettingsCodec.encode(AppStateSettings(stopRoundOnCommandDeny = true))
+        assertTrue(jsonObject(json)["stop_round_on_command_deny"]!!.jsonPrimitive.boolean)
+        assertTrue(AppStateSettingsCodec.parse(json).stopRoundOnCommandDeny)
+    }
+
+    @Test
     fun appStateFloatingBallAutoExpandDefaultsEnabledAndRoundTrips() {
         assertTrue(AppStateSettingsCodec.parse("""{}""").floatingBallAutoExpand)
 

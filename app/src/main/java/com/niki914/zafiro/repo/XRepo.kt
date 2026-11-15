@@ -100,6 +100,7 @@ object XRepo {
         residentNotificationEnabledField.flow.value = false
         turnNotificationEnabledField.flow.value = false
         floatingBallAutoExpandField.flow.value = true
+        stopRoundOnCommandDenyField.flow.value = true
         floatingBallOpacityPercentField.flow.value = 60
         floatingBallSubmergedOffsetDpField.flow.value = 8
         languageTagField.flow.value = ""
@@ -415,6 +416,19 @@ object XRepo {
     suspend fun keepScreenOn(): Boolean = keepScreenOnField.get()
 
     suspend fun setKeepScreenOn(value: Boolean) = keepScreenOnField.set(value)
+
+    /** 拒绝命令后停止本回合。app 以外经 XSettings.stopRoundOnCommandDeny 读。 */
+    private val stopRoundOnCommandDenyField = ReactiveAppStateField(
+        default = true,
+        select = { stopRoundOnCommandDeny },
+        update = { copy(stopRoundOnCommandDeny = it) },
+    )
+    val stopRoundOnCommandDenySetting: MutableStateFlow<Boolean>
+        get() = stopRoundOnCommandDenyField.flow
+
+    suspend fun stopRoundOnCommandDeny(): Boolean = stopRoundOnCommandDenyField.get()
+
+    suspend fun setStopRoundOnCommandDeny(value: Boolean) = stopRoundOnCommandDenyField.set(value)
 
     /** 消息操作行常显开关的进程内热更新通道：读时回填初值，写时同步。 */
     private val alwaysShowMessageActionsField = ReactiveAppStateField(

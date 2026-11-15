@@ -21,11 +21,12 @@ import com.niki914.zafiro.settings.model.RepetitionSensitivity
 import kotlin.math.roundToInt
 
 /**
- * 运行控制页：运行上限（空闲超时 / 重试次数）+ 复读检测（灵敏度）+ 运行偏好（屏幕常亮）。
+ * 运行控制页：运行上限（空闲超时 / 重试次数）+ 复读检测（灵敏度）+ 拒绝后停回合 + 屏幕常亮。
  */
 private const val IDLE_TIMEOUT_ROW_ID = "runtime.idle_timeout"
 private const val RETRY_ATTEMPTS_ROW_ID = "runtime.retry_attempts"
 private const val REPETITION_SENSITIVITY_ROW_ID = "runtime.repetition_sensitivity"
+private const val STOP_ON_COMMAND_DENY_ROW_ID = "runtime.stop_on_command_deny"
 private const val KEEP_SCREEN_ON_ROW_ID = "runtime.keep_screen_on"
 private const val COMPACTION_THRESHOLD_ROW_ID = "runtime.compaction_threshold"
 
@@ -81,6 +82,11 @@ fun RuntimeControlSettingsContent(
                         currentState = sensitivityLabels.getValue(uiState.repetitionSensitivity),
                     ),
                     SettingsRowSpec.Toggle(
+                        id = STOP_ON_COMMAND_DENY_ROW_ID,
+                        title = stringResource(R.string.ui_settings_runtime_stop_on_command_deny),
+                        checked = uiState.stopRoundOnCommandDeny,
+                    ),
+                    SettingsRowSpec.Toggle(
                         id = KEEP_SCREEN_ON_ROW_ID,
                         title = stringResource(R.string.ui_settings_general_keep_screen_on),
                         summary = stringResource(R.string.ui_settings_general_keep_screen_on_summary),
@@ -125,6 +131,10 @@ fun RuntimeControlSettingsContent(
                     when (action.id) {
                         KEEP_SCREEN_ON_ROW_ID -> viewModel.sendIntent(
                             RuntimeControlIntent.ToggleKeepScreenOn(action.checked)
+                        )
+
+                        STOP_ON_COMMAND_DENY_ROW_ID -> viewModel.sendIntent(
+                            RuntimeControlIntent.ToggleStopRoundOnCommandDeny(action.checked)
                         )
                     }
 

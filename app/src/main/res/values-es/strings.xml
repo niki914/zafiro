@@ -552,6 +552,7 @@
     <string name="ui_settings_runtime_sensitivity_stricter">Más estricta</string>
     <string name="ui_settings_runtime_sensitivity_strictest">Muy estricta</string>
     <string name="ui_settings_runtime_sensitivity_off">Desactivada</string>
+    <string name="ui_settings_runtime_stop_on_command_deny">Detener el turno al rechazar un comando</string>
     <string name="ui_settings_general_always_show_message_actions">Mostrar siempre las acciones de los mensajes</string>
     <string name="ui_settings_general_always_show_detailed_tool_output">Mostrar siempre la salida detallada de las herramientas</string>
     <string name="ui_settings_general_always_show_detailed_tool_output_summary">Salidas muy extensas pueden causar ralentizaciones en la interfaz</string>
