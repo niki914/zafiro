@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import com.niki914.logging.Logger
 import com.niki914.xposed.api.util.ContextProvider
+import com.niki914.zafiro.api.screen.AppHit
+import com.niki914.zafiro.api.screen.ShowResult
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
@@ -58,6 +60,16 @@ class LaunchAppBuiltin : BuiltinTool() {
         val packageName = args.packageName?.takeIf { it.isNotBlank() }
             ?: return launchByAppName(args.appName.orEmpty())
         return launchPackage(packageName = packageName, appInfo = null)
+    }
+
+    /** phone 的 open 走同一条匹配和启动。 */
+    suspend fun showOnPhone(packageName: String?, appName: String?): ShowResult {
+        val result = if (!packageName.isNullOrBlank()) {
+            launchPackage(packageName, null)
+        } else {
+            launchByAppName(appName.orEmpty())
+        }
+        return result.toScreenShow()
     }
 
     private suspend fun launchByAppName(appName: String): BuiltinToolResult {
@@ -171,6 +183,21 @@ class LaunchAppBuiltin : BuiltinTool() {
         } catch (throwable: Throwable) {
             LaunchEvent.Failed(throwable.message ?: "Failed to launch package '$packageName'.")
         }
+    }
+
+    private fun BuiltinToolResult.toScreenShow(): ShowResult {
+        if (ok) return ShowResult.Shown(message)
+        if (code == "AMBIGUOUS_APP_MATCH") {
+            val name = data["app_name"]?.jsonPrimitive?.contentOrNull.orEmpty()
+            val hits = (data["candidates"] as? JsonArray).orEmpty().mapNotNull { element ->
+                val obj = element as? JsonObject ?: return@mapNotNull null
+                val pkg = obj["package_name"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                val label = obj["app_name"]?.jsonPrimitive?.contentOrNull ?: pkg
+                AppHit(pkg, label)
+            }
+            return ShowResult.Ambiguous(name, hits)
+        }
+        return ShowResult.Failed(code)
     }
 
     private fun parseArguments(argumentsJson: String): LaunchAppArguments {

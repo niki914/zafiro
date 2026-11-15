@@ -14,6 +14,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
+import com.niki914.zafiro.settings.model.RuntimeEnvContextConfig
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.zafiro.settings.model.RuntimeMaskingRule as MaskingRule
@@ -67,6 +68,23 @@ class SettingsDomainCodecsTest {
         val parsed = LlmConfigsSettingsCodec.encode(document).let(LlmConfigsSettingsCodec::parse)
 
         assertEquals(document, parsed)
+    }
+
+    @Test
+    fun llmConfigsDocumentWithEnvContextRoundTripKeepsAllFields() {
+        val document = LlmConfigsDocument(
+            activeId = "cfg-a",
+            prompt = "global prompt",
+            envContext = RuntimeEnvContextConfig(
+                enabled = true,
+                keys = setOf("date", "time", "device", "role"),
+                variables = mapOf("role" to "Developer"),
+            ),
+        )
+
+        val parsed = LlmConfigsSettingsCodec.encode(document).let(LlmConfigsSettingsCodec::parse)
+
+        assertEquals(document.envContext, parsed.envContext)
     }
 
     @Test

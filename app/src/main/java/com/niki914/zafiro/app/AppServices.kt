@@ -17,9 +17,13 @@ import com.niki914.zafiro.business.files.FilesService
 import com.niki914.zafiro.business.files.FilesServiceImpl
 import com.niki914.zafiro.business.notification.NotificationChannelManager
 import com.niki914.zafiro.business.notification.NotificationChannelManagerImpl
+import com.niki914.zafiro.api.screen.Screens
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionManagerImpl
+import com.niki914.zafiro.app.screen.AppScreens
 import com.niki914.zafiro.business.remote.TelemetryImpl
+import com.niki914.zafiro.app.env.AndroidDeviceStateProvider
+import com.niki914.zafiro.envcontext.DeviceStateProvider
 import com.niki914.zafiro.mcp.service.McpServiceImpl
 import com.niki914.zafiro.mod.feat.ZafiroAccessibilityService
 import com.niki914.zafiro.repo.SharedHttp
@@ -61,12 +65,17 @@ object AppServices {
                 ComponentName(application, ZafiroAccessibilityService::class.java),
             )
         )
+        // phone 从进程启动就在。虚拟屏和浏览器这一轮不装。
+        installService<Screens>(AppScreens)
         // 附件落地（SAF uri → 真实路径 + 全局文件访问权）：自持 PermissionManager，零构造参数
         installService<FilesService>(FilesServiceImpl())
         installService<NotificationChannelManager>(NotificationChannelManagerImpl(application))
 
         // 本地配置读取口：给 app 以外的模块按需取用
         installService<XSettings>(XSettingsImpl)
+
+        // 设备状态提供者：机型、电量、网络等环境信息
+        installService<DeviceStateProvider>(AndroidDeviceStateProvider(application))
 
         // MCP 服务：把 Zafiro 的工具暴露成标准 MCP Streamable HTTP 端点
         installService<McpService>(McpServiceImpl { XRepo.mcpService.get() })

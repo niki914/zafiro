@@ -30,7 +30,7 @@ interface XSettings {
 
     /**
      * 屏幕控制（Phone Use）知情同意是否已获得用户授权。
-     * 消费方：agent-runtime 的 AccessibilityController。
+     * 消费方：屏幕控制驱动与动作执行。
      */
     val phoneUseConsentGranted: StateFlow<Boolean>
         get() = MutableStateFlow(false)

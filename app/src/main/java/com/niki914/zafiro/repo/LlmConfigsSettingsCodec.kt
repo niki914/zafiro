@@ -3,13 +3,17 @@ package com.niki914.zafiro.repo
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.array
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.boolean
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.long
+import com.niki914.zafiro.repo.SettingsJsonCodecUtils.obj
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.orEmptyObjects
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.parseObject
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.string
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.stringNonBlankOrNull
+import com.niki914.zafiro.repo.SettingsJsonCodecUtils.stringValues
+import com.niki914.zafiro.settings.model.RuntimeEnvContextConfig
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 /**
  * 一份 Saved Configuration（完整可切换的 LLM 接入配置）。
@@ -48,6 +52,7 @@ data class SavedLlmConfig(
 data class LlmConfigsDocument(
     val activeId: String? = null,
     val prompt: String = "",
+    val envContext: RuntimeEnvContextConfig = RuntimeEnvContextConfig(),
     val configs: List<SavedLlmConfig> = emptyList(),
 ) {
     fun activeConfig(): SavedLlmConfig? {
@@ -61,6 +66,7 @@ internal object LlmConfigsSettingsCodec {
         return LlmConfigsDocument(
             activeId = root.stringNonBlankOrNull(ACTIVE_ID_KEY),
             prompt = root.string(PROMPT_KEY),
+            envContext = parseEnvContext(root.obj(ENV_CONTEXT_KEY)),
             configs = root.array(CONFIGS_KEY).orEmptyObjects().mapNotNull(::parseConfig),
         )
     }
@@ -70,11 +76,65 @@ internal object LlmConfigsSettingsCodec {
             mapOf(
                 ACTIVE_ID_KEY to JsonPrimitive(document.activeId.orEmpty()),
                 PROMPT_KEY to JsonPrimitive(document.prompt),
+                ENV_CONTEXT_KEY to encodeEnvContext(document.envContext),
                 CONFIGS_KEY to JsonArray(
                     document.configs.map(::encodeConfig)
                 ),
             )
         ).toString()
+    }
+
+    private fun parseEnvContext(obj: JsonObject?): RuntimeEnvContextConfig {
+        if (obj == null) return RuntimeEnvContextConfig()
+        val enabled = obj.boolean(ENV_ENABLED_KEY, default = false)
+        val rawKeys = (obj[ENV_KEYS_KEY] as? JsonArray)?.stringValues().orEmpty()
+        val keys = rawKeys
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .toSet()
+        val rawVariables = (obj[ENV_VARIABLES_KEY] as? JsonObject)?.let { varObj ->
+            varObj.mapValues { (_, value) -> (value as? JsonPrimitive)?.contentOrNull.orEmpty() }
+        } ?: emptyMap()
+        val variables = rawVariables
+            .mapNotNull { (k, v) ->
+                val trimmed = k.trim()
+                if (trimmed.isNotBlank() &&
+                    trimmed != RuntimeEnvContextConfig.KEY_DATE &&
+                    trimmed != RuntimeEnvContextConfig.KEY_TIME &&
+                    trimmed != RuntimeEnvContextConfig.KEY_DEVICE
+                ) {
+                    trimmed to v.trim()
+                } else null
+            }
+            .toMap()
+        return RuntimeEnvContextConfig(
+            enabled = enabled,
+            keys = keys,
+            variables = variables,
+        )
+    }
+
+    private fun encodeEnvContext(config: RuntimeEnvContextConfig): JsonObject {
+        val sanitizedKeys = config.keys.map { it.trim() }.filter { it.isNotBlank() }
+        val sanitizedVariables = config.variables
+            .mapNotNull { (k, v) ->
+                val trimmed = k.trim()
+                if (trimmed.isNotBlank() &&
+                    trimmed != RuntimeEnvContextConfig.KEY_DATE &&
+                    trimmed != RuntimeEnvContextConfig.KEY_TIME &&
+                    trimmed != RuntimeEnvContextConfig.KEY_DEVICE
+                ) {
+                    trimmed to v.trim()
+                } else null
+            }
+            .toMap()
+        return JsonObject(
+            mapOf(
+                ENV_ENABLED_KEY to JsonPrimitive(config.enabled),
+                ENV_KEYS_KEY to JsonArray(sanitizedKeys.map { JsonPrimitive(it) }),
+                ENV_VARIABLES_KEY to JsonObject(sanitizedVariables.mapValues { JsonPrimitive(it.value) }),
+            )
+        )
     }
 
     private fun parseConfig(obj: JsonObject): SavedLlmConfig? {
@@ -125,6 +185,10 @@ internal object LlmConfigsSettingsCodec {
 
     private const val ACTIVE_ID_KEY = "active_id"
     private const val PROMPT_KEY = "prompt"
+    private const val ENV_CONTEXT_KEY = "env_context"
+    private const val ENV_ENABLED_KEY = "enabled"
+    private const val ENV_KEYS_KEY = "keys"
+    private const val ENV_VARIABLES_KEY = "variables"
     private const val CONFIGS_KEY = "configs"
     private const val ID_KEY = "id"
     private const val NAME_KEY = "name"

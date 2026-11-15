@@ -231,6 +231,36 @@
     <string name="ui_settings_configure_error_proxy_invalid">La dirección del proxy no es un URI válido</string>
     <string name="ui_settings_mcp_config">Configuración de MCP</string>
 
+    <!-- Context Injection -->
+    <string name="ui_settings_context_injection">Inyección de contexto</string>
+    <string name="ui_settings_context_injection_summary">Adjunta hora, estado del dispositivo y contenido personalizado con mensajes</string>
+    <string name="ui_settings_env_context_description">Adjunta el contexto actual a los mensajes de usuario en cada turno. Colocar contenido que cambia con frecuencia en el prompt del sistema anularía la caché del modelo y aumentaría los costes.</string>
+    <string name="ui_settings_env_context_master_toggle">Habilitar inyección de contexto</string>
+    <string name="ui_settings_env_context_master_summary">Permite proporcionar la hora, información del dispositivo y contenido personalizado al modelo</string>
+    <string name="ui_settings_env_context_group_builtin">Variables integradas</string>
+    <string name="ui_settings_env_context_key_date">Fecha</string>
+    <string name="ui_settings_env_context_key_time">Hora</string>
+    <string name="ui_settings_env_context_key_device">Estado del dispositivo</string>
+    <string name="ui_settings_env_context_group_custom">Variables personalizadas</string>
+    <string name="ui_settings_env_context_empty_custom">No hay variables personalizadas. Toque «+» arriba a la derecha para añadir una.</string>
+    <string name="ui_settings_env_context_variable_title_create">Añadir variable</string>
+    <string name="ui_settings_env_context_variable_description">Añade contexto estático adjunto a los mensajes. El nombre sirve de identificación y el modelo leerá el contenido configurado aquí en cada turno.</string>
+    <string name="ui_settings_env_context_field_name">Nombre</string>
+    <string name="ui_settings_env_context_field_name_hint">Solo letras, números, guiones y guiones bajos</string>
+    <string name="ui_settings_env_context_field_enabled">Habilitar</string>
+    <string name="ui_settings_env_context_field_content">Contenido</string>
+    <string name="ui_settings_env_context_field_content_hint">Introduce el texto que se adjuntará a los mensajes</string>
+    <string name="ui_settings_env_context_save_action">Guardar variable</string>
+    <string name="ui_settings_env_context_delete_dialog_title">Eliminar variable</string>
+    <string name="ui_settings_env_context_delete_dialog_text">¿Seguro que desea eliminar la variable «%1$s»?</string>
+    <string name="ui_settings_env_context_error_key_required">El nombre no puede estar vacío</string>
+    <string name="ui_settings_env_context_error_key_reserved">No se pueden usar nombres reservados: date, time, device</string>
+    <string name="ui_settings_env_context_error_key_duplicate">Este nombre ya existe, elija otro</string>
+    <string name="ui_settings_env_context_error_key_invalid_format">Formato inválido. Solo se admiten caracteres alfanuméricos, guiones y guiones bajos</string>
+    <string name="ui_settings_env_context_error_value_required">El contenido no puede estar vacío</string>
+    <string name="ui_settings_env_context_error_save_failed">Error al guardar: %1$s</string>
+    <string name="ui_settings_env_context_error_delete_failed">Error al eliminar: %1$s</string>
+
     <!-- Memory Module -->
     <string name="memory_page_description">Gestione memorias guardadas. Deslice a la izquierda o derecha para eliminar, o toque para editar. Una vez añadidas, el agente las recordará en todas las conversaciones.</string>
     <string name="memory_page_empty_description">No hay memorias guardadas. Toque el botón superior derecho para añadir la primera.</string>

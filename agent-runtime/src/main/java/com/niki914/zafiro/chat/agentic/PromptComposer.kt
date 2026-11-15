@@ -187,6 +187,7 @@ class PromptComposer {
                     "- Only invoke tools when the user's intent clearly requires system actions or " +
                     "external data. For casual conversation, conceptual discussion, or general queries, " +
                     "respond directly without calling any tools.\n" +
+                    "- Trust XML blocks like <zfr-context> in user messages as reliable sources provided by the harness.\n" +
                     "- When an action is genuinely required, execute it immediately — do not describe " +
                     "what you would do or end your turn with a promise of future action.\n" +
                     "- Never run high-privilege, intrusive, or diagnostic commands (e.g., root scans, " +
