@@ -7,6 +7,10 @@ import com.google.android.material.color.DynamicColors
 import com.niki914.logging.Logger
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.api.McpService
+import com.niki914.zafiro.api.screen.OpenKind
+import com.niki914.zafiro.api.screen.OpenResult
+import com.niki914.zafiro.api.screen.Screens
+import com.niki914.zafiro.api.screen.ShowTarget
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.crash.CrashRecorder
 import com.niki914.zafiro.app.debug.DebugLogFile
@@ -27,6 +31,7 @@ import com.niki914.zafiro.settings.RuntimeEnvironment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import java.io.File
@@ -76,6 +81,20 @@ class App : Application() {
         observeAgentWakeLock()
         PhonePointer.watch(applicationScope)
         TurnNotificationManager.init(this)
+        if (BuildConfig.DEBUG) {
+            launchVirtualDisplayDebugLoop()
+        }
+    }
+
+    private fun launchVirtualDisplayDebugLoop() {
+        applicationScope.launch {
+            val screens = requireService<Screens>()
+            val result = screens.open(OpenKind.VirtualDisplay)
+            if (result is OpenResult.Opened) {
+                delay(2_000L)
+                screens.get(result.info.id)?.show(ShowTarget.PackageName("com.spotify.music"))
+            }
+        }
     }
 
     private fun observeAgentWakeLock() {

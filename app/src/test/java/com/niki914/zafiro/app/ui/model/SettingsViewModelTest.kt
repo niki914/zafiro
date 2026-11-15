@@ -25,14 +25,18 @@ class SettingsViewModelTest {
 
         assertEquals(5, state.sections.size)
         assertEquals(
-            listOf(ZafiroSettingsGroup.ModelConfig, ZafiroSettingsGroup.RuntimeControl),
+            listOf(
+                ZafiroSettingsGroup.ModelConfig,
+                ZafiroSettingsGroup.ContextInjection,
+                ZafiroSettingsGroup.RuntimeControl,
+            ),
             state.sections[0].groups,
         )
         assertEquals(
             listOf(
                 ZafiroSettingsGroup.Theme,
-                ZafiroSettingsGroup.GeneralSettings,
                 ZafiroSettingsGroup.Backup,
+                ZafiroSettingsGroup.GeneralSettings,
             ),
             state.sections[1].groups,
         )
