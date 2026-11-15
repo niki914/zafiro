@@ -11,6 +11,7 @@ import com.niki914.zafiro.app.ui.nav.BuiltinToolGroupDetailPage
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.MaskingRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
+import com.niki914.zafiro.app.ui.nav.EnvContextVariableDetailPage
 import com.niki914.zafiro.app.ui.nav.PromptEditPage
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsProviderPickPage
@@ -117,6 +118,20 @@ fun SettingsDetailPageContent(
 
     if (group == ZafiroSettingsGroup.Memory) {
         MemorySettingsContent()
+        return
+    }
+
+    if (group == ZafiroSettingsGroup.ContextInjection) {
+        EnvContextSettingsContent(
+            onOpenVariableDetail = { key, isCreating ->
+                onPush(
+                    EnvContextVariableDetailPage(
+                        variableKey = key,
+                        isCreating = isCreating,
+                    )
+                )
+            },
+        )
         return
     }
 

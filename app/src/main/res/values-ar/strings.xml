@@ -239,6 +239,36 @@
     <string name="ui_settings_configure_error_proxy_invalid">عنوان الوكيل ليس URI صالحًا</string>
     <string name="ui_settings_mcp_config">إعداد MCP</string>
 
+    <!-- Context Injection -->
+    <string name="ui_settings_context_injection">حقن السياق</string>
+    <string name="ui_settings_context_injection_summary">إرفاق الوقت وحالة الجهاز والمحتوى المخصص مع الرسائل</string>
+    <string name="ui_settings_env_context_description">يُرفق السياق الحالي برسائل المستخدم في كل جولة. وضعه في توجيه النظام مباشرة يؤدي إلى إبطال ذاكرة التخزين المؤقت للموديل وزيادة التكاليف.</string>
+    <string name="ui_settings_env_context_master_toggle">تفعيل حقن السياق</string>
+    <string name="ui_settings_env_context_master_summary">السماح بتزويد الموديل بالوقت ومعلومات الجهاز والمحتوى المخصص</string>
+    <string name="ui_settings_env_context_group_builtin">المتغيرات المدمجة</string>
+    <string name="ui_settings_env_context_key_date">التاريخ</string>
+    <string name="ui_settings_env_context_key_time">الوقت</string>
+    <string name="ui_settings_env_context_key_device">حالة الجهاز</string>
+    <string name="ui_settings_env_context_group_custom">متغيرات مخصصة</string>
+    <string name="ui_settings_env_context_empty_custom">لا توجد متغيرات مخصصة. اضغط «+» في الأعلى للإضافة.</string>
+    <string name="ui_settings_env_context_variable_title_create">إضافة متغير</string>
+    <string name="ui_settings_env_context_variable_description">إضافة سياق ثابت مُرفق بالرسائل. يُستخدم الاسم لإدارة المتغير، ويقرأ الموديل المحتوى المحدد هنا في كل جولة.</string>
+    <string name="ui_settings_env_context_field_name">الاسم</string>
+    <string name="ui_settings_env_context_field_name_hint">أحرف وأرقام وشرطات سفلية وشرطات فقط</string>
+    <string name="ui_settings_env_context_field_enabled">مفعّل</string>
+    <string name="ui_settings_env_context_field_content">المحتوى</string>
+    <string name="ui_settings_env_context_field_content_hint">أدخل النص المطلوب إرفاقه بالرسائل</string>
+    <string name="ui_settings_env_context_save_action">حفظ المتغير</string>
+    <string name="ui_settings_env_context_delete_dialog_title">حذف المتغير</string>
+    <string name="ui_settings_env_context_delete_dialog_text">هل تريد بالتأكيد حذف المتغير «%1$s»؟</string>
+    <string name="ui_settings_env_context_error_key_required">لا يمكن أن يكون الاسم فارغًا</string>
+    <string name="ui_settings_env_context_error_key_reserved">لا يمكن استخدام الأسماء المحجوزة: date, time, device</string>
+    <string name="ui_settings_env_context_error_key_duplicate">هذا الاسم مستخدم بالفعل، يرجى اختيار اسم آخر</string>
+    <string name="ui_settings_env_context_error_key_invalid_format">صيغة الاسم غير صالحة. يُسمح فقط بالأحرف والأرقام والشرطات والشرطات السفلية</string>
+    <string name="ui_settings_env_context_error_value_required">لا يمكن أن يكون المحتوى فارغًا</string>
+    <string name="ui_settings_env_context_error_save_failed">فشل الحفظ: %1$s</string>
+    <string name="ui_settings_env_context_error_delete_failed">فشل الحذف: %1$s</string>
+
     <!-- Memory Module -->
     <string name="memory_page_description">أدر الذكريات. اسحب يمينًا أو يسارًا للحذف، واضغط للتحرير. بعد الإضافة، يتذكرها Agent حتى في محادثة جديدة.</string>
     <string name="memory_page_empty_description">لا ذكريات محفوظة. اضغط زر الإضافة أعلى الشاشة لإضافة الأولى.</string>
