@@ -25,7 +25,7 @@ data class WorkspaceDef(
         fun parse(raw: String): WorkspaceDef {
             val o = try { JSONObject(raw) } catch (e: Exception) { throw Invalid("Not valid JSON: ${e.message}") }
             val id = o.optString("id").trim().ifEmpty { throw Invalid("Workspace needs an id.") }
-            if (!Regex("[a-z0-9_-]{2,40}").matches(id)) throw Invalid("Workspace id \"$id\" must be lowercase letters, digits, - or _.")
+            if (!Regex("[a-z0-9_-]{1,40}").matches(id)) throw Invalid("Workspace id \"$id\" must be lowercase letters, digits, - or _.")
             val agents = o.optJSONArray("agents").objs().map {
                 AgentDef(
                     id = it.reqStr("id", id), name = it.reqStr("name", id), instructions = it.reqStr("instructions", id),
