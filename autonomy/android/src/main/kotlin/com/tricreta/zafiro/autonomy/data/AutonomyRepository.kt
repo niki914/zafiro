@@ -112,6 +112,8 @@ class AutonomyRepository(
 
     suspend fun heartbeat(id: Long, steps: Int) = dao.heartbeat(id, nowMs(), steps)
 
+    fun observeEvents(runId: Long) = dao.observeEvents(runId)
+
     fun observeAgents() = dao.observeAgents()
     suspend fun agents(): List<AgentProfileEntity> = dao.agents()
     suspend fun agent(id: String): AgentProfileEntity? = dao.agent(id)

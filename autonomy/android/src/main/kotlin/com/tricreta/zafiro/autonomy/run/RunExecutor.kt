@@ -60,6 +60,7 @@ class RunExecutor(
             runTask(run, task)
         } finally {
             ActiveRuns.remove(run.id)
+            RunControl.unregister(run.id)
         }
     }
 
@@ -83,6 +84,7 @@ class RunExecutor(
 
         val agentManager: AgentManager = requireService()
         val agent = agentManager.createTaskAgent(isPersistent = true)
+        RunControl.register(run.id) { agent.stop() }
         val approver = ScheduledRunApprover(run.id, task.name, task.approvalTimeoutMs, repo, notifier)
         agent.addApprover(approver)
         try {
@@ -145,6 +147,12 @@ class RunExecutor(
                             agent.stop()
                         }
                         val report = reportOf(agent, breach.get())
+                        if (RunControl.wasStopped(run.id)) {
+                            repo.event(run.id, "info", "stopped by the owner")
+                            finalState = RunState.CANCELLED
+                            error = "Stopped by you."
+                            break
+                        }
                         repo.event(run.id, "info", "turn $turnNumber ended: ${report.end}${report.failureCode?.let { " ($it)" } ?: ""}")
                         when (val decision = planner.onTurnEnded(report)) {
                             is Decision.Finish -> {

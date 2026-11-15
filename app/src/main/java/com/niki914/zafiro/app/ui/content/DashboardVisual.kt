@@ -59,6 +59,9 @@ import com.niki914.zafiro.api.TeamService
 import com.niki914.zafiro.repo.WorkspaceManager
 import com.niki914.zafiro.service.findService
 import com.tricreta.zafiro.autonomy.AutonomyGraph
+import com.tricreta.zafiro.autonomy.run.RunControl
+import androidx.compose.runtime.produceState
+import androidx.compose.animation.core.animateFloat
 import com.tricreta.zafiro.autonomy.data.ActionLogEntity
 import kotlinx.coroutines.launch
 import java.text.DateFormat
@@ -121,9 +124,9 @@ private fun Tile(label: String, value: String, color: Color, modifier: Modifier 
 @Composable
 private fun SuccessRing(good: Int, bad: Int, modifier: Modifier = Modifier) {
     val total = (good + bad).coerceAtLeast(1)
-    Box(modifier.size(96.dp), contentAlignment = Alignment.Center) {
+    Box(modifier.size(76.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
-            val w = 14.dp.toPx()
+            val w = 10.dp.toPx()
             val inset = w / 2
             val sz = Size(size.width - w, size.height - w)
             drawArc(Color.Gray.copy(alpha = 0.25f), 0f, 360f, false, Offset(inset, inset), sz, style = Stroke(w))
@@ -132,7 +135,7 @@ private fun SuccessRing(good: Int, bad: Int, modifier: Modifier = Modifier) {
                 if (bad > 0) drawArc(Bad, -90f + 360f * good / total, 360f * bad / total, false, Offset(inset, inset), sz, style = Stroke(w))
             }
         }
-        Text(if (good + bad == 0) "-" else "${100 * good / total}%", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+        Text(if (good + bad == 0) "-" else "${100 * good / total}%", fontWeight = FontWeight.Bold, fontSize = 16.sp)
     }
 }
 
@@ -169,13 +172,86 @@ private fun RoundAction(icon: androidx.compose.ui.graphics.vector.ImageVector, l
 }
 
 @Composable
-private fun Detail(title: String, onClose: () -> Unit, actions: @Composable () -> Unit = {}, body: @Composable () -> Unit) {
+private fun Detail(title: String, onClose: () -> Unit, copyText: String? = null, actions: @Composable () -> Unit = {}, body: @Composable () -> Unit) {
+    val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onClose,
         title = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-        text = { Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) { body() } },
-        confirmButton = { Row { actions(); TextButton(onClick = onClose) { Text("Close") } } },
+        text = { Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) { body() } },
+        confirmButton = {
+            Row {
+                actions()
+                if (!copyText.isNullOrBlank()) TextButton(onClick = {
+                    (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(android.content.ClipData.newPlainText("Zafiro", copyText))
+                    Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                }) { Text("Copy") }
+                TextButton(onClick = onClose) { Text("Close") }
+            }
+        },
     )
+}
+
+/** Markdown that can be selected and copied. */
+@Composable
+private fun Rich(text: String) {
+    val body = MaterialTheme.typography.bodyMedium
+    val typo = com.mikepenz.markdown.m3.markdownTypography(
+        h1 = body.copy(fontSize = 18.sp, fontWeight = FontWeight.Bold), h2 = body.copy(fontSize = 16.sp, fontWeight = FontWeight.Bold), h3 = body.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+    )
+    androidx.compose.foundation.text.selection.SelectionContainer { com.mikepenz.markdown.m3.Markdown(content = text, typography = typo) }
+}
+
+private fun answeredFile(context: android.content.Context) = java.io.File(context.filesDir, "settings/answered_runs.txt")
+private fun answeredRuns(context: android.content.Context): Set<Long> = runCatching { answeredFile(context).readLines().mapNotNull { it.trim().toLongOrNull() }.toSet() }.getOrDefault(emptySet())
+private fun markAnswered(context: android.content.Context, id: Long) { answeredFile(context).also { it.parentFile?.mkdirs() }.appendText("$id\n") }
+
+/** The owner's answer to a team that asked for help: approves or rejects what it is waiting on, and tells its director what you said. */
+private suspend fun ownerReply(context: android.content.Context, run: com.tricreta.zafiro.autonomy.data.RunEntity, approve: Boolean, note: String): String {
+    val graph = AutonomyGraph.require()
+    val dao = graph.repo.teamDao()
+    val task = graph.repo.task(run.taskId)
+    val ws = task?.workspaceId.orEmpty().removePrefix("legacy:")
+    val def = WorkspaceManager.defs(context).firstOrNull { it.id == ws }
+    val director = def?.agents?.firstOrNull()?.name ?: task?.agentId.orEmpty()
+    var settled = 0
+    dao.actions(ws, 100).filter { it.status == "PENDING" }.forEach { decideAction(it.id, approve, note); settled++ }
+    val verdict = if (approve) "APPROVED" else "REJECTED"
+    findService<TeamService>()?.run("board", mapOf(
+        "op" to "add", "title" to "Owner reply: $verdict", "owner" to director, "by" to "owner", "workspace" to ws,
+        "detail" to "The owner answered your NEEDS_HUMAN request from the run \"${run.taskName}\": $verdict." + (if (note.isNotBlank()) " Owner note: $note." else "") +
+            " Your request was: ${(run.summary ?: run.error ?: "").take(1500)}. Do exactly what was approved now (or drop it if rejected), record outcomes with engage and the board, then continue.",
+    ))
+    runCatching { graph.repo.enqueueManual(com.tricreta.zafiro.autonomy.workspace.WorkspaceInstaller.taskId(ws, "heartbeat")); graph.scheduler.reconcile("owner_reply") }
+    markAnswered(context, run.id)
+    return if (approve) "Approved${if (settled > 0) " ($settled waiting item(s) released)" else ""}. The team is on it." else "Rejected. The team was told."
+}
+
+@Composable
+private fun LiveWatch(runId: Long, title: String, onStop: () -> Unit, onClose: () -> Unit) {
+    val graph = AutonomyGraph.require()
+    val events by graph.repo.observeEvents(runId).collectAsState(initial = emptyList())
+    val time = remember { DateFormat.getTimeInstance(DateFormat.MEDIUM) }
+    Detail(title, onClose, copyText = events.joinToString("\n") { it.text }, actions = { TextButton(onClick = onStop) { Text("Stop", color = Bad) } }) {
+        if (events.isEmpty()) Text("Waiting for activity...")
+        events.takeLast(60).forEach { e ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(time.format(Date(e.tsMs)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(e.text.take(240), style = MaterialTheme.typography.bodySmall, color = if (e.kind == "error" || e.kind == "limit") Bad else MaterialTheme.colorScheme.onSurface)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PulsingAvatar(name: String, busy: Boolean, size: androidx.compose.ui.unit.Dp = 60.dp) {
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "pulse")
+    val a by t.animateFloat(0.25f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900), androidx.compose.animation.core.RepeatMode.Reverse), label = "a")
+    Box(Modifier.size(size + 12.dp), contentAlignment = Alignment.Center) {
+        if (busy) Box(Modifier.size(size + 12.dp).clip(CircleShape).background(Good.copy(alpha = a * 0.45f)))
+        Box(Modifier.size(size).clip(CircleShape).background(roleColor(name)), contentAlignment = Alignment.Center) {
+            Text(name.split(' ').take(2).joinToString("") { it.take(1).uppercase() }, color = Color.White, fontWeight = FontWeight.Bold)
+        }
+    }
 }
 
 @Composable
@@ -197,11 +273,17 @@ fun DashboardVisualContent(onOpenFiles: () -> Unit, onOpenWorkspaces: () -> Unit
     val toast: (String) -> Unit = { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
 
     val doneToday = byDay.firstOrNull { it.day == today }?.n ?: 0
+    val tasks by graph.repo.observeTasks().collectAsState(initial = emptyList())
+    val taskById = remember(tasks) { tasks.associateBy { it.id } }
+    val answered = remember(runs) { answeredRuns(context) }
     val recent = runs.take(30)
     val good = recent.count { it.state == "SUCCEEDED" }
     val bad = recent.count { it.state in setOf("FAILED", "INTERRUPTED", "MISSED", "LIMIT_REACHED") }
     val running = runs.count { it.state == "RUNNING" || it.state == "STARTING" }
-    val doing = board.filter { it.status == "DOING" }.map { it.ownerAgent.lowercase() }.toSet()
+    val liveRuns = runs.filter { it.state == "RUNNING" || it.state == "STARTING" }
+    val liveAgentIds = liveRuns.mapNotNull { taskById[it.taskId]?.agentId?.lowercase() }.toSet()
+    val doing = board.filter { it.status == "DOING" }.map { it.ownerAgent.lowercase() }.toSet() + liveAgentIds
+    val needsYou = recent.count { it.state == "NEEDS_HUMAN" && it.id !in answered } + pending.size
     val week = (6 downTo 0).map { LocalDate.now().minusDays(it.toLong()) }.map { d -> d.dayOfWeek.name.take(3).lowercase().replaceFirstChar { c -> c.uppercase() } to (byDay.firstOrNull { it.day == d.toString() }?.n ?: 0) }
     val hasData = week.any { it.second > 0 }
 
@@ -211,6 +293,8 @@ fun DashboardVisualContent(onOpenFiles: () -> Unit, onOpenWorkspaces: () -> Unit
     var runDetail by remember { mutableStateOf<com.tricreta.zafiro.autonomy.data.RunEntity?>(null) }
     var confirmPause by remember { mutableStateOf(false) }
     var task by remember { mutableStateOf("") }
+    var watchRun by remember { mutableStateOf<com.tricreta.zafiro.autonomy.data.RunEntity?>(null) }
+    var note by remember { mutableStateOf("") }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = topChromePadding(), bottom = 24.dp + bottomChromePadding()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
@@ -230,19 +314,19 @@ fun DashboardVisualContent(onOpenFiles: () -> Unit, onOpenWorkspaces: () -> Unit
         }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Card(Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                    Column(Modifier.padding(14.dp)) {
+                Card(Modifier.weight(1f).height(132.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                    Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.Center) {
                         Text(if (running > 0) "● working" else "○ idle", style = MaterialTheme.typography.labelMedium, color = if (running > 0) Good else MaterialTheme.colorScheme.onPrimaryContainer)
                         Text("$doneToday", fontSize = 40.sp, fontWeight = FontWeight.Bold)
                         Text("done today", style = MaterialTheme.typography.bodySmall)
                     }
                 }
-                Card(Modifier.weight(1f).clickable { filter = "Failed" }) {
-                    Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) { SuccessRing(good, bad); Text("success", style = MaterialTheme.typography.labelSmall) }
+                Card(Modifier.weight(1f).height(132.dp).clickable { filter = "Failed" }) {
+                    Column(Modifier.fillMaxSize().padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) { SuccessRing(good, bad); Text("success", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp)) }
                 }
-                Card(Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = if (pending.isEmpty()) MaterialTheme.colorScheme.surfaceVariant else Warn.copy(alpha = 0.3f))) {
-                    Column(Modifier.padding(14.dp)) {
-                        Text("${pending.size}", fontSize = 40.sp, fontWeight = FontWeight.Bold)
+                Card(Modifier.weight(1f).height(132.dp).clickable { filter = "Needs you" }, colors = CardDefaults.cardColors(containerColor = if (needsYou == 0) MaterialTheme.colorScheme.surfaceVariant else Warn.copy(alpha = 0.3f))) {
+                    Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.Center) {
+                        Text("$needsYou", fontSize = 40.sp, fontWeight = FontWeight.Bold)
                         Text("need you", style = MaterialTheme.typography.bodySmall)
                     }
                 }
@@ -250,6 +334,23 @@ fun DashboardVisualContent(onOpenFiles: () -> Unit, onOpenWorkspaces: () -> Unit
         }
         if (workspaces.none { it.enabled }) item {
             Button(onClick = onOpenWorkspaces, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("Switch a team on") }
+        }
+        if (liveRuns.isNotEmpty()) items(liveRuns, key = { "live${it.id}" }) { r ->
+            val t = taskById[r.taskId]
+            val agentName = agents.firstOrNull { it.id == t?.agentId }?.name ?: "Agent"
+            val elapsed by produceState(0L, r.id) { while (true) { value = (System.currentTimeMillis() - (r.startedAtMs ?: r.createdAtMs)) / 1000; kotlinx.coroutines.delay(1000) } }
+            Card(Modifier.fillMaxWidth().clickable { watchRun = r }, colors = CardDefaults.cardColors(containerColor = Good.copy(alpha = 0.14f))) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PulsingAvatar(agentName, busy = true, size = 48.dp)
+                    Column(Modifier.weight(1f)) {
+                        Text(agentName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(r.taskName, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("%d:%02d · %d steps".format(elapsed / 60, elapsed % 60, r.steps), style = MaterialTheme.typography.labelSmall, color = Good)
+                    }
+                    androidx.compose.material3.FilledTonalButton(onClick = { watchRun = r }) { Text("Watch") }
+                    androidx.compose.material3.OutlinedButton(onClick = { RunControl.requestStop(r.id); toast("Stopping...") }) { Text("Stop", color = Bad) }
+                }
+            }
         }
         if (pending.isNotEmpty()) items(pending, key = { "p${it.id}" }) { ApprovalCard(it, names[it.workspaceId] ?: it.platform, toast) }
         item {
@@ -272,14 +373,10 @@ fun DashboardVisualContent(onOpenFiles: () -> Unit, onOpenWorkspaces: () -> Unit
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(agents.filter { it.enabled }, key = { it.id }) { a ->
                     val busy = a.name.lowercase() in doing || a.id.lowercase() in doing
-                    Column(Modifier.width(84.dp).clickable { agentDetail = a }, horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box {
-                            Box(Modifier.size(60.dp).clip(CircleShape).background(roleColor(a.name)), contentAlignment = Alignment.Center) {
-                                Text(a.name.split(' ').take(2).joinToString("") { it.take(1).uppercase() }, color = Color.White, fontWeight = FontWeight.Bold)
-                            }
-                            Box(Modifier.align(Alignment.BottomEnd).size(16.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surface).padding(2.dp).clip(CircleShape).background(if (busy) Good else Color.Gray))
-                        }
-                        Text(a.name, style = MaterialTheme.typography.labelSmall, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+                    Column(Modifier.width(88.dp).clickable { agentDetail = a }, horizontalAlignment = Alignment.CenterHorizontally) {
+                        PulsingAvatar(a.name, busy)
+                        Text(a.name, style = MaterialTheme.typography.labelSmall, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+                        Text(if (busy) "working" else "idle", style = MaterialTheme.typography.labelSmall, color = if (busy) Good else Color.Gray)
                     }
                 }
             }
@@ -307,7 +404,7 @@ fun DashboardVisualContent(onOpenFiles: () -> Unit, onOpenWorkspaces: () -> Unit
                     Text(r.taskName, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(listOf(time.format(Date(r.createdAtMs)), plainReason(r.state, r.reason, r.error)).filter { it.isNotBlank() }.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Text(runStateLabel(r.state), style = MaterialTheme.typography.labelSmall, color = color)
+                Text(if (r.state == "NEEDS_HUMAN" && r.id in answered) "Answered" else runStateLabel(r.state), style = MaterialTheme.typography.labelSmall, color = if (r.state == "NEEDS_HUMAN" && r.id in answered) Good else color)
             }
         }
         item { Spacer(Modifier.height(24.dp)) }
@@ -339,20 +436,38 @@ fun DashboardVisualContent(onOpenFiles: () -> Unit, onOpenWorkspaces: () -> Unit
                 }
             }) { Text("Send") }
         }) {
+            val liveOfAgent = liveRuns.firstOrNull { taskById[it.taskId]?.agentId == a.id }
+            if (liveOfAgent != null) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                androidx.compose.material3.FilledTonalButton(onClick = { watchRun = liveOfAgent; agentDetail = null }) { Text("Watch live") }
+                androidx.compose.material3.OutlinedButton(onClick = { RunControl.requestStop(liveOfAgent.id); toast("Stopping...") }) { Text("Stop", color = Bad) }
+            }
             OutlinedTextField(value = task, onValueChange = { task = it }, placeholder = { Text("Tell ${a.name} what to do") }, modifier = Modifier.fillMaxWidth())
             mine.take(8).forEach { b -> Text("• ${b.title} (${b.status.lowercase()})", style = MaterialTheme.typography.bodySmall) }
         }
     }
     runDetail?.let { r ->
-        Detail(r.taskName, { runDetail = null }, actions = {
-            TextButton(onClick = { scope.launch { runCatching { graph.repo.enqueueManual(r.taskId); graph.scheduler.reconcile("run_now") }; runDetail = null; toast("Started again") } }) { Text("Run again") }
+        val waiting = r.state == "NEEDS_HUMAN" && r.id !in answered
+        Detail(r.taskName, { runDetail = null }, copyText = r.summary ?: r.error, actions = {
+            if (!waiting) TextButton(onClick = { scope.launch { runCatching { graph.repo.enqueueManual(r.taskId); graph.scheduler.reconcile("run_now") }; runDetail = null; toast("Started again") } }) { Text("Run again") }
         }) {
             Text("${runStateLabel(r.state)} · ${r.steps} steps · ${time.format(Date(r.createdAtMs))}", style = MaterialTheme.typography.labelLarge)
             val why = plainReason(r.state, r.reason, r.error)
-            if (why.isNotBlank()) Text(why, color = Bad)
-            if (!r.summary.isNullOrBlank()) Text(r.summary!!.take(1500))
+            if (why.isNotBlank() && r.state != "NEEDS_HUMAN") Text(why, color = Bad)
+            if (!r.summary.isNullOrBlank()) Rich(r.summary!!.take(4000))
+            if (waiting) {
+                OutlinedTextField(value = note, onValueChange = { note = it }, placeholder = { Text("Add your own words (optional)") }, modifier = Modifier.fillMaxWidth())
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    Button(modifier = Modifier.weight(1f).height(52.dp), colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Good), onClick = {
+                        val n = note; note = ""; runDetail = null; scope.launch { toast(ownerReply(context, r, true, n)) }
+                    }) { Text("Approve") }
+                    OutlinedButton(modifier = Modifier.weight(1f).height(52.dp), onClick = {
+                        val n = note; note = ""; runDetail = null; scope.launch { toast(ownerReply(context, r, false, n)) }
+                    }) { Text("Reject") }
+                }
+            }
         }
     }
+    watchRun?.let { r -> LiveWatch(r.id, r.taskName, onStop = { RunControl.requestStop(r.id); toast("Stopping...") }, onClose = { watchRun = null }) }
 }
 
 /**

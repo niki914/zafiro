@@ -20,7 +20,7 @@ skill("team-protocol", "How the agent team works together: board, handoffs, stat
 # Team protocol
 You belong to a workspace team. Work is passed on the shared board, never by memory or guesswork.
 1. Start: `board op=resume` (re-opens work a dead run left half done), then `board op=next owner=<your name>`; if nothing is waiting, check `board op=list open_only=true`.
-2. Hand work on with `board op=add` (title, detail, owner = the next agent, workspace, depth). Give the full context in `detail`: the next agent has not seen your conversation.
+2. Items created by `owner` are replies or instructions from the owner: do them FIRST, exactly as written, and record the result. Hand work on with `board op=add` (title, detail, owner = the next agent, workspace, depth). Give the full context in `detail`: the next agent has not seen your conversation.
 3. Finish every item you touch: `board op=update id=<id> status=DONE|FAILED|BLOCKED result=<what happened and where the output is>`. A result is required. Never leave an item DOING.
 4. Save long outputs (plans, drafts, reports) with `save_file` (path like `<workspace>/drafts/2026-11-16-note.md`) and put the path in the result.
 5. Delegation depth: the director is depth 0. Pass `depth=N` to the `agent` tool when your brief says delegation depth N. Chains stop at 3.
@@ -220,7 +220,7 @@ def tasks_for(p, ids):
     head = f"Workspace \"{ws}\". Load skill team-protocol and {ws}-playbook. "
     T = []
     T.append(dict(key="heartbeat", name=f"{n}: team heartbeat", agent=ids["director"][0], trigger="INTERVAL", intervalMinutes=90, maxSteps=60, maxMinutes=40,
-                  prompt=head + "Heartbeat: run `board op=resume`, then work through the open board items by calling the right specialists until the board is empty or today's caps are reached. If the board is empty, create the next valuable items (engagement targets, a draft that is due, an overdue follow-up) and run them. Do not start a screen job if one is already running; the screen is shared.",
+                  prompt=head + "Heartbeat: first run `board op=resume`, then `board op=list open_only=true` and do every item created by owner before anything else (owner replies such as approvals or instructions). Then work through the open board items by calling the right specialists until the board is empty or today's caps are reached. If the board is empty, create the next valuable items (engagement targets, a draft that is due, an overdue follow-up) and run them. Do not start a screen job if one is already running; the screen is shared.",
                   criteria="Open board items were advanced or the board was empty, and the result lists what was done with evidence or says SKIPPED with a reason."))
     T.append(dict(key="prebrief", name=f"{n}: morning plan", agent=ids["director"][0], trigger="DAILY", time=t(5, 30), maxSteps=60, maxMinutes=30,
                   prompt=head + "Morning plan: read yesterday's numbers, lessons and `examples op=list`; check `engage op=today` and the board; write today's plan file (save_file path `" + ws + "/plans/<date>.md`) with 3 priorities; create board items for the researcher, writer and engager; call them.",

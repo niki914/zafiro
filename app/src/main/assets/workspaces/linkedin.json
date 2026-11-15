@@ -206,7 +206,7 @@
    "intervalMinutes": 90,
    "maxSteps": 60,
    "maxMinutes": 40,
-   "prompt": "Workspace \"linkedin\". Load skill team-protocol and linkedin-playbook. Heartbeat: run `board op=resume`, then work through the open board items by calling the right specialists until the board is empty or today's caps are reached. If the board is empty, create the next valuable items (engagement targets, a draft that is due, an overdue follow-up) and run them. Do not start a screen job if one is already running; the screen is shared.",
+   "prompt": "Workspace \"linkedin\". Load skill team-protocol and linkedin-playbook. Heartbeat: first run `board op=resume`, then `board op=list open_only=true` and do every item created by owner before anything else (owner replies such as approvals or instructions). Then work through the open board items by calling the right specialists until the board is empty or today's caps are reached. If the board is empty, create the next valuable items (engagement targets, a draft that is due, an overdue follow-up) and run them. Do not start a screen job if one is already running; the screen is shared.",
    "criteria": "Open board items were advanced or the board was empty, and the result lists what was done with evidence or says SKIPPED with a reason."
   },
   {

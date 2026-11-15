@@ -239,6 +239,9 @@ interface AutonomyDao {
     @Query("DELETE FROM run WHERE state NOT IN ('QUEUED','STARTING','RUNNING','PAUSED')")
     suspend fun clearFinishedRuns()
 
+    @Query("SELECT * FROM run_event WHERE runId = :runId ORDER BY id")
+    fun observeEvents(runId: Long): Flow<List<RunEventEntity>>
+
     @Query("SELECT dayKey AS day, COUNT(*) AS n FROM action_log WHERE status = 'DONE' GROUP BY dayKey ORDER BY dayKey DESC LIMIT :days")
     fun observeDoneByDay(days: Int): Flow<List<DayCount>>
 
