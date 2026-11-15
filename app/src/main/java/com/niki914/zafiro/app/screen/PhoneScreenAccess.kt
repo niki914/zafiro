@@ -13,13 +13,17 @@ import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.delay
 
 /**
- * 主屏读、点、截图之前的权限门。
+ * 屏幕控制、截图、应用启动与虚拟屏创建之前的知情同意与权限门。
  *
  * 无障碍驱动保持无状态，不认识同意书，也不申请权限。
- * 打开应用不经过这里。
  *
- * 读和点走 [Need.Control]：缺无障碍或悬浮窗时先问一次知情同意，再逐个向
- * [PermissionManager] 申请。截图走 [Need.Capture]：只要无障碍，不问同意、不要悬浮窗。
+ * 门禁策略：
+ * 1. 知情同意 [ensureConsent]：未获得 Phone Use 知情同意时，任何动作前置向用户弹窗审批。
+ * 2. 权限与就绪：
+ *    - [Need.Control]：读、点需要无障碍与悬浮窗权限，并等待驱动连接；
+ *    - [Need.Capture]：截图需要无障碍权限，并等待驱动连接；
+ *    - [Need.VirtualDisplay]：创建虚拟屏需要无障碍与悬浮窗权限，并等待驱动连接；
+ *    - [Need.OpenApp]：应用拉起仅需知情同意。
  */
 open class PhoneScreenAccess(
     private val permissions: () -> PermissionManager = { requireService() },
@@ -31,12 +35,14 @@ open class PhoneScreenAccess(
     private val connected: () -> Boolean = { SystemAccessibilityDriver.isConnected },
     private val waitUntilConnected: suspend () -> Boolean = { waitForDriverConnected(connected) },
 ) {
-    enum class Need { Control, Capture }
+    enum class Need { Control, Capture, OpenApp, VirtualDisplay }
 
     open suspend fun prepare(need: Need): PhoneScreenDenial? {
+        ensureConsent()?.let { return it }
+        if (need == Need.OpenApp) return null
         if (connected()) return null
-        if (need == Need.Control) {
-            ensureConsent()?.let { return it }
+
+        if (need == Need.Control || need == Need.VirtualDisplay) {
             ensureOne(Permission.ACCESSIBILITY)
             ensureOne(Permission.OVERLAY)
         } else {
@@ -57,10 +63,6 @@ open class PhoneScreenAccess(
     }
 
     private suspend fun ensureConsent(): PhoneScreenDenial? {
-        val manager = permissions()
-        val missing = manager.status(Permission.ACCESSIBILITY) != PermissionState.GRANTED ||
-            manager.status(Permission.OVERLAY) != PermissionState.GRANTED
-        if (!missing) return null
         if (settings()?.phoneUseConsentGranted?.value == true) return null
         if (askConsent() != ApprovalDecision.Allow) {
             return PhoneScreenDenial(

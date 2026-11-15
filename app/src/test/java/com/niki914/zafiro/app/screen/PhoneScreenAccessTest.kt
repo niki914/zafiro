@@ -7,6 +7,8 @@ import com.niki914.zafiro.api.screen.ActResult
 import com.niki914.zafiro.api.screen.ScreenAction
 import com.niki914.zafiro.api.screen.ScreenImageUnavailable
 import com.niki914.zafiro.api.screen.ScreenTreeUnavailable
+import com.niki914.zafiro.api.screen.ShowResult
+import com.niki914.zafiro.api.screen.ShowTarget
 import com.niki914.zafiro.business.permission.Channel
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
@@ -152,14 +154,117 @@ class PhoneScreenAccessTest {
 
             val acted = screen.act(ScreenAction.Key(4))
             assertEquals(ActResult.Failed("CONSENT_DENIED", null), acted)
+
+            val showed = screen.show(ShowTarget.AppName("test-app"))
+            assertEquals(ShowResult.Failed("CONSENT_DENIED"), showed)
+
             assertEquals(
                 listOf(
                     PhoneScreenAccess.Need.Control,
                     PhoneScreenAccess.Need.Capture,
                     PhoneScreenAccess.Need.Control,
+                    PhoneScreenAccess.Need.OpenApp,
                 ),
                 access.needs,
             )
+        }
+    }
+
+    @Test
+    fun captureWithoutConsentStopsAtConsentGate() = runTest {
+        withTimeout(2_000) {
+            val permissions = permissions(granted = false)
+            val settings = MemorySettings(granted = false)
+            val access = access(
+                permissions = permissions,
+                settings = settings,
+                askConsent = { ApprovalDecision.Deny },
+                connected = { false },
+            )
+
+            val denial = access.prepare(PhoneScreenAccess.Need.Capture)
+            assertEquals("CONSENT_DENIED", denial?.code)
+            assertTrue(permissions.requested.isEmpty())
+        }
+    }
+
+    @Test
+    fun openAppWithoutConsentStopsAtConsentGate() = runTest {
+        withTimeout(2_000) {
+            val permissions = permissions(granted = false)
+            val settings = MemorySettings(granted = false)
+            val access = access(
+                permissions = permissions,
+                settings = settings,
+                askConsent = { ApprovalDecision.Deny },
+                connected = { false },
+            )
+
+            val denial = access.prepare(PhoneScreenAccess.Need.OpenApp)
+            assertEquals("CONSENT_DENIED", denial?.code)
+            assertTrue(permissions.requested.isEmpty())
+        }
+    }
+
+    @Test
+    fun openAppWithConsentPassesWithoutDriverConnection() = runTest {
+        withTimeout(2_000) {
+            val permissions = permissions(granted = false)
+            val settings = MemorySettings(granted = false)
+            val access = access(
+                permissions = permissions,
+                settings = settings,
+                askConsent = { ApprovalDecision.Allow },
+                connected = { false },
+            )
+
+            assertNull(access.prepare(PhoneScreenAccess.Need.OpenApp))
+            assertTrue(settings.phoneUseConsentGranted.value)
+            assertTrue(permissions.requested.isEmpty())
+        }
+    }
+
+    @Test
+    fun virtualDisplayRequestsConsentAndPermissionsOnApproval() = runTest {
+        withTimeout(2_000) {
+            val permissions = permissions(granted = false, grantOnRequest = true)
+            val settings = MemorySettings(granted = false)
+            val access = access(
+                permissions = permissions,
+                settings = settings,
+                askConsent = { ApprovalDecision.Allow },
+                connected = { false },
+                waitUntilConnected = { true },
+            )
+
+            assertNull(access.prepare(PhoneScreenAccess.Need.VirtualDisplay))
+            assertEquals(
+                listOf(Permission.ACCESSIBILITY, Permission.OVERLAY),
+                permissions.requested,
+            )
+            assertTrue(settings.phoneUseConsentGranted.value)
+        }
+    }
+
+    @Test
+    fun connectedServiceWithoutConsentStillAsksConsent() = runTest {
+        withTimeout(2_000) {
+            val permissions = permissions(granted = false)
+            val settings = MemorySettings(granted = false)
+            var asked = false
+            val access = access(
+                permissions = permissions,
+                settings = settings,
+                askConsent = {
+                    asked = true
+                    ApprovalDecision.Allow
+                },
+                connected = { true },
+            )
+
+            assertNull(access.prepare(PhoneScreenAccess.Need.Control))
+            assertTrue(asked)
+            assertTrue(settings.phoneUseConsentGranted.value)
         }
     }
 

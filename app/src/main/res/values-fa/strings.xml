@@ -471,6 +471,8 @@
     <string name="ui_tool_display_screen_operation_accessibility">کار با صفحه</string>
     <string name="ui_tool_display_screen_operation_shell">کار با صفحه</string>
     <string name="ui_tool_display_screenshot">نماگرفت</string>
+    <string name="ui_tool_display_phone_use">Phone Use</string>
+    <string name="ui_tool_display_open">Open</string>
     <string name="ui_tool_display_view_image">دیدن تصویر</string>
     <string name="ui_tool_display_py_meta_tools">ابزارهای پایتون سفارشی</string>
     <string name="dialog_cancel">لغو</string>
