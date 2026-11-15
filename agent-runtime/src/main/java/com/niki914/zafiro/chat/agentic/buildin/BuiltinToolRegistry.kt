@@ -4,6 +4,12 @@ import com.niki914.zafiro.chat.agentic.buildin.impl.BoardBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.CreateSkillBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.EngageBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ExamplesBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.DatetimeBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.MakeCardBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.RssReadBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.ScheduleBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.WebFetchBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.WebSearchBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ExecutePythonBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.FindInstalledAppsBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.LaunchAppBuiltin
@@ -67,6 +73,12 @@ class BuiltinToolRegistry(
                 ScreenRoutineBuiltin(),
                 SaveFileBuiltin(),
                 CreateSkillBuiltin(),
+                WebFetchBuiltin(),
+                WebSearchBuiltin(),
+                RssReadBuiltin(),
+                DatetimeBuiltin(),
+                MakeCardBuiltin(),
+                ScheduleBuiltin(),
                 ScreenshotBuiltin__V2(),
                 OpenBuiltin__V2(),
                 ScreensBuiltin__V2(),

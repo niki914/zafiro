@@ -29,6 +29,19 @@ You belong to a workspace team. Work is passed on the shared board, never by mem
 8. Never bypass a lock screen, CAPTCHA, login, 2FA, consent screen or payment: `take_over` or NEEDS_HUMAN.
 """)
 
+skill("toolbox", "Which tool to use for what: web, files, dates, images, scheduling, screen. Load when unsure how to do something.", """
+# Toolbox
+- **Find information:** `web_search` (no key) then `web_fetch` on the best results; `rss_read` for a blog/Substack/subreddit feed (Substack: https://NAME.substack.com/feed). If a site blocks you, use an MCP search server if one is on, or the screen.
+- **Dates:** never guess. `datetime` (now, add, diff, next_weekday) in the owner's zone.
+- **Files the owner can open:** `save_file` (save, append, read, delete, list). Always show the returned link. Plans and reports: Markdown or HTML.
+- **Images:** `make_card` makes a quote/announcement card PNG (square 1080x1080, portrait 1080x1350, pin 1000x1500). Photos and video need an MCP such as Higgsfield or fal.ai if the owner switched one on.
+- **Scheduling:** `schedule` creates follow-ups and recurring jobs (min 15 minutes) with a self-contained prompt; `board` is for handoffs between agents, `schedule` is for later.
+- **Phone:** `screen_routine` first, `screen_operation` for one-offs, `open`/`open_uri`/`launch_app` to start apps, `notify` to tell the owner, `take_over` when a human is needed.
+- **Data and code:** `http_request` for APIs, `execute_python` for calculations and file processing, `memory` for lasting lessons.
+- **Skills:** `load_skill` only when needed; `create_skill` to save a repeatable method.
+Prefer the cheapest tool that gives evidence. Report what you actually saw.
+""")
+
 skill("engagement-loop", "The daily engagement loop that builds an audience: find conversations, judge, comment, like, reply, within caps. Use for any engagement task.", """
 # Engagement loop
 Posting alone does not build an audience; conversation does. Each engagement run does ALL of these, in order, within today's caps:
@@ -89,14 +102,14 @@ SUBSTACK_IDS = dict(director=("growth_director", "Growth Director"), researcher=
                     executor=("android_assistant", "Android Execution Assistant"), analyst=("analytics_analyst", "Analytics Analyst"))
 
 TOOLS = dict(
-    director="agent,board,engage,examples,save_file,memory,load_skill,notify,device_info,wait,execute_python,http_request",
-    researcher="py_web_read,http_request,load_skill,memory,board,save_file,execute_python",
-    strategist="load_skill,memory,board,save_file,examples",
-    writer="load_skill,board,save_file,examples,memory",
+    director="agent,board,engage,examples,save_file,memory,load_skill,notify,device_info,wait,execute_python,http_request,datetime,schedule,web_search",
+    researcher="web_search,web_fetch,rss_read,datetime,http_request,load_skill,memory,board,save_file,execute_python",
+    strategist="load_skill,memory,board,save_file,examples,datetime,web_search,web_fetch,rss_read",
+    writer="load_skill,board,save_file,examples,memory,make_card,datetime",
     reviewer="examples,engage,board,load_skill,memory",
-    engager="screen_routine,load_skill,engage,board,agent,memory,wait",
+    engager="screen_routine,load_skill,engage,board,agent,memory,wait,web_search,web_fetch",
     executor="screen_routine,screen_operation,screenshot,open,screens,engage,board,wait,take_over,device_info,clipboard,load_skill,open_uri,launch_app",
-    analyst="screen_routine,save_file,memory,board,load_skill,execute_python,notify,engage",
+    analyst="screen_routine,save_file,memory,board,load_skill,execute_python,notify,engage,web_fetch,datetime",
 )
 
 P = [
@@ -245,12 +258,12 @@ for p in P:
     ws = p["id"]
     ids = SUBSTACK_IDS if ws == "substack" else {r: (f"{ws}-{r}", f"{p['name'].split(' (')[0]} {ROLE_TITLE[r]}") for r in ROLES}
     agents = [dict(id=ids[r][0], name=ids[r][1], instructions=instr(p, r, ids), tools=TOOLS[r].split(","),
-                   skills=["team-protocol", f"{ws}-playbook"] + {"engager": ["engagement-loop", "human-pacing"], "executor": ["screen-routines", "human-pacing"], "reviewer": ["reviewer-rubric"], "director": ["owner-corrections"]}.get(r, []),
+                   skills=["team-protocol", "toolbox", f"{ws}-playbook"] + {"engager": ["engagement-loop", "human-pacing"], "executor": ["screen-routines", "human-pacing"], "reviewer": ["reviewer-rubric"], "director": ["owner-corrections"]}.get(r, []),
                    usesScreen=r in ("executor",)) for r in ROLES]
     # engager also reads the screen for scan routines -> serialised with the executor via usesScreen
     for a in agents:
         if a["id"] == ids["engager"][0]: a["usesScreen"] = False
-    skills = ["team-protocol", "engagement-loop", "reviewer-rubric", "owner-corrections", "human-pacing", "screen-routines", f"{ws}-playbook"] + p["skills"]
+    skills = ["team-protocol", "toolbox", "engagement-loop", "reviewer-rubric", "owner-corrections", "human-pacing", "screen-routines", f"{ws}-playbook"] + p["skills"]
     d = dict(id=ws, version=1, name=p["name"], platform=ws, app=p["app"], summary=f"A ready-made {p['name']} team ({len(ROLES)} agents, {len(tasks_for(p, ids))} scheduled tasks): {p['kind']}, engagement and daily learning.",
              quotas=p["quotas"], agents=agents, tasks=tasks_for(p, ids), skills=sorted(set(skills)), mcps=[], memory=[p["facts"]])
     w(f"{A}/workspaces/{ws}.json", json.dumps(d, indent=1, ensure_ascii=False) + "\n")

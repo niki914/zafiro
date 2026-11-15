@@ -77,7 +77,7 @@ class DictationController internal constructor(
 fun rememberDictationController(value: String, onValueChange: (String) -> Unit): DictationController {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val voice = remember { VoiceInput(context) }
+    val voice = remember { VoiceInput(context) { com.niki914.zafiro.repo.VoiceSettings.read(context).cloudConfig() } }
     val latestValue by rememberUpdatedState(value)
     val latestOnChange by rememberUpdatedState(onValueChange)
     val listening by voice.listening.collectAsState()

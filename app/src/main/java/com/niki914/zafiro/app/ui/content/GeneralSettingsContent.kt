@@ -37,6 +37,7 @@ import com.niki914.zafiro.app.ui.nav.ZafiroPage
  * General Settings：悬浮与通知、对话与交互 2 个分组。
  * 容器使用 SettingsSpecPageContent + GroupedCard，开关状态由 ViewModel 驱动。
  */
+private const val VOICE_ROW_ID = "general.voice"
 private const val FLOATING_BALL_NAV_ROW_ID = "general.floating_ball_nav"
 private const val RESIDENT_NOTIFICATION_ROW_ID = "general.resident_notification"
 private const val TURN_NOTIFICATION_ROW_ID = "general.turn_notification"
@@ -63,6 +64,10 @@ fun GeneralSettingsContent(
         adminActive = dpm?.isAdminActive(adminComponent) == true
     }
 
+    var showVoice by remember { mutableStateOf(false) }
+    var voiceTick by remember { mutableStateOf(0) }
+    if (showVoice) VoiceSettingsDialog(context) { showVoice = false; voiceTick++ }
+
     LaunchedEffect(Unit) {
         viewModel.sendIntent(GeneralSettingsIntent.Load)
     }
@@ -75,6 +80,12 @@ fun GeneralSettingsContent(
                 title = stringResource(R.string.ui_settings_general_group_floating_notification),
                 layout = SettingsSectionLayout.GroupedCard,
                 rows = listOf(
+                    SettingsRowSpec.Navigation(
+                        id = VOICE_ROW_ID,
+                        title = "Voice input",
+                        summary = "Phone's free recogniser, or Groq/OpenAI Whisper with your key",
+                        currentState = voiceSummary(context) + if (voiceTick >= 0) "" else "",
+                    ),
                     SettingsRowSpec.Navigation(
                         id = FLOATING_BALL_NAV_ROW_ID,
                         title = stringResource(R.string.ui_settings_general_floating_ball),
@@ -146,6 +157,7 @@ fun GeneralSettingsContent(
                 is SettingsRowAction.Navigate ->
                     when (action.id) {
                         FLOATING_BALL_NAV_ROW_ID -> onPush(FloatingBallSettingsPage)
+                        VOICE_ROW_ID -> showVoice = true
                         DEVICE_ADMIN_ROW_ID -> {
                             if (adminActive) {
                                 runCatching { dpm?.removeActiveAdmin(adminComponent) }

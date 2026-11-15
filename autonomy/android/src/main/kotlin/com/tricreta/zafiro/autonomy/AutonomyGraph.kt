@@ -48,7 +48,7 @@ object AutonomyInstaller {
     fun install(application: Application) {
         val graph = AutonomyGraph.get(application)
         installService<AgentDelegator>(DelegateRunner(graph.repo, graph.scope))
-        installService<TeamService>(TeamServiceImpl(graph.repo.teamDao()))
+        installService<TeamService>(TeamServiceImpl(graph.repo.teamDao(), onSchedulesChanged = { graph.scheduler.reconcile("agent_schedule") }))
         // Re-arm the alarm and record anything missed whenever the process starts.
         graph.scope.launch { graph.scheduler.reconcile("app_start") }
     }

@@ -49,6 +49,16 @@ class SaveFileBuiltinTest {
         assertTrue(r.ok); assertTrue(r.data.toString().contains("zfile:a.md"))
     }
 
+    @Test fun appendReadAndDelete() {
+        assertTrue(call("""{"op":"append","path":"log/a.md","content":"one\n"}""").ok)
+        assertTrue(call("""{"op":"append","path":"log/a.md","content":"two\n"}""").ok)
+        val r = call("""{"op":"read","path":"log/a.md"}""")
+        assertTrue(r.data.toString(), r.data.toString().contains("one\\ntwo\\n"))
+        assertTrue(call("""{"op":"delete","path":"log/a.md"}""").ok)
+        assertFalse(call("""{"op":"read","path":"log/a.md"}""").ok)
+        assertFalse(call("""{"op":"delete","path":"../x"}""").ok)
+    }
+
     @Test fun mimeByExtension() {
         assertEquals("text/html", OutputPaths.mime("r.HTML")); assertEquals("application/octet-stream", OutputPaths.mime("x"))
     }

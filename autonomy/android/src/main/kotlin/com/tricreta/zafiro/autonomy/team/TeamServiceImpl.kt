@@ -27,6 +27,7 @@ class TeamServiceImpl(
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
     private val quotasOverride: (suspend (workspace: String) -> Quotas)? = null,
     private val random: () -> Double = { Random.nextDouble() },
+    private val onSchedulesChanged: suspend () -> Unit = {},
 ) : TeamService {
 
     private suspend fun quotas(ws: String): Quotas = quotasOverride?.invoke(ws)
@@ -37,6 +38,7 @@ class TeamServiceImpl(
             "board" -> board(args)
             "engage" -> engage(args)
             "examples" -> examples(args)
+            "schedule" -> schedule(args)
             else -> TeamResult(false, "Unknown team tool '$tool'.")
         }
     } catch (e: IllegalArgumentException) {
@@ -176,6 +178,57 @@ class TeamServiceImpl(
     private fun actionJson(r: ActionLogEntity) = JSONObject().put("id", r.id).put("platform", r.platform).put("action", r.action).put("target", r.target)
         .put("text", r.text).put("status", r.status).put("agent", r.agent)
 
+    // ------------------------------------------------------------- schedule
+    /** Lets an agent manage its OWN scheduled tasks (tagged workspace "agent"); the owner's and workspace tasks are read-only to it. */
+    private suspend fun schedule(a: Map<String, String>): TeamResult {
+        return when (need(a, "op")) {
+            "list" -> TeamResult(true, JSONArray(dao.tasks().sortedBy { it.name.lowercase() }.map {
+                JSONObject().put("id", it.id).put("name", it.name).put("enabled", it.enabled).put("trigger", it.triggerType).put("time", it.timeOfDay ?: "")
+                    .put("agent", it.agentId).put("owner", if (it.workspaceId == AGENT_TASKS) "agent" else it.workspaceId.ifEmpty { "owner" })
+            }).toString())
+            "create" -> {
+                if (dao.tasks().count { it.workspaceId == AGENT_TASKS } >= MAX_AGENT_TASKS) return TeamResult(false, "Too many agent-made tasks ($MAX_AGENT_TASKS). Delete some first.")
+                val trigger = need(a, "trigger").uppercase()
+                val time = arg(a, "time")
+                val interval = argL(a, "interval_minutes") ?: 0L
+                when (trigger) {
+                    "DAILY", "WEEKLY" -> if (!Regex("([01]\\d|2[0-3]):[0-5]\\d").matches(time)) return TeamResult(false, "time must be HH:mm (24 hour).")
+                    "INTERVAL" -> if (interval < 15) return TeamResult(false, "interval_minutes must be at least 15.")
+                    "ONCE" -> if (runCatching { java.time.LocalDateTime.parse(arg(a, "once_at")) }.isFailure) return TeamResult(false, "once_at must be like 2026-11-16T09:30 (device time zone).")
+                    else -> return TeamResult(false, "trigger must be DAILY, WEEKLY, INTERVAL or ONCE.")
+                }
+                val agent = arg(a, "agent")
+                if (agent.isNotEmpty() && dao.agent(agent) == null) return TeamResult(false, "No agent with id \"$agent\".")
+                val days = arg(a, "days").split(',').mapNotNull { d -> java.time.DayOfWeek.entries.firstOrNull { it.name.startsWith(d.trim().uppercase().take(3)) && d.isNotBlank() } }.toSet()
+                val now = nowMs()
+                val id = "agent." + java.util.UUID.randomUUID().toString().take(8)
+                val task = com.tricreta.zafiro.autonomy.data.TaskEntity(
+                    id = id, name = need(a, "name").take(120), prompt = need(a, "prompt").take(8000), enabled = true, triggerType = trigger,
+                    onceAt = arg(a, "once_at").ifEmpty { null }.takeIf { trigger == "ONCE" }, intervalMinutes = interval.takeIf { trigger == "INTERVAL" },
+                    anchorMs = now.takeIf { trigger == "INTERVAL" }, timeOfDay = time.ifEmpty { null }, daysMask = if (days.isEmpty()) 0b1111111 else com.tricreta.zafiro.autonomy.data.daysToMask(days),
+                    dayOfMonth = 1, zoneId = "", createdAtMs = now, updatedAtMs = now, misfireGraceMs = 6 * 3_600_000L, overlap = "SKIP",
+                    maxSteps = (argL(a, "max_steps") ?: 60).toInt().coerceIn(5, 200), maxDurationMs = (argL(a, "max_minutes") ?: 30).coerceIn(2, 120) * 60_000L,
+                    configId = "", approvalTimeoutMs = 120_000L, agentId = agent, workspaceId = AGENT_TASKS,
+                )
+                dao.upsertTask(task); dao.upsertCursor(com.tricreta.zafiro.autonomy.data.CursorEntity(id, now))
+                onSchedulesChanged()
+                TeamResult(true, JSONObject().put("id", id).put("note", "Scheduled. The owner can see and delete it under Manage and reset.").toString())
+            }
+            "enable", "disable", "delete" -> {
+                val id = need(a, "id")
+                val t = dao.task(id) ?: return TeamResult(false, "No task $id.")
+                if (t.workspaceId != AGENT_TASKS) return TeamResult(false, "Only tasks made by agents can be changed here; the owner's and workspace tasks are managed by the owner.")
+                when (a["op"]) {
+                    "delete" -> { dao.deleteTask(id); dao.deleteCursor(id) }
+                    else -> dao.setEnabled(id, a["op"] == "enable", nowMs())
+                }
+                onSchedulesChanged()
+                TeamResult(true, JSONObject().put("id", id).put("done", a["op"]).toString())
+            }
+            else -> TeamResult(false, "op must be list, create, enable, disable or delete.")
+        }
+    }
+
     // ------------------------------------------------------------ examples
     private suspend fun examples(a: Map<String, String>): TeamResult = when (need(a, "op")) {
         "list" -> TeamResult(true, JSONArray(dao.examples(arg(a, "platform"), 30).map {
@@ -204,5 +257,7 @@ class TeamServiceImpl(
     private companion object {
         /** A DOING item untouched for this long belongs to a dead run. */
         const val STALE_MS = 20 * 60_000L
+        const val AGENT_TASKS = "agent"
+        const val MAX_AGENT_TASKS = 40
     }
 }

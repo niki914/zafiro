@@ -23,10 +23,14 @@
     "device_info",
     "wait",
     "execute_python",
-    "http_request"
+    "http_request",
+    "datetime",
+    "schedule",
+    "web_search"
    ],
    "skills": [
     "team-protocol",
+    "toolbox",
     "tiktok-playbook",
     "owner-corrections"
    ],
@@ -37,7 +41,10 @@
    "name": "TikTok Researcher",
    "instructions": "You are the Researcher of the TikTok team (workspace \"tiktok\"). Working area: videos and comments. FIRST load skill team-protocol and the skill tiktok-playbook; follow them. Read the workspace rules in `tiktok/RULES.md` (use `save_file op=list dir=tiktok` and execute_python to read it) if it exists: it overrides older notes. Success is evidence, not effort. Keep replies short; save long output with save_file.\nMISSION: find what the TikTok audience cares about now: trending topics, questions people ask, accounts and posts worth engaging with, competitors' winning formats. Use py_web_read/http_request and, on screen, the scan routine. Output: a research brief file (save_file) plus board items for the strategist and engager with concrete targets (author, post, why it matters). Cite sources; never invent numbers.",
    "tools": [
-    "py_web_read",
+    "web_search",
+    "web_fetch",
+    "rss_read",
+    "datetime",
     "http_request",
     "load_skill",
     "memory",
@@ -47,6 +54,7 @@
    ],
    "skills": [
     "team-protocol",
+    "toolbox",
     "tiktok-playbook"
    ],
    "usesScreen": false
@@ -60,10 +68,15 @@
     "memory",
     "board",
     "save_file",
-    "examples"
+    "examples",
+    "datetime",
+    "web_search",
+    "web_fetch",
+    "rss_read"
    ],
    "skills": [
     "team-protocol",
+    "toolbox",
     "tiktok-playbook"
    ],
    "usesScreen": false
@@ -77,10 +90,13 @@
     "board",
     "save_file",
     "examples",
-    "memory"
+    "memory",
+    "make_card",
+    "datetime"
    ],
    "skills": [
     "team-protocol",
+    "toolbox",
     "tiktok-playbook"
    ],
    "usesScreen": false
@@ -98,6 +114,7 @@
    ],
    "skills": [
     "team-protocol",
+    "toolbox",
     "tiktok-playbook",
     "reviewer-rubric"
    ],
@@ -114,10 +131,13 @@
     "board",
     "agent",
     "memory",
-    "wait"
+    "wait",
+    "web_search",
+    "web_fetch"
    ],
    "skills": [
     "team-protocol",
+    "toolbox",
     "tiktok-playbook",
     "engagement-loop",
     "human-pacing"
@@ -146,6 +166,7 @@
    ],
    "skills": [
     "team-protocol",
+    "toolbox",
     "tiktok-playbook",
     "screen-routines",
     "human-pacing"
@@ -164,10 +185,13 @@
     "load_skill",
     "execute_python",
     "notify",
-    "engage"
+    "engage",
+    "web_fetch",
+    "datetime"
    ],
    "skills": [
     "team-protocol",
+    "toolbox",
     "tiktok-playbook"
    ],
    "usesScreen": false
@@ -327,6 +351,7 @@
   "tiktok-playbook",
   "tiktok-script",
   "tiktok-video-publishing",
+  "toolbox",
   "trend-jacking"
  ],
  "mcps": [],

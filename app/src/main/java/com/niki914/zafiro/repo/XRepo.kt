@@ -270,6 +270,19 @@ object XRepo {
             McpServer("Supabase", "https://mcp.supabase.com/mcp", enabled = false),
             McpServer("Hugging Face", "https://huggingface.co/mcp", enabled = false),
             McpServer("Exa Search", "https://mcp.exa.ai/mcp", enabled = false),
+            // Aimed at social growth, content creation, research and SEO. Addresses are from provider docs but UNVERIFIED from here.
+            McpServer("Metricool", "https://ai.metricool.com/mcp", enabled = false), // social analytics and scheduling
+            McpServer("Higgsfield", "https://mcp.higgsfield.ai/mcp", enabled = false), // AI image and video generation
+            McpServer("HeyGen", "https://mcp.heygen.com/mcp/v1/", enabled = false), // AI avatar videos
+            McpServer("Tavily Search", "https://mcp.tavily.com/mcp/", enabled = false), // web research (needs key)
+            McpServer("Apify", "https://mcp.apify.com", enabled = false), // scrapers for social platforms (needs key)
+            McpServer("Jina Reader", "https://mcp.jina.ai/sse", enabled = false), // page reading and search
+            McpServer("fal.ai", "https://mcp.fal.ai/mcp", enabled = false), // image and video models (needs key)
+            McpServer("Replicate", "https://mcp.replicate.com/sse", enabled = false), // image and video models (needs key)
+            McpServer("Ahrefs", "https://api.ahrefs.com/mcp/mcp", enabled = false), // SEO and keywords
+            McpServer("Semrush", "https://mcp.semrush.com/v1/mcp", enabled = false), // SEO and competitors
+            McpServer("Slack", "https://mcp.slack.com/mcp", enabled = false), // team chat
+            McpServer("Webflow", "https://mcp.webflow.com/sse", enabled = false), // website content
         ).filter { it.name !in offered }
         if (defaults.isEmpty()) return
         updateJsonOrFalse(StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID) { json ->

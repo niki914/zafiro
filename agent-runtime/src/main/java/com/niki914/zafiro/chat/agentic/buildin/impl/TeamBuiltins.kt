@@ -61,3 +61,11 @@ class ExamplesBuiltin : TeamForwardBuiltin(
         "op=add (platform, verdict=GOOD|BAD, text, reason) stores one. op=correct (platform, text, reason) records an owner correction as a BAD example and a standing rule, in one step.",
     inputSchemaJson = """{"type":"object","properties":{"op":{"type":"string","enum":["list","add","correct","remove"]},"id":{"type":"number"},"platform":{"type":"string"},"verdict":{"type":"string"},"kind":{"type":"string"},"text":{"type":"string"},"reason":{"type":"string"}},"required":["op"]}""",
 )
+
+/** Lets an agent schedule its own follow-ups and recurring jobs; the owner sees them under Manage and reset. */
+class ScheduleBuiltin : TeamForwardBuiltin(
+    name = "schedule",
+    description = "Manage scheduled tasks you create yourself. op=create (name, prompt, trigger=DAILY|WEEKLY|INTERVAL|ONCE, time=HH:mm, days=MON,WED, interval_minutes>=15, once_at=2026-11-16T09:30, agent=<agent id, optional>, max_steps, max_minutes) " +
+        "runs the prompt later on its own. op=list shows all tasks. op=enable|disable|delete (id) only work on tasks made by agents. Write the prompt so it works with no other context.",
+    inputSchemaJson = """{"type":"object","properties":{"op":{"type":"string","enum":["list","create","enable","disable","delete"]},"id":{"type":"string"},"name":{"type":"string"},"prompt":{"type":"string"},"trigger":{"type":"string"},"time":{"type":"string"},"days":{"type":"string"},"interval_minutes":{"type":"number"},"once_at":{"type":"string"},"agent":{"type":"string"},"max_steps":{"type":"number"},"max_minutes":{"type":"number"}},"required":["op"]}""",
+)

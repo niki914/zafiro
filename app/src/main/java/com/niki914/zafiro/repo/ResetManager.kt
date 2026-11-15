@@ -27,7 +27,7 @@ enum class ResetKind(val title: String, val summary: String) {
 object ResetManager {
     private val BUNDLED_MCP = setOf(
         "DeepWiki", "Context7", "Microsoft Learn", "Cloudflare Docs", "Notion", "Linear", "GitHub", "Sentry", "Asana", "Atlassian", "Canva",
-        "Figma", "Stripe", "PayPal", "Square", "Vercel", "Supabase", "Hugging Face", "Exa Search",
+        "Figma", "Stripe", "Metricool", "Higgsfield", "HeyGen", "Tavily Search", "Apify", "Jina Reader", "fal.ai", "Replicate", "Ahrefs", "Semrush", "Slack", "Webflow", "PayPal", "Square", "Vercel", "Supabase", "Hugging Face", "Exa Search",
     )
 
     suspend fun reset(context: Context, kinds: Set<ResetKind>): String = withContext(Dispatchers.IO) {
