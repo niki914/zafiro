@@ -441,6 +441,8 @@
     <string name="ui_tool_display_screen_operation_accessibility">Screen Operation</string>
     <string name="ui_tool_display_screen_operation_shell">Screen Operation</string>
     <string name="ui_tool_display_screenshot">Screenshot</string>
+    <string name="ui_tool_display_phone_use">Phone Use</string>
+    <string name="ui_tool_display_open">Open</string>
     <string name="ui_tool_display_view_image">View Image</string>
     <string name="ui_tool_display_py_meta_tools">Custom Python Tool</string>
     <string name="dialog_cancel">Cancel</string>
