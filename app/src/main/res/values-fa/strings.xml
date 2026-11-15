@@ -231,6 +231,36 @@
     <string name="ui_settings_configure_error_proxy_invalid">نشانی پروکسی یک URI معتبر نیست</string>
     <string name="ui_settings_mcp_config">پیکربندی MCP</string>
 
+    <!-- Context Injection -->
+    <string name="ui_settings_context_injection">تزریق زمینه</string>
+    <string name="ui_settings_context_injection_summary">پیوست زمان، وضعیت دستگاه و محتوای سفارشی به پیام‌ها</string>
+    <string name="ui_settings_env_context_description">زمینه کنونی را در هر نوبت به پیام‌های کاربر پیوست می‌کند. قرار دادن داده‌های متغیر در پرامپت سیستم کش پرامپت مدل را باطل کرده و هزینه‌ها را افزایش می‌دهد.</string>
+    <string name="ui_settings_env_context_master_toggle">فعال‌سازی تزریق زمینه</string>
+    <string name="ui_settings_env_context_master_summary">اجازه دادن به ارسال زمان، اطلاعات دستگاه و محتوای سفارشی به مدل</string>
+    <string name="ui_settings_env_context_group_builtin">متغیرهای درون‌ساخت</string>
+    <string name="ui_settings_env_context_key_date">تاریخ</string>
+    <string name="ui_settings_env_context_key_time">زمان</string>
+    <string name="ui_settings_env_context_key_device">وضعیت دستگاه</string>
+    <string name="ui_settings_env_context_group_custom">متغیرهای سفارشی</string>
+    <string name="ui_settings_env_context_empty_custom">متغیر سفارشی وجود ندارد. «+» بالای صفحه را برای افزودن بزنید.</string>
+    <string name="ui_settings_env_context_variable_title_create">افزودن متغیر</string>
+    <string name="ui_settings_env_context_variable_description">افزودن زمینه ایستا به پیام‌ها. نام برای مدیریت است و مدل در هر نوبت محتوای تنظیم‌شده در اینجا را می‌خواند.</string>
+    <string name="ui_settings_env_context_field_name">نام</string>
+    <string name="ui_settings_env_context_field_name_hint">فقط حروف، اعداد، زیرخط و خط تیره</string>
+    <string name="ui_settings_env_context_field_enabled">فعال</string>
+    <string name="ui_settings_env_context_field_content">محتوا</string>
+    <string name="ui_settings_env_context_field_content_hint">متن مورد نظر برای پیوست به پیام‌ها را وارد کنید</string>
+    <string name="ui_settings_env_context_save_action">ذخیره متغیر</string>
+    <string name="ui_settings_env_context_delete_dialog_title">حذف متغیر</string>
+    <string name="ui_settings_env_context_delete_dialog_text">آیا از حذف متغیر «%1$s» مطمئن هستید؟</string>
+    <string name="ui_settings_env_context_error_key_required">نام نمی‌تواند خالی باشد</string>
+    <string name="ui_settings_env_context_error_key_reserved">استفاده از نام‌های رزرو شده مجاز نیست: date, time, device</string>
+    <string name="ui_settings_env_context_error_key_duplicate">این نام قبلاً استفاده شده است، نام دیگری انتخاب کنید</string>
+    <string name="ui_settings_env_context_error_key_invalid_format">قالب نام نامعتبر است. فقط حروف، اعداد، خط تیره و زیرخط مجاز هستند</string>
+    <string name="ui_settings_env_context_error_value_required">محتوا نمی‌تواند خالی باشد</string>
+    <string name="ui_settings_env_context_error_save_failed">ذخیره نشد: %1$s</string>
+    <string name="ui_settings_env_context_error_delete_failed">حذف نشد: %1$s</string>
+
     <!-- Memory Module -->
     <string name="memory_page_description">خاطره‌ها را مدیریت کنید. برای حذف به چپ یا راست بکشید و برای ویرایش بزنید. پس از افزودن، Agent حتی در گفتگوی تازه آن‌ها را به یاد دارد.</string>
     <string name="memory_page_empty_description">خاطره‌ای ذخیره نشده است. دکمه افزودن بالای صفحه را بزنید تا اولین خاطره را اضافه کنید.</string>

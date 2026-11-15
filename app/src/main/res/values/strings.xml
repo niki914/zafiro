@@ -229,6 +229,36 @@
     <string name="ui_settings_configure_error_proxy_invalid">代理地址不是合法 URI</string>
     <string name="ui_settings_mcp_config">MCP 配置</string>
 
+    <!-- Context Injection -->
+    <string name="ui_settings_context_injection">上下文注入</string>
+    <string name="ui_settings_context_injection_summary">随消息附带时间、设备状态及自定义内容</string>
+    <string name="ui_settings_env_context_description">每轮随用户消息附带当前上下文。若将其直接置于系统提示词中，频繁变化的内容会破坏模型缓存命中并导致费用提高。</string>
+    <string name="ui_settings_env_context_master_toggle">启用上下文注入</string>
+    <string name="ui_settings_env_context_master_summary">允许将时间、设备信息与自定义内容提供给模型</string>
+    <string name="ui_settings_env_context_group_builtin">内置变量</string>
+    <string name="ui_settings_env_context_key_date">日期</string>
+    <string name="ui_settings_env_context_key_time">时间</string>
+    <string name="ui_settings_env_context_key_device">设备状态</string>
+    <string name="ui_settings_env_context_group_custom">自定义变量</string>
+    <string name="ui_settings_env_context_empty_custom">暂无自定义变量。点击右上角「+」添加。</string>
+    <string name="ui_settings_env_context_variable_title_create">添加变量</string>
+    <string name="ui_settings_env_context_variable_description">添加随消息附带的静态上下文。名称用于管理标识，模型在每轮对话中将读取此处配置的内容。</string>
+    <string name="ui_settings_env_context_field_name">名称</string>
+    <string name="ui_settings_env_context_field_name_hint">仅支持字母、数字、下划线及短横线</string>
+    <string name="ui_settings_env_context_field_enabled">开启</string>
+    <string name="ui_settings_env_context_field_content">内容</string>
+    <string name="ui_settings_env_context_field_content_hint">输入要随消息附带的文本</string>
+    <string name="ui_settings_env_context_save_action">保存变量</string>
+    <string name="ui_settings_env_context_delete_dialog_title">删除变量</string>
+    <string name="ui_settings_env_context_delete_dialog_text">确定要删除变量「%1$s」吗？</string>
+    <string name="ui_settings_env_context_error_key_required">名称不能为空</string>
+    <string name="ui_settings_env_context_error_key_reserved">不可使用系统保留名称：date、time、device</string>
+    <string name="ui_settings_env_context_error_key_duplicate">该名称已存在，请更换</string>
+    <string name="ui_settings_env_context_error_key_invalid_format">名称格式不合法，仅支持字母、数字、下划线及短横线</string>
+    <string name="ui_settings_env_context_error_value_required">内容不能为空</string>
+    <string name="ui_settings_env_context_error_save_failed">保存失败：%1$s</string>
+    <string name="ui_settings_env_context_error_delete_failed">删除失败：%1$s</string>
+
     <!-- Memory Module -->
     <string name="memory_page_description">管理记忆，你可以通过左右滑动来删除、点击来编辑单条记忆。添加后，Agent 会记得这些内容，即使是新的对话。</string>
     <string name="memory_page_empty_description">当前没有保存的记忆。点击右上方添加第一条记忆。</string>
