@@ -65,6 +65,9 @@ internal class VirtualDisplayScreen(
     }
 
     override suspend fun show(target: ShowTarget): ShowResult {
+        access.prepare(PhoneScreenAccess.Need.OpenApp)?.let { denied ->
+            return ShowResult.Failed(denied.code)
+        }
         return when (target) {
             is ShowTarget.PackageName -> launch(target.packageName)
             is ShowTarget.AppName -> when (val match = AppInfoProvider.cache().findByAppName(target.name)) {

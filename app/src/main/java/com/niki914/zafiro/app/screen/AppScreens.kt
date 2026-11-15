@@ -118,6 +118,9 @@ class PhoneDisplayScreen(
     }
 
     override suspend fun show(target: ShowTarget): ShowResult {
+        access.prepare(PhoneScreenAccess.Need.OpenApp)?.let { denied ->
+            return ShowResult.Failed(denied.code)
+        }
         return when (target) {
             is ShowTarget.AppName -> AppLauncher.launch(packageName = null, appName = target.name)
             is ShowTarget.PackageName -> AppLauncher.launch(packageName = target.packageName, appName = null)
@@ -132,7 +135,8 @@ class PhoneDisplayScreen(
 object AppScreens : Screens {
     private const val TAG = "niki914_zafiro_AppScreens"
 
-    private val phone = PhoneDisplayScreen()
+    private val access = PhoneScreenAccess()
+    private val phone = PhoneDisplayScreen(access = access)
     private val gate = Mutex()
     private val cardScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -180,11 +184,8 @@ object AppScreens : Screens {
 
     private suspend fun openVirtual(): OpenResult {
         virtual?.let { return OpenResult.Opened(it.info()) }
-        if (!permissionGranted(Permission.ACCESSIBILITY)) {
-            return OpenResult.Rejected("ACCESSIBILITY_UNAVAILABLE")
-        }
-        if (!waitForDriverConnected { SystemAccessibilityDriver.isConnected }) {
-            return OpenResult.Rejected("ACCESSIBILITY_UNAVAILABLE")
+        access.prepare(PhoneScreenAccess.Need.VirtualDisplay)?.let { denied ->
+            return OpenResult.Rejected(denied.code)
         }
         if (!permissionGranted(Permission.OVERLAY)) {
             return OpenResult.Rejected("DISPLAY_FAILED")
@@ -202,7 +203,7 @@ object AppScreens : Screens {
                 vdController.close()
                 return@runCatchingCancellable OpenResult.Rejected("DISPLAY_FAILED")
             }
-            val screen = VirtualDisplayScreen(frames, vdController)
+            val screen = VirtualDisplayScreen(frames, vdController, access)
             if (!VirtualDisplayCard.show(screen.preview())) {
                 vdController.release(frames.displayId)
                 screen.closeLocal()
