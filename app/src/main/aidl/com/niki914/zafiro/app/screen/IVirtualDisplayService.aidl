@@ -1,9 +1,12 @@
 package com.niki914.zafiro.app.screen;
 
+import android.os.IBinder;
 import android.view.Surface;
 
 /** 跑在 Shizuku 进程里的虚拟屏。点击和截图不经过这里。 */
 interface IVirtualDisplayService {
+    void registerClient(IBinder token);
+
     int createVirtualDisplay(in Surface surface, int width, int height, int dpi);
 
     void releaseDisplay(int displayId);
