@@ -23,6 +23,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.viewinterop.AndroidView
@@ -64,30 +67,6 @@ internal fun plainReason(state: String, reason: String?, error: String?): String
 }
 
 // ------------------------------------------------------------------------------------------------ Workspaces
-
-@Composable
-fun WorkspacesPageContent() {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val defs = remember { WorkspaceManager.defs(context) }
-    val states by AutonomyGraph.require().repo.teamDao().observeWorkspaces().collectAsState(initial = emptyList())
-    val on = states.filter { it.enabled }.map { it.id }.toSet()
-    val s = spec(
-        "Each workspace is a ready-made team for one platform: agents with roles, scheduled tasks, skills, rules and screen routines. Switch one on and it works day and night until you switch it off. Start with the platforms you actually use.",
-        section("Workspaces", defs.map { d ->
-            SettingsRowSpec.Toggle(id = d.id, title = d.name, summary = "${d.agents.size} agents · ${d.tasks.size} tasks · ${d.summary.substringAfter(": ", d.summary).take(80)}", checked = d.id in on)
-        }),
-    )
-    SettingsSpecPageContent(spec = s, onAction = { a ->
-        if (a is SettingsRowAction.ToggleChanged) {
-            val def = defs.firstOrNull { it.id == a.id } ?: return@SettingsSpecPageContent
-            scope.launch {
-                val msg = runCatching { WorkspaceManager.setEnabled(context, def, a.checked) }.getOrElse { "Could not switch ${def.name}: ${it.message}" }
-                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-            }
-        }
-    })
-}
 
 // ------------------------------------------------------------------------------------------------ Dashboard
 
@@ -207,19 +186,18 @@ fun FileViewPageContent(relative: String, onDeleted: () -> Unit) {
         Text(file.name, style = androidx.compose.material3.MaterialTheme.typography.titleMedium, maxLines = 1, modifier = Modifier.padding(start = 72.dp, end = 16.dp, top = 12.dp, bottom = 8.dp))
         Column(Modifier.weight(1f).fillMaxSize()) {
             when {
-                ext == "html" || ext == "htm" -> AndroidView(
-                    modifier = Modifier.fillMaxSize(),
-                    factory = { c -> android.webkit.WebView(c).apply { settings.javaScriptEnabled = false; loadDataWithBaseURL(null, file.readText(), "text/html", "utf-8", null) } },
-                )
+                ext == "html" || ext == "htm" -> WebBlock(file.readText())
+                ext == "svg" -> WebBlock("<html><body style='margin:0;background:#fff'>" + file.readText() + "</body></html>")
                 ext == "md" || ext == "markdown" -> Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) { Markdown(content = file.readText(), typography = md) }
-                isImage(file.name) -> AndroidView(
-                    modifier = Modifier.fillMaxSize(),
-                    factory = { c -> android.widget.ImageView(c).apply { setImageURI(uri); adjustViewBounds = true } },
-                )
-                isTextLike(file.name) -> Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
-                    androidx.compose.foundation.text.selection.SelectionContainer { Text(file.readText().take(200_000), style = androidx.compose.material3.MaterialTheme.typography.bodySmall) }
-                }
-                else -> Text("This file type opens in another app. Tap \"Open with\".", modifier = Modifier.padding(24.dp))
+                isImage(file.name) -> AndroidView(modifier = Modifier.fillMaxSize(), factory = { c -> android.widget.ImageView(c).apply { setImageURI(uri); adjustViewBounds = true } })
+                ext == "pdf" -> PdfPages(file)
+                ext in MEDIA_EXT -> MediaBlock(uri, audio = ext in AUDIO_EXT)
+                ext == "csv" || ext == "tsv" -> CsvTable(file.readText())
+                ext == "json" -> TextBlock(runCatching { kotlinx.serialization.json.Json { prettyPrint = true }.let { j -> j.encodeToString(kotlinx.serialization.json.JsonElement.serializer(), j.parseToJsonElement(file.readText())) } }.getOrElse { file.readText() })
+                ext in OFFICE_EXT -> TextBlock(FileText.office(file) ?: FileText.bytesPreview(file))
+                ext in ARCHIVE_EXT -> TextBlock(FileText.archiveListing(file)?.joinToString("\n") ?: FileText.bytesPreview(file))
+                isTextLike(file.name) -> TextBlock(file.readText().take(200_000))
+                else -> TextBlock(FileText.bytesPreview(file))
             }
         }
         androidx.compose.material3.Surface(tonalElevation = 3.dp) {
@@ -233,6 +211,78 @@ fun FileViewPageContent(relative: String, onDeleted: () -> Unit) {
                 }) { Text("Open with") }
                 OutlinedButton(modifier = Modifier.weight(1f).height(52.dp), onClick = { if (file.delete()) onDeleted() }) { Text("Delete") }
             }
+        }
+    }
+}
+
+
+private val AUDIO_EXT = setOf("mp3", "m4a", "wav", "ogg", "aac", "flac", "opus")
+private val MEDIA_EXT = AUDIO_EXT + setOf("mp4", "3gp", "webm", "mkv", "mov")
+private val OFFICE_EXT = setOf("docx", "xlsx", "pptx", "odt", "ods", "odp")
+private val ARCHIVE_EXT = setOf("zip", "apk", "jar", "aar")
+
+@Composable
+private fun TextBlock(text: String) {
+    Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
+        androidx.compose.foundation.text.selection.SelectionContainer { Text(text, style = androidx.compose.material3.MaterialTheme.typography.bodyMedium) }
+    }
+}
+
+@Composable
+private fun WebBlock(html: String) {
+    AndroidView(modifier = Modifier.fillMaxSize(), factory = { c ->
+        android.webkit.WebView(c).apply { settings.javaScriptEnabled = false; loadDataWithBaseURL(null, html, "text/html", "utf-8", null) }
+    })
+}
+
+@Composable
+private fun CsvTable(text: String) {
+    val rows = remember(text) { FileText.csvRows(text) }
+    androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
+        itemsIndexed(rows) { i, r ->
+            androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                r.forEach { cell -> Text(cell, modifier = Modifier.weight(1f).padding(horizontal = 4.dp), style = if (i == 0) androidx.compose.material3.MaterialTheme.typography.labelLarge else androidx.compose.material3.MaterialTheme.typography.bodySmall, maxLines = 4) }
+            }
+            androidx.compose.material3.HorizontalDivider()
+        }
+    }
+}
+
+@Composable
+private fun MediaBlock(uri: android.net.Uri, audio: Boolean) {
+    AndroidView(modifier = Modifier.fillMaxSize(), factory = { c ->
+        android.widget.VideoView(c).apply {
+            val mc = android.widget.MediaController(c).also { it.setAnchorView(this) }
+            setMediaController(mc); setVideoURI(uri); setOnPreparedListener { start() }
+        }
+    })
+}
+
+/** Renders PDF pages to bitmaps one at a time, so a long document never sits in memory whole. */
+@Composable
+private fun PdfPages(file: File) {
+    val context = LocalContext.current
+    val widthPx = context.resources.displayMetrics.widthPixels
+    val renderer = remember(file) { runCatching { android.graphics.pdf.PdfRenderer(android.os.ParcelFileDescriptor.open(file, android.os.ParcelFileDescriptor.MODE_READ_ONLY)) }.getOrNull() }
+    androidx.compose.runtime.DisposableEffect(renderer) { onDispose { runCatching { renderer?.close() } } }
+    if (renderer == null) { Text("This PDF could not be opened.", Modifier.padding(24.dp)); return }
+    val lock = remember { Any() }
+    androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxSize()) {
+        items(renderer.pageCount) { i ->
+            val bmp by produceState<android.graphics.Bitmap?>(null, i) {
+                value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    synchronized(lock) {
+                        runCatching {
+                            renderer.openPage(i).use { p ->
+                                val h = (widthPx.toFloat() * p.height / p.width).toInt()
+                                android.graphics.Bitmap.createBitmap(widthPx, h, android.graphics.Bitmap.Config.ARGB_8888).also { b -> b.eraseColor(android.graphics.Color.WHITE); p.render(b, null, null, android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY) }
+                            }
+                        }.getOrNull()
+                    }
+                }
+            }
+            bmp?.let { androidx.compose.foundation.Image(it.asImageBitmap(), contentDescription = "Page ${i + 1}", modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) }
+                ?: androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().height(400.dp))
         }
     }
 }

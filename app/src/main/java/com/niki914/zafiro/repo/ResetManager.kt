@@ -17,7 +17,10 @@ enum class ResetKind(val title: String, val summary: String) {
     AGENTS("Custom agents", "Agents you or an agent created (workspace agents are kept)"),
     WORKSPACES("Workspace teams", "Uninstalls every workspace's agents and tasks and switches them off; they come back when you switch one on again"),
     SKILLS("Custom skills", "Skills that did not come with the app"),
+    ALL_SKILLS("ALL skills", "Every skill, including the ones that came with the app"),
     MCP("Custom MCP servers", "MCP servers that did not come with the app, and saved sign-ins"),
+    ALL_MCP("ALL MCP servers", "Every MCP server, including the ones that came with the app"),
+    DELETE_WORKSPACES("Delete workspaces for good", "Removes every default workspace from the list (Restore deleted brings them back)"),
     MEMORY_MAIN("Main memory", "Everything Zafiro remembered about you and your work"),
     MEMORY_AGENTS("Agent memories", "What each agent remembers"),
     TEAM_DATA("Team data", "Board, action log, approvals history, examples and run history"),
@@ -43,6 +46,10 @@ object ResetManager {
             }
             done += "workspaces"
         }
+        if (ResetKind.DELETE_WORKSPACES in kinds) {
+            WorkspaceManager.defs(context).forEach { runCatching { WorkspaceManager.delete(context, it) } }
+            done += "workspaces deleted"
+        }
         if (ResetKind.TASKS in kinds) {
             repo.tasks().filter { it.workspaceId.isEmpty() || it.workspaceId.startsWith("legacy:") }.forEach { repo.deleteTask(it.id) }
             done += "tasks"
@@ -55,15 +62,15 @@ object ResetManager {
             dao.clearBoard(); dao.clearActions(); dao.clearExamples(); dao.clearTiers(); dao.clearRunEvents(); dao.clearFinishedRuns()
             done += "team data"
         }
-        if (ResetKind.SKILLS in kinds) {
-            val bundled = context.assets.list("skills").orEmpty().toSet()
+        if (ResetKind.SKILLS in kinds || ResetKind.ALL_SKILLS in kinds) {
+            val bundled = if (ResetKind.ALL_SKILLS in kinds) emptySet() else context.assets.list("skills").orEmpty().toSet()
             XRepo.skills.listAll().filter { it.id !in bundled }.forEach { runCatching { XRepo.skills.delete(it.id) } }
             done += "skills"
         }
-        if (ResetKind.MCP in kinds) {
+        if (ResetKind.MCP in kinds || ResetKind.ALL_MCP in kinds) {
             XRepo.updateJsonOrFalse(StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID) { json ->
                 val servers = McpSettingsCodec.parseServers(json)
-                McpSettingsCodec.encodeServers(servers.filter { it.name in BUNDLED_MCP })
+                McpSettingsCodec.encodeServers(if (ResetKind.ALL_MCP in kinds) emptyList() else servers.filter { it.name in BUNDLED_MCP })
             }
             File(context.filesDir, "settings/mcp_oauth.json").delete()
             done += "MCP servers"

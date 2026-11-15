@@ -6,7 +6,7 @@ import com.niki914.zafiro.app.ui.content.AgentsPageContent
 import com.niki914.zafiro.app.ui.content.DashboardPageContent
 import com.niki914.zafiro.app.ui.content.FileViewPageContent
 import com.niki914.zafiro.app.ui.content.FilesPageContent
-import com.niki914.zafiro.app.ui.content.WorkspacesPageContent
+import com.niki914.zafiro.app.ui.content.WorkspacesVisualContent
 import com.niki914.zafiro.app.ui.nav.DashboardPage
 import com.niki914.zafiro.app.ui.nav.FileViewPage
 import com.niki914.zafiro.app.ui.nav.FilesPage
@@ -238,7 +238,7 @@ fun ZafiroPageContent(
 
         ManagePage -> com.niki914.zafiro.app.ui.content.ManagePageContent()
 
-        WorkspacesPage -> WorkspacesPageContent()
+        WorkspacesPage -> WorkspacesVisualContent()
 
         FilesPage -> FilesPageContent(onOpen = { onPush(FileViewPage(it)) })
 

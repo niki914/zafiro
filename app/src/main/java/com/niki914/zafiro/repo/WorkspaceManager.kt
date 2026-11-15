@@ -17,7 +17,27 @@ object WorkspaceManager {
     private const val TAG = "WorkspaceManager"
     @Volatile private var cache: List<WorkspaceDef>? = null
 
-    fun defs(context: Context): List<WorkspaceDef> = cache ?: synchronized(this) {
+    private fun deletedFile(context: Context) = File(context.filesDir, "settings/workspaces_deleted.txt")
+
+    fun deletedIds(context: Context): Set<String> = runCatching { deletedFile(context).readLines().map { it.trim() }.filter { it.isNotEmpty() }.toSet() }.getOrDefault(emptySet())
+
+    /** Workspaces that ship with the app and are not deleted by the owner. */
+    fun defs(context: Context): List<WorkspaceDef> = allDefs(context).filter { it.id !in deletedIds(context) }
+
+    /** Removes a workspace for good (its agents, tasks and state), even a default one; "Restore deleted" brings it back. */
+    suspend fun delete(context: Context, def: WorkspaceDef) = withContext(Dispatchers.IO) {
+        val graph = AutonomyGraph.require(); val repo = graph.repo; val dao = repo.teamDao()
+        dao.agentsOfWorkspace(def.id).forEach { repo.deleteAgent(it.id) }
+        dao.tasksOfWorkspace(def.id).forEach { repo.deleteTask(it.id) }
+        dao.deleteWorkspace(def.id)
+        val f = deletedFile(context).also { it.parentFile?.mkdirs() }
+        f.writeText((deletedIds(context) + def.id).joinToString("\n"))
+        graph.scheduler.reconcile("workspace_deleted")
+    }
+
+    fun restoreDeleted(context: Context) { deletedFile(context).delete() }
+
+    private fun allDefs(context: Context): List<WorkspaceDef> = cache ?: synchronized(this) {
         cache ?: (context.assets.list("workspaces").orEmpty().filter { it.endsWith(".json") }.sorted().mapNotNull { name ->
             runCatching { WorkspaceDef.parse(context.assets.open("workspaces/$name").bufferedReader().readText()) }
                 .onFailure { Logger.w(TAG, "bad bundled workspace $name: ${it.message}") }.getOrNull()

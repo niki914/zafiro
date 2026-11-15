@@ -129,7 +129,8 @@ private fun MemorySettingsContentBody(
                 uiState.items.forEachIndexed { index, item ->
                     key(index to item) {
                         SwipeDismissSettingsItemCard(
-                            title = item,
+                            title = com.niki914.zafiro.repo.MemoryTitle.of(item),
+                            summary = item,
                             enabled = !uiState.isSaving,
                             onClick = {
                                 onStartEdit(index)

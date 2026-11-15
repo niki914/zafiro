@@ -37,6 +37,7 @@ import com.niki914.zafiro.app.ui.nav.ZafiroPage
  * General Settings：悬浮与通知、对话与交互 2 个分组。
  * 容器使用 SettingsSpecPageContent + GroupedCard，开关状态由 ViewModel 驱动。
  */
+private const val MANAGE_ROW_ID = "general.manage"
 private const val VOICE_ROW_ID = "general.voice"
 private const val FLOATING_BALL_NAV_ROW_ID = "general.floating_ball_nav"
 private const val RESIDENT_NOTIFICATION_ROW_ID = "general.resident_notification"
@@ -80,6 +81,11 @@ fun GeneralSettingsContent(
                 title = stringResource(R.string.ui_settings_general_group_floating_notification),
                 layout = SettingsSectionLayout.GroupedCard,
                 rows = listOf(
+                    SettingsRowSpec.Navigation(
+                        id = MANAGE_ROW_ID,
+                        title = "Manage and reset",
+                        summary = "Delete anything, or reset the app",
+                    ),
                     SettingsRowSpec.Navigation(
                         id = VOICE_ROW_ID,
                         title = "Voice input",
@@ -158,6 +164,7 @@ fun GeneralSettingsContent(
                     when (action.id) {
                         FLOATING_BALL_NAV_ROW_ID -> onPush(FloatingBallSettingsPage)
                         VOICE_ROW_ID -> showVoice = true
+                        MANAGE_ROW_ID -> onPush(com.niki914.zafiro.app.ui.nav.ManagePage)
                         DEVICE_ADMIN_ROW_ID -> {
                             if (adminActive) {
                                 runCatching { dpm?.removeActiveAdmin(adminComponent) }

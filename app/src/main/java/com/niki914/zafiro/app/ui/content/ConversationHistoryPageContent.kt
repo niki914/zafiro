@@ -370,13 +370,16 @@ private fun ConversationHistoryListContent(
             if (!isSearchingActive && !selecting) {
                 item(key = "tasks_entry", contentType = "tasks_entry") {
                     HistoryMenuEntry(Icons.Default.Add, stringResource(R.string.sidebar_new_chat), null, onNewChat)
-                    HistoryMenuEntry(Icons.Default.Schedule, stringResource(R.string.tasks_entry_title), stringResource(R.string.tasks_entry_summary), onOpenTasks)
-                    HistoryMenuEntry(Icons.Default.Dashboard, stringResource(R.string.dashboard_entry_title), stringResource(R.string.dashboard_entry_summary), onClick = { onOpenFeature("dashboard") })
-                    HistoryMenuEntry(Icons.Default.Groups, stringResource(R.string.workspaces_entry_title), stringResource(R.string.workspaces_entry_summary), onClick = { onOpenFeature("workspaces") })
-                    HistoryMenuEntry(Icons.Default.SmartToy, stringResource(R.string.agents_entry_title), stringResource(R.string.agents_entry_summary), onOpenAgents)
-                    HistoryMenuEntry(Icons.Default.Settings, stringResource(R.string.manage_entry_title), stringResource(R.string.manage_entry_summary), onClick = { onOpenFeature("manage") })
-                    HistoryMenuEntry(Icons.Default.Folder, stringResource(R.string.files_entry_title), stringResource(R.string.files_entry_summary), onClick = { onOpenFeature("files") })
-                    HistoryMenuEntry(Icons.Default.Settings, stringResource(R.string.ui_settings_menu_entry), stringResource(R.string.sidebar_settings_summary), onOpenSettings)
+                    HistoryMenuTiles(
+                        listOf(
+                            MenuTileSpec(Icons.Default.Dashboard, "Dashboard") { onOpenFeature("dashboard") },
+                            MenuTileSpec(Icons.Default.Groups, "Teams") { onOpenFeature("workspaces") },
+                            MenuTileSpec(Icons.Default.SmartToy, "Agents", onOpenAgents),
+                            MenuTileSpec(Icons.Default.Schedule, "Tasks", onOpenTasks),
+                            MenuTileSpec(Icons.Default.Folder, "Files") { onOpenFeature("files") },
+                            MenuTileSpec(Icons.Default.Settings, "Settings", onOpenSettings),
+                        ),
+                    )
                 }
             }
             if (isSearchingActive && sections.isEmpty() && !isSearching) {

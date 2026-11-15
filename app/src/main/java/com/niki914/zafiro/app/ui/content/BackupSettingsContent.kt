@@ -165,10 +165,38 @@ fun BackupSettingsContent(
         }
     }
 
+    // FULL backup: one zip with settings, MCP servers, memory, skills, agents, tasks, workspaces, saved files and chats.
+    val fullSave = androidx.activity.compose.rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null) scope.launch {
+            runCatching { com.niki914.zafiro.backup.BackupManager.create(context, uri) }
+                .onSuccess { android.widget.Toast.makeText(context, "Full backup saved (${it.fileCount} files)", android.widget.Toast.LENGTH_LONG).show() }
+                .onFailure { android.widget.Toast.makeText(context, "Backup failed: ${it.message}", android.widget.Toast.LENGTH_LONG).show() }
+        }
+    }
+    var fullStaged by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<com.niki914.zafiro.backup.BackupArchive.Summary?>(null) }
+    val fullPick = androidx.activity.compose.rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            runCatching { com.niki914.zafiro.backup.BackupManager.stageRestore(context, uri) }
+                .onSuccess { fullStaged = it }
+                .onFailure { android.widget.Toast.makeText(context, "Not a valid full backup: ${it.message}", android.widget.Toast.LENGTH_LONG).show() }
+        }
+    }
+    fullStaged?.let { st ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { com.niki914.zafiro.backup.BackupManager.cancelStagedRestore(context); fullStaged = null },
+            title = { androidx.compose.material3.Text("Restore full backup?") },
+            text = { androidx.compose.material3.Text("${st.fileCount} files from version ${st.appVersion.ifBlank { "?" }}. Everything now on this phone is replaced. The app restarts.") },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = { fullStaged = null; AppRelaunch.schedule(context) }) { androidx.compose.material3.Text("Restore") } },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { com.niki914.zafiro.backup.BackupManager.cancelStagedRestore(context); fullStaged = null }) { androidx.compose.material3.Text("Cancel") } },
+        )
+    }
+
     BackupSettingsPage(
         onAction = { action ->
             if (action !is SettingsRowAction.Navigate) return@BackupSettingsPage
             when (action.id) {
+                FULL_EXPORT_ID -> fullSave.launch(com.niki914.zafiro.backup.BackupManager.suggestedFileName())
+                FULL_IMPORT_ID -> fullPick.launch(arrayOf("application/zip", "application/octet-stream"))
                 EXPORT_ROW_ID -> viewModel.sendIntent(BackupSettingsIntent.OpenExport)
                 IMPORT_ROW_ID -> viewModel.sendIntent(BackupSettingsIntent.OpenImport)
             }
@@ -209,6 +237,9 @@ private suspend fun copyFileToUri(context: Context, file: File, uri: Uri): Strin
     }
 }
 
+private const val FULL_EXPORT_ID = "backup.full_export"
+private const val FULL_IMPORT_ID = "backup.full_import"
+
 @Composable
 private fun BackupSettingsPage(
     onAction: (SettingsRowAction) -> Unit,
@@ -229,6 +260,14 @@ private fun BackupSettingsPage(
                         title = stringResource(R.string.ui_settings_backup_import),
                         summary = stringResource(R.string.ui_settings_backup_import_summary),
                     ),
+                ),
+            ),
+            SettingsSectionSpec(
+                title = "Full backup",
+                layout = SettingsSectionLayout.GroupedCard,
+                rows = listOf(
+                    SettingsRowSpec.Navigation(id = FULL_EXPORT_ID, title = "Back up everything", summary = "Agents, tasks, workspaces, memory, MCP, skills, files"),
+                    SettingsRowSpec.Navigation(id = FULL_IMPORT_ID, title = "Restore everything"),
                 ),
             ),
         ),

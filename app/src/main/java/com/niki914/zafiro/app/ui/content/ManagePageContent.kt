@@ -45,9 +45,9 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 /** One removable thing in a list: [editable] items can have their text changed, [note] marks things that ship with the app. */
-internal data class ManageItem(val id: String, val title: String, val subtitle: String, val note: String = "", val editable: Boolean = false)
+internal data class ManageItem(val id: String, val title: String, val subtitle: String, val note: String = "", val editable: Boolean = false, val full: String = "")
 
-private val TABS = listOf("Tasks", "Agents", "Skills", "MCP", "Memory", "Files", "Reset")
+private val TABS = listOf("Teams", "Tasks", "Agents", "Skills", "MCP", "Memory", "Files", "Reset")
 
 /** Delete or edit what is stored, in plain words (not file names), and reset the app to its defaults, choosing exactly what goes. */
 @Composable
@@ -58,6 +58,7 @@ fun ManagePageContent() {
             TABS.forEachIndexed { i, t -> Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t) }) }
         }
         when (TABS[tab]) {
+            "Teams" -> TeamsTab()
             "Tasks" -> TasksTab()
             "Agents" -> AgentsTab()
             "Skills" -> SkillsTab()
@@ -67,6 +68,22 @@ fun ManagePageContent() {
             else -> ResetTab()
         }
     }
+}
+
+@Composable
+private fun TeamsTab() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var refresh by remember { mutableStateOf(0) }
+    val items by produceState(emptyList<ManageItem>(), refresh) {
+        value = com.niki914.zafiro.repo.WorkspaceManager.defs(context).map { ManageItem(it.id, it.name, "${it.agents.size} agents, ${it.tasks.size} tasks") }
+    }
+    SelectList(items, "Delete teams", onDelete = { ids ->
+        scope.launch {
+            com.niki914.zafiro.repo.WorkspaceManager.defs(context).filter { it.id in ids }.forEach { com.niki914.zafiro.repo.WorkspaceManager.delete(context, it) }
+            refresh++
+        }
+    })
 }
 
 @Composable
@@ -133,13 +150,13 @@ private fun MemoryTab() {
     val scope = rememberCoroutineScope()
     var refresh by remember { mutableStateOf(0) }
     val items by produceState(emptyList<ManageItem>(), refresh) {
-        val main = XRepo.memory.list().mapIndexed { i, t -> ManageItem("main#$i", t, "Zafiro's main memory", editable = true) }
-        val others = ResetManager.agentMemories(context).map { ManageItem("${it.agent}#${it.index}", it.text.take(160), "Memory of agent ${it.agent}") }
+        val main = XRepo.memory.list().mapIndexed { i, t -> ManageItem("main#$i", com.niki914.zafiro.repo.MemoryTitle.of(t), t.take(110), note = "main", editable = true, full = t) }
+        val others = ResetManager.agentMemories(context).map { ManageItem("${it.agent}#${it.index}", com.niki914.zafiro.repo.MemoryTitle.of(it.text), it.text.take(110), note = it.agent) }
         value = main + others
     }
     var editing by remember { mutableStateOf<ManageItem?>(null) }
     var draft by remember { mutableStateOf("") }
-    SelectList(items, "Delete memories", onEdit = { editing = it; draft = it.title }, onDelete = { ids ->
+    SelectList(items, "Delete memories", onEdit = { editing = it; draft = it.full.ifEmpty { it.title } }, onDelete = { ids ->
         scope.launch {
             // Delete from the highest index down so earlier indexes stay valid.
             ids.sortedByDescending { it.substringAfter('#').toIntOrNull() ?: 0 }.forEach { id ->
