@@ -55,12 +55,11 @@ class McpServiceSettingsViewModel :
         private const val MAX_PORT = RuntimeMcpServiceConfig.MAX_PORT
 
         private val SAFE_BUILTIN_TOOL_ORDER = listOf(
-            "screen_operation_accessibility",
-            "screen_operation_shell",
+            "screen_operation",
+            "open",
+            "screens",
             "screenshot",
-            "launch_app",
             "find_installed_apps",
-            "open_uri",
             "load_skill",
             "notify",
             "view_image",
@@ -68,12 +67,11 @@ class McpServiceSettingsViewModel :
         )
 
         private val TOOL_DISPLAY_INFO = mapOf(
-            "screen_operation_accessibility" to ("Accessibility UI Tree" to "Read UI tree, perform clicks, scrolls, and text input"),
-            "screen_operation_shell" to ("Shell Coordinates" to "Inject taps and swipes using screen pixel coordinates"),
+            "screen_operation" to ("Screen Operation" to "Read one screen and tap, scroll, or type on it"),
+            "open" to ("Open" to "Open an installed app or a URI on one screen"),
+            "screens" to ("Screens" to "List, open, or close screens"),
             "screenshot" to ("Screen Capture" to "Capture screen images for visual inspection"),
-            "launch_app" to ("Launch Application" to "Open installed Android apps by package name"),
             "find_installed_apps" to ("Find Installed Apps" to "Query list of installed packages on device"),
-            "open_uri" to ("Open URI / Deep Link" to "Open web URLs or app deep links via Android Intent"),
             "load_skill" to ("Load Skill" to "Read skill instructions and documentation"),
             "notify" to ("System Notification" to "Post notifications to the Android status bar"),
             "view_image" to ("View Image" to "Read and inspect image files from storage"),

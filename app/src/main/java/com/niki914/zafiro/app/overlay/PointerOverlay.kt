@@ -15,11 +15,10 @@ import com.niki914.zafiro.animation.PointerCurveMath
 import com.niki914.zafiro.animation.PointerCurveMath.MovementMode
 import com.niki914.zafiro.api.util.tryIgnore
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.chat.agentic.accessibility.IPointerOverlay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
-class PointerOverlay : IPointerOverlay {
+class PointerOverlay {
 
     companion object {
         private const val FADE_DURATION_MS = 300L
@@ -40,7 +39,7 @@ class PointerOverlay : IPointerOverlay {
 
     // Mutable state
     @Volatile
-    override var isShowing = false
+    var isShowing = false
         private set
 
     private var curX = 0f
@@ -104,10 +103,10 @@ class PointerOverlay : IPointerOverlay {
     }
 
     // ============================================================
-    // IPointerOverlay
+    // Pointer Animation and Actions
     // ============================================================
 
-    override fun show(x: Float, y: Float) {
+    fun show(x: Float, y: Float) {
         isShowing = true
         handler.post {
             view?.animate()?.cancel()
@@ -122,7 +121,7 @@ class PointerOverlay : IPointerOverlay {
         }
     }
 
-    override fun hide() {
+    fun hide() {
         isShowing = false
         handler.post {
             cancelAutoHide()
@@ -132,7 +131,7 @@ class PointerOverlay : IPointerOverlay {
         }
     }
 
-    override fun keepAlive() {
+    fun keepAlive() {
         handler.post {
             if (isShowing) {
                 scheduleAutoHide()
@@ -140,7 +139,7 @@ class PointerOverlay : IPointerOverlay {
         }
     }
 
-    override fun dispose() {
+    fun dispose() {
         isShowing = false
         handler.post {
             cancelAutoHide()
@@ -155,7 +154,7 @@ class PointerOverlay : IPointerOverlay {
         }
     }
 
-    override suspend fun animateTo(
+    suspend fun animateTo(
         x: Float, y: Float, mode: MovementMode,
     ) {
         if (!attached) return
@@ -173,7 +172,7 @@ class PointerOverlay : IPointerOverlay {
         handler.post { if (isShowing) scheduleAutoHide() }
     }
 
-    override suspend fun showSwipe(
+    suspend fun showSwipe(
         sx: Float, sy: Float, ex: Float, ey: Float, duration: Long,
     ) {
         if (!attached) return
@@ -200,6 +199,28 @@ class PointerOverlay : IPointerOverlay {
         )
         // Override duration to match the requested swipe duration
         animateAlongRaw(swipe, duration)
+        handler.post { if (isShowing) scheduleAutoHide() }
+    }
+
+    /**
+     * 沿直线从起点走到终点，时长由调用方给定。
+     * 调用方已经把指针送到起点，并在同时开始一段相同时长的真实滑动。
+     */
+    suspend fun stroke(
+        x1: Float, y1: Float, x2: Float, y2: Float, durationMs: Long,
+    ) {
+        if (!attached) return
+        isShowing = true
+        handler.post {
+            scheduleAutoHide()
+            view?.animate()?.cancel()
+            view?.alpha = 1f
+        }
+        cancelAnim()
+        val swipe = PointerCurveMath.buildTrajectory(
+            x1, y1, curHeading, x2, y2, MovementMode.TRANSLATE, screenW, screenH,
+        )
+        animateAlongRaw(swipe, durationMs)
         handler.post { if (isShowing) scheduleAutoHide() }
     }
 

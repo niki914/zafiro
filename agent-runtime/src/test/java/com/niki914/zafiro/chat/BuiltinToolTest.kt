@@ -9,11 +9,10 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+// 保护：默认注册表只露出一套屏幕工具，旧的无障碍/启动名字不再进模型的工具列表。
 class BuiltinToolTest {
     @Test
-    fun defaultRegistry_containsExpectedTools() {
-        val registry = BuiltinToolRegistry.default()
-
+    fun defaultRegistry_offersOneScreenSurface() {
         assertEquals(
             listOf(
                 "agent",
@@ -28,10 +27,11 @@ class BuiltinToolTest {
                 "lock_screen",
                 "memory",
                 "notify",
+                "open",
                 "open_uri",
                 "py_meta_tools",
-                "screen_operation_accessibility",
-                "screen_operation_shell",
+                "screen_operation",
+                "screens",
                 "screenshot",
                 "shell",
                 "ssh",
@@ -39,22 +39,16 @@ class BuiltinToolTest {
                 "view_image",
                 "wait",
             ),
-            registry.all().map { it.name }.sorted()
+            BuiltinToolRegistry.default().all().map { it.name }.sorted(),
         )
-        assertEquals("launch_app", registry.find("launch_app")?.name)
-        assertEquals("load_skill", registry.find("load_skill")?.name)
-        assertEquals("memory", registry.find("memory")?.name)
-        assertEquals("notify", registry.find("notify")?.name)
-        assertEquals("open_uri", registry.find("open_uri")?.name)
-        assertEquals("py_meta_tools", registry.find("py_meta_tools")?.name)
-        assertEquals(
-            "screen_operation_accessibility",
-            registry.find("screen_operation_accessibility")?.name
-        )
-        assertEquals("screen_operation_shell", registry.find("screen_operation_shell")?.name)
-        assertEquals("find_installed_apps", registry.find("find_installed_apps")?.name)
-        assertEquals("shell", registry.find("shell")?.name)
-        assertEquals("ssh", registry.find("ssh")?.name)
+    }
+
+    @Test
+    fun screenTools_areDefaultEnabled() {
+        val registry = BuiltinToolRegistry.default()
+        listOf("screen_operation", "screenshot", "open", "screens").forEach { name ->
+            assertEquals(true, registry.find(name)?.defaultEnabled)
+        }
     }
 
     @Test

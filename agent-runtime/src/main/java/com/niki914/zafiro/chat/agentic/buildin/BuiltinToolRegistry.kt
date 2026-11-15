@@ -2,7 +2,6 @@ package com.niki914.zafiro.chat.agentic.buildin
 
 import com.niki914.zafiro.chat.agentic.buildin.impl.ExecutePythonBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.FindInstalledAppsBuiltin
-import com.niki914.zafiro.chat.agentic.buildin.impl.LaunchAppBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.LoadSkillBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.MemoryBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.AgentBuiltin
@@ -15,10 +14,11 @@ import com.niki914.zafiro.chat.agentic.buildin.impl.DeviceInfoBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.NotifyBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.WaitBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.OpenUriBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.OpenBuiltin__V2
 import com.niki914.zafiro.chat.agentic.buildin.impl.PyMetaToolsBuiltin
-import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenOperationAccessibilityBuiltin
-import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenOperationShellBuiltin
-import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenshotBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenOperationBuiltin__V2
+import com.niki914.zafiro.chat.agentic.buildin.impl.ScreensBuiltin__V2
+import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenshotBuiltin__V2
 import com.niki914.zafiro.chat.agentic.buildin.impl.ShellBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.SshBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ViewImageBuiltin
@@ -36,7 +36,6 @@ class BuiltinToolRegistry(
         fun default(): BuiltinToolRegistry = BuiltinToolRegistry(
             listOf(
                 ExecutePythonBuiltin(),
-                LaunchAppBuiltin(),
                 PyMetaToolsBuiltin(),
                 MemoryBuiltin(),
                 NotifyBuiltin(),
@@ -53,9 +52,10 @@ class BuiltinToolRegistry(
                 ShellBuiltin(),
                 SshBuiltin(),
                 FindInstalledAppsBuiltin(),
-                ScreenOperationAccessibilityBuiltin(),
-                ScreenOperationShellBuiltin(),
-                ScreenshotBuiltin(),
+                ScreenOperationBuiltin__V2(),
+                ScreenshotBuiltin__V2(),
+                OpenBuiltin__V2(),
+                ScreensBuiltin__V2(),
                 ViewImageBuiltin(),
             )
         )

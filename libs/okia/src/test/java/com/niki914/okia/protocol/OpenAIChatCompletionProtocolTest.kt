@@ -587,6 +587,18 @@ class OpenAIChatCompletionProtocolTest {
     }
 
     @Test
+    fun errorChunkMidStreamEmitsErrorEvent() = runTest {
+        val events = parse(
+            """{"choices":[{"index":0,"delta":{"content":"已经开始输出"}}]}""",
+            """{"error":{"message":"server overloaded","type":"server_error","code":503}}"""
+        )
+        assertEquals(ProtocolEvent.TextDelta("已经开始输出"), events.first())
+        val last = events.last()
+        assertTrue(last is ProtocolEvent.Error)
+        assertTrue((last as ProtocolEvent.Error).cause.message?.contains("server overloaded") == true)
+    }
+
+    @Test
     fun keepAliveCommentLinesIgnored() = runTest {
         val events = protocol.parseStream(
             listOf(

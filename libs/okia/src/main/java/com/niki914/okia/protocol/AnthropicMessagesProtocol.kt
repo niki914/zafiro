@@ -95,7 +95,8 @@ class AnthropicMessagesProtocol(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: SerializationException) {
-                emit(ProtocolEvent.Error(e))
+                val preview = event.data.take(160).replace("\n", " ").trim()
+                emit(ProtocolEvent.Error(SerializationException("malformed chunk ($preview): ${e.message}", e)))
                 failed = true
             } catch (e: IllegalStateException) {
                 // 协议自身错误（stop_reason 非法 / 状态异常）；loop 的流终止哨兵
@@ -106,7 +107,7 @@ class AnthropicMessagesProtocol(
         }
         // 流结束但没有 message_stop：协议不完整
         if (!failed && !state.finished) {
-            emit(ProtocolEvent.Error(IllegalStateException("stream ended without message_stop")))
+            emit(ProtocolEvent.Error(IllegalStateException("stream ended without message_stop (server disconnected prematurely)")))
         }
     }
 

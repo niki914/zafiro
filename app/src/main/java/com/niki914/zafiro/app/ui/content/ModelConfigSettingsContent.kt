@@ -16,6 +16,7 @@ import com.niki914.uikit.dialog.ZafiroSingleChoiceDialog
 import com.niki914.uikit.infra.component.SettingNavigationItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
+import com.niki914.uikit.infra.component.SettingsConnectedGroup
 import com.niki914.uikit.infra.component.SettingsListPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
@@ -64,12 +65,16 @@ fun ModelConfigSettingsContent(
         ),
     ) {
         SettingsListPageContent {
-            SettingsGroupCard {
-                SettingNavigationItem(
-                    title = stringResource(R.string.ui_settings_configure_prompt_label),
-                    summary = null,
-                    onClick = onOpenPromptEdit,
-                )
+            SettingsConnectedGroup {
+                item { shape, isStandalone, _ ->
+                    SettingNavigationItem(
+                        title = stringResource(R.string.ui_settings_configure_prompt_label),
+                        summary = null,
+                        shape = shape,
+                        isStandaloneCard = isStandalone,
+                        onClick = onOpenPromptEdit,
+                    )
+                }
             }
 
             FallbackModelsBlock()

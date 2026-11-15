@@ -82,15 +82,44 @@ class OpenAIChatCompletionProtocol(
             if (failed) return@collect
             if (event.data == DONE_MARKER) return@collect  // 结尾标记，无事件
 
+            if (event.event == "error") {
+                emit(ProtocolEvent.Error(IllegalStateException("openai stream error: ${event.data}")))
+                failed = true
+                return@collect
+            }
+
             val chunk = try {
                 codec.parseToJsonElement(event.data) as? JsonObject
             } catch (e: SerializationException) {
-                emit(ProtocolEvent.Error(e))
+                val preview = event.data.take(160).replace("\n", " ").trim()
+                emit(ProtocolEvent.Error(SerializationException("malformed chunk ($preview): ${e.message}", e)))
                 failed = true
                 return@collect
             }
             if (chunk == null) {
-                emit(ProtocolEvent.Error(SerializationException("chunk is not a json object")))
+                val preview = event.data.take(160).replace("\n", " ").trim()
+                emit(ProtocolEvent.Error(SerializationException("chunk is not a json object ($preview)")))
+                failed = true
+                return@collect
+            }
+
+            val errorElement = chunk["error"]
+            if (errorElement != null) {
+                val errorMsg = when (errorElement) {
+                    is JsonObject -> {
+                        val msg = (errorElement["message"] as? JsonPrimitive)?.contentOrNull
+                        val type = (errorElement["type"] as? JsonPrimitive)?.contentOrNull
+                        val code = (errorElement["code"] as? JsonPrimitive)?.contentOrNull
+                        buildString {
+                            if (!msg.isNullOrBlank()) append(msg) else append(errorElement.toString())
+                            if (!type.isNullOrBlank()) append(" (type: $type)")
+                            if (!code.isNullOrBlank()) append(" (code: $code)")
+                        }
+                    }
+                    is JsonPrimitive -> errorElement.content
+                    else -> errorElement.toString()
+                }
+                emit(ProtocolEvent.Error(IllegalStateException("openai stream error: $errorMsg")))
                 failed = true
                 return@collect
             }
@@ -431,7 +460,7 @@ class OpenAIChatCompletionProtocol(
 
     private suspend fun finishStream(state: StreamState, emit: suspend (ProtocolEvent) -> Unit) {
         when (state.finishReason) {
-            null -> emit(ProtocolEvent.Error(IllegalStateException("stream ended without finish_reason")))
+            null -> emit(ProtocolEvent.Error(IllegalStateException("stream ended without finish_reason (server disconnected prematurely)")))
             // stop / end：流正常收尾。Gemini 兼容端点用 stop 收尾工具回合，此处
             // 必须结算已累积的调用，否则调用被静默丢弃（工具卡片亮起、消息为空）。
             "stop", "end" -> {

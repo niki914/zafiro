@@ -2,8 +2,11 @@ package com.niki914.uikit.infra.component
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import com.niki914.uikit.infra.component.settings.item.SettingCardItem
+import com.niki914.uikit.infra.component.settings.item.SettingsTokens
 import com.niki914.uikit.infra.component.settings.item.SettingTrailingSlot
+import com.niki914.uikit.infra.shape.G2CardShape
 
 /**
  * 组内导航子项：保留导航语义，内部统一复用基础设置项底座。
@@ -15,6 +18,8 @@ fun SettingNavigationItem(
     modifier: Modifier = Modifier,
     currentState: String? = null,
     enabled: Boolean = true,
+    shape: Shape = G2CardShape(SettingsTokens.CardCornerRadius),
+    isStandaloneCard: Boolean = false,
     onClick: () -> Unit,
 ) {
     val trailingSlot = if (currentState != null) {
@@ -27,6 +32,8 @@ fun SettingNavigationItem(
         summary = summary,
         trailingSlot = trailingSlot,
         enabled = enabled,
+        shape = shape,
+        isStandaloneCard = isStandaloneCard,
         onClick = onClick,
         modifier = modifier,
     )
