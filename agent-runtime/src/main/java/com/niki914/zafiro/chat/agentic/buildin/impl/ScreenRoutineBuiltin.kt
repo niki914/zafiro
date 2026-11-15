@@ -30,7 +30,7 @@ class ScreenRoutineBuiltin(private val dirProvider: suspend () -> File = { File(
             "routine=<id> with params={...} runs it: every tap is verified (screen must change; one retry; then a clear failure). " +
             "You can also pass steps=[...] for a one-off sequence (ops: open_app, tap, type, wait, scroll, back, key, collect, sleep). " +
             "The result lists what is on screen afterwards: confirm success from that evidence, never from ok alone. " +
-            "Routine files live in files/routines/*.json; fix wrong screen labels there."
+            "Routine files live in the files/routines folder; fix wrong screen labels there."
     override val inputSchemaJson: String =
         """{"type":"object","properties":{"routine":{"type":"string","description":"Routine id, or 'list'. Omit when passing steps."},"params":{"type":"object","description":"Values for {placeholders} in the routine, e.g. {\"text\":\"...\"}"},"steps":{"type":"array","items":{"type":"object"},"description":"One-off steps: {op, labels[], expect_any[], expect_gone[], optional, text, package, count, timeout_s, code, ms}"},"screen":{"type":"string","description":"Screen id, default phone."}}}"""
 

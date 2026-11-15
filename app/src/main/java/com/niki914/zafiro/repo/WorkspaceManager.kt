@@ -10,7 +10,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * Bundled workspaces (assets/workspaces/*.json): one switchable team per platform. Switching one ON installs its agents and
+ * Bundled workspaces (assets/workspaces): one switchable team per platform. Switching one ON installs its agents and
  * tasks (first time), turns on its skills, seeds its screen routines and rulebook, and schedules its tasks. OFF pauses them.
  */
 object WorkspaceManager {

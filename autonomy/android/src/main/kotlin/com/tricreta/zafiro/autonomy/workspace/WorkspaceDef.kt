@@ -12,7 +12,7 @@ data class TaskDef(
     val intervalMinutes: Long, val maxSteps: Int, val maxMinutes: Int, val criteria: String, val defaultEnabled: Boolean,
 )
 
-/** A switchable bundle for one platform: its team, schedule, skills, MCPs, rules and starting memory. Parsed from assets/workspaces/*.json. */
+/** A switchable bundle for one platform: its team, schedule, skills, MCPs, rules and starting memory. Parsed from the assets/workspaces folder. */
 data class WorkspaceDef(
     val id: String, val version: Int, val name: String, val platform: String, val app: String, val summary: String, val quotas: String,
     val agents: List<AgentDef>, val tasks: List<TaskDef>, val skills: List<String>, val mcps: List<String>, val memory: List<String>,

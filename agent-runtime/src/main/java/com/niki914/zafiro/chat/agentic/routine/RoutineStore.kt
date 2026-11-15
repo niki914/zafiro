@@ -2,7 +2,7 @@ package com.niki914.zafiro.chat.agentic.routine
 
 import java.io.File
 
-/** Reads files/routines/*.json. A broken file is reported by name, never skipped silently. */
+/** Reads the files/routines folder (JSON files). A broken file is reported by name, never skipped silently. */
 class RoutineStore(private val dir: File) {
     data class Loaded(val routines: Map<String, RoutineSpec>, val errors: Map<String, String>)
 
