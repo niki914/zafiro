@@ -10,6 +10,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.SystemClock
 import com.niki914.logging.Logger
+import com.niki914.shizuku.display.VirtualDisplayController
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -116,12 +117,17 @@ internal class VirtualDisplayFrames private constructor(
         private const val FRAME_INTERVAL_MS = 80L
         private const val PREVIEW_MAX_WIDTH = 360
 
-        suspend fun open(width: Int, height: Int, dpi: Int): VirtualDisplayFrames? {
+        suspend fun open(
+            controller: VirtualDisplayController,
+            width: Int,
+            height: Int,
+            dpi: Int,
+        ): VirtualDisplayFrames? {
             val thread = HandlerThread("zafiro-vd-render").apply { start() }
             val handler = Handler(thread.looper)
             val reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
             val frames = VirtualDisplayFrames(width, height, reader, thread, handler)
-            val id = ShizukuDisplay.create(reader.surface, width, height, dpi)
+            val id = controller.create(reader.surface, width, height, dpi)
             if (id <= 0) {
                 frames.release()
                 return null

@@ -90,7 +90,7 @@ android {
 dependencies {
     implementation(project(":agent-runtime"))
     implementation(project(":business:permission"))
-    implementation("dev.rikka.shizuku:api:13.1.5")
+    implementation(project(":libs:shizuku"))
     implementation(project(":business:files"))
     implementation(project(":business:application"))
     implementation(project(":business:notification"))

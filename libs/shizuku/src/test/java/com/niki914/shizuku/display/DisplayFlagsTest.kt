@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.screen
+package com.niki914.shizuku.display
 
 import android.os.Build
 import org.junit.Assert.assertEquals
@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 // 保护：可信旗标被拒绝后如果还带着 TRUSTED 或 OWN_FOCUS，建屏会直接失败，用户打不开虚拟屏。
-class ShizukuDisplayFlagsTest {
+class DisplayFlagsTest {
     private val flagPublic = 1 shl 0
     private val flagOwnContentOnly = 1 shl 3
     private val flagSupportsTouch = 1 shl 6
@@ -25,7 +25,7 @@ class ShizukuDisplayFlagsTest {
 
     @Test
     fun android11KeepsBaseFlagsOnly() {
-        val flags = computeDisplayFlags(Build.VERSION_CODES.R, trusted = true)
+        val flags = DisplayFlags.compute(Build.VERSION_CODES.R, trusted = true)
         assertEquals(baseFlags, flags)
         assertFalse(has(flags, flagTrusted))
         assertFalse(has(flags, flagOwnFocus))
@@ -33,7 +33,7 @@ class ShizukuDisplayFlagsTest {
 
     @Test
     fun android13TrustedAddsTrustedGroup() {
-        val flags = computeDisplayFlags(Build.VERSION_CODES.TIRAMISU, trusted = true)
+        val flags = DisplayFlags.compute(Build.VERSION_CODES.TIRAMISU, trusted = true)
         assertTrue(has(flags, baseFlags))
         assertTrue(has(flags, flagTouchFeedbackDisabled))
         assertTrue(has(flags, flagTrusted))
@@ -45,7 +45,7 @@ class ShizukuDisplayFlagsTest {
 
     @Test
     fun android13FallbackDropsTrustedGroup() {
-        val flags = computeDisplayFlags(Build.VERSION_CODES.TIRAMISU, trusted = false)
+        val flags = DisplayFlags.compute(Build.VERSION_CODES.TIRAMISU, trusted = false)
         assertTrue(has(flags, baseFlags))
         assertTrue(has(flags, flagTouchFeedbackDisabled))
         assertFalse(has(flags, flagTrusted))
@@ -56,7 +56,7 @@ class ShizukuDisplayFlagsTest {
 
     @Test
     fun android14TrustedAddsFocusIsolation() {
-        val flags = computeDisplayFlags(Build.VERSION_CODES.UPSIDE_DOWN_CAKE, trusted = true)
+        val flags = DisplayFlags.compute(Build.VERSION_CODES.UPSIDE_DOWN_CAKE, trusted = true)
         assertTrue(has(flags, flagTrusted))
         assertTrue(has(flags, flagOwnFocus))
         assertTrue(has(flags, flagStealTopFocusDisabled))
@@ -64,7 +64,7 @@ class ShizukuDisplayFlagsTest {
 
     @Test
     fun android14FallbackDropsFocusIsolation() {
-        val flags = computeDisplayFlags(Build.VERSION_CODES.UPSIDE_DOWN_CAKE, trusted = false)
+        val flags = DisplayFlags.compute(Build.VERSION_CODES.UPSIDE_DOWN_CAKE, trusted = false)
         assertTrue(has(flags, flagTouchFeedbackDisabled))
         assertFalse(has(flags, flagTrusted))
         assertFalse(has(flags, flagOwnFocus))

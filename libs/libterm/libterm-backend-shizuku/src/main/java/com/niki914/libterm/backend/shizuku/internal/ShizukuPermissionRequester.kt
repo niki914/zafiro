@@ -1,6 +1,7 @@
 package com.niki914.libterm.backend.shizuku.internal
 
 import android.content.pm.PackageManager
+import com.niki914.shizuku.ShizukuClient
 import rikka.shizuku.Shizuku
 
 internal fun interface ShizukuPermissionResultListener {
@@ -19,15 +20,15 @@ internal interface ShizukuPermissionRequester {
     fun removeRequestPermissionResultListener(listener: ShizukuPermissionResultListener)
 }
 
-internal class RealShizukuPermissionRequester : ShizukuPermissionRequester {
+internal class RealShizukuPermissionRequester(
+    private val client: ShizukuClient = ShizukuClient.create(),
+) : ShizukuPermissionRequester {
     private val listeners =
         mutableMapOf<ShizukuPermissionResultListener, Shizuku.OnRequestPermissionResultListener>()
 
-    override fun isBinderAlive(): Boolean = Shizuku.pingBinder()
+    override fun isBinderAlive(): Boolean = client.isBinderAlive
 
-    override fun isPermissionGranted(): Boolean {
-        return Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
-    }
+    override fun isPermissionGranted(): Boolean = client.isAuthorized
 
     override fun requestPermission(requestCode: Int) {
         Shizuku.requestPermission(requestCode)
@@ -41,14 +42,14 @@ internal class RealShizukuPermissionRequester : ShizukuPermissionRequester {
                     granted = grantResult == PackageManager.PERMISSION_GRANTED,
                 )
             }
-        synchronized(listeners) {
+        synchronized(listeners) { // githooks:ignore monitor-lock 监听器映射同步
             listeners[listener] = shizukuListener
         }
         Shizuku.addRequestPermissionResultListener(shizukuListener)
     }
 
     override fun removeRequestPermissionResultListener(listener: ShizukuPermissionResultListener) {
-        val shizukuListener = synchronized(listeners) {
+        val shizukuListener = synchronized(listeners) { // githooks:ignore monitor-lock 监听器映射同步
             listeners.remove(listener)
         } ?: return
         Shizuku.removeRequestPermissionResultListener(shizukuListener)
