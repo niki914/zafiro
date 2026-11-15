@@ -109,6 +109,8 @@ internal class VirtualDisplayScreen(
 
     fun preview() = frames.frames
 
+    fun setHighQuality(enabled: Boolean) = frames.setHighQuality(enabled)
+
     fun closeLocal() = frames.release()
 }
 

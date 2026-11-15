@@ -185,8 +185,17 @@ object AppScreens : Screens {
                         }
                     }
                 },
-                onExpand = {
-                    Logger.i(TAG, "Virtual display expand requested")
+                onNavKey = { keyCode ->
+                    cardScope.launch {
+                        runCatchingCancellable {
+                            screen.act(ScreenAction.Key(keyCode))
+                        }.onFailure { error ->
+                            Logger.e(TAG, "onNavKey failed keyCode=$keyCode", error)
+                        }
+                    }
+                },
+                onQualityChanged = { highQuality ->
+                    screen.setHighQuality(highQuality)
                 },
             )
         }
@@ -228,8 +237,17 @@ object AppScreens : Screens {
                         }
                     }
                 },
-                onExpand = {
-                    Logger.i(TAG, "Virtual display expand requested")
+                onNavKey = { keyCode ->
+                    cardScope.launch {
+                        runCatchingCancellable {
+                            screen.act(ScreenAction.Key(keyCode))
+                        }.onFailure { error ->
+                            Logger.e(TAG, "onNavKey failed keyCode=$keyCode", error)
+                        }
+                    }
+                },
+                onQualityChanged = { highQuality ->
+                    screen.setHighQuality(highQuality)
                 },
             )
             if (!shown) {
