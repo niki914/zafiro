@@ -75,6 +75,7 @@ android {
     buildFeatures {
         buildConfig = true
         compose = true
+        aidl = true
     }
 
     packaging {
@@ -89,6 +90,7 @@ android {
 dependencies {
     implementation(project(":agent-runtime"))
     implementation(project(":business:permission"))
+    implementation("dev.rikka.shizuku:api:13.1.5")
     implementation(project(":business:files"))
     implementation(project(":business:application"))
     implementation(project(":business:notification"))

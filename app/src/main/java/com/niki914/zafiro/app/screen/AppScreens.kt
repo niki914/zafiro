@@ -11,6 +11,8 @@ import com.niki914.zafiro.api.screen.NodeInfo
 import com.niki914.zafiro.api.screen.OpenKind
 import com.niki914.zafiro.api.screen.OpenResult
 import com.niki914.zafiro.api.screen.PhoneScreenId
+import com.niki914.zafiro.business.permission.Permission
+import com.niki914.zafiro.accessibility.driver.SystemAccessibilityDriver
 import com.niki914.zafiro.api.screen.PointerAction
 import com.niki914.zafiro.api.screen.Screen
 import com.niki914.zafiro.api.screen.ScreenAction
@@ -26,6 +28,12 @@ import com.niki914.zafiro.api.screen.ShowTarget
 import com.niki914.zafiro.api.screen.Target
 import com.niki914.zafiro.chat.agentic.buildin.impl.LaunchAppBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.OpenUriBuiltin
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * 针对物理主屏的屏幕实现。
@@ -122,20 +130,89 @@ class PhoneDisplayScreen(
 }
 
 /**
- * 屏幕目录服务。
- * 本轮仅装配物理主屏，不做虚拟副屏与浏览器屏。
+ * 屏幕目录。主屏一直在。虚拟屏最多一块，打开前向权限中心申请悬浮窗、无障碍和 Shizuku。
  */
 object AppScreens : Screens {
     private val phone = PhoneDisplayScreen()
+    private val gate = Mutex()
+    private val cardScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    override fun list(): List<ScreenInfo> = listOf(phone.info())
+    @Volatile
+    private var virtual: VirtualDisplayScreen? = null
 
-    override fun get(id: ScreenId): Screen? = if (id == PhoneScreenId) phone else null
+    override fun list(): List<ScreenInfo> {
+        val extra = virtual?.info()
+        return if (extra == null) listOf(phone.info()) else listOf(phone.info(), extra)
+    }
 
-    override suspend fun open(kind: OpenKind): OpenResult = OpenResult.Unsupported(kind)
+    override fun get(id: ScreenId): Screen? {
+        if (id == PhoneScreenId) return phone
+        val screen = virtual
+        return if (screen?.id == id) screen else null
+    }
+
+    override suspend fun open(kind: OpenKind): OpenResult {
+        if (kind != OpenKind.VirtualDisplay) return OpenResult.Unsupported(kind)
+        return gate.withLock { openVirtual() }
+    }
 
     override suspend fun close(id: ScreenId): CloseResult {
         if (id == PhoneScreenId) return CloseResult.Rejected("PHONE_NOT_CLOSABLE")
-        return CloseResult.Rejected("UNKNOWN_SCREEN")
+        return gate.withLock {
+            val screen = virtual
+            if (screen == null || screen.id != id) return@withLock CloseResult.Rejected("UNKNOWN_SCREEN")
+            dismiss(screen)
+            CloseResult.Closed
+        }
+    }
+
+    /** 无障碍服务重新连上后，把已经开着的预览挂回去。 */
+    fun restoreCard() {
+        val screen = virtual ?: return
+        if (VirtualDisplayCard.isShowing) return
+        cardScope.launch {
+            if (virtual == null || VirtualDisplayCard.isShowing) return@launch
+            VirtualDisplayCard.show(screen.preview())
+        }
+    }
+
+    private suspend fun openVirtual(): OpenResult {
+        virtual?.let { return OpenResult.Opened(it.info()) }
+        if (!permissionGranted(Permission.OVERLAY)) return OpenResult.Rejected("OVERLAY_DENIED")
+        if (!permissionGranted(Permission.ACCESSIBILITY)) {
+            return OpenResult.Rejected("ACCESSIBILITY_UNAVAILABLE")
+        }
+        if (!waitForDriverConnected { SystemAccessibilityDriver.isConnected }) {
+            return OpenResult.Rejected("SERVICE_NOT_CONNECTED")
+        }
+        when (ShizukuDisplay.prepare(applicationContext())) {
+            PrepareResult.Ready -> Unit
+            PrepareResult.Denied -> return OpenResult.Rejected("SHIZUKU_DENIED")
+            PrepareResult.Unavailable -> return OpenResult.Rejected("SHIZUKU_UNAVAILABLE")
+            PrepareResult.BindFailed -> return OpenResult.Rejected("SHIZUKU_BIND_FAILED")
+        }
+        val (width, height, dpi) = virtualDisplaySize(applicationContext())
+        val frames = VirtualDisplayFrames.open(width, height, dpi)
+        if (frames == null) {
+            ShizukuDisplay.close()
+            return OpenResult.Rejected("DISPLAY_CREATE_FAILED")
+        }
+        val screen = VirtualDisplayScreen(frames)
+        if (!VirtualDisplayCard.show(screen.preview())) {
+            ShizukuDisplay.release(frames.displayId)
+            screen.closeLocal()
+            ShizukuDisplay.close()
+            return OpenResult.Rejected("OVERLAY_ATTACH_FAILED")
+        }
+        virtual = screen
+        return OpenResult.Opened(screen.info())
+    }
+
+    private suspend fun dismiss(screen: VirtualDisplayScreen) {
+        VirtualDisplayCard.hide()
+        ShizukuDisplay.release(screen.port.displayId)
+        screen.closeLocal()
+        virtual = null
+        ShizukuDisplay.close()
     }
 }

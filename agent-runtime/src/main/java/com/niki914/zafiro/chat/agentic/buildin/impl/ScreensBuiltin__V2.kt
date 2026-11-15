@@ -55,6 +55,10 @@ class ScreensBuiltin__V2 : TextResultBuiltinTool() {
                 code = SCREEN_UNSUPPORTED,
                 message = "Opening ${opened.kind} is not available.",
             )
+            is OpenResult.Rejected -> TextToolResult.failure(
+                code = opened.code,
+                message = opened.code,
+            )
         }
     }
 

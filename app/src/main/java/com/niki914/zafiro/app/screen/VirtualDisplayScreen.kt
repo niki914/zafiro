@@ -1,0 +1,111 @@
+package com.niki914.zafiro.app.screen
+
+import android.content.Context
+import android.os.Build
+import android.view.WindowManager
+import com.niki914.zafiro.accessibility.port.A11yDisplayPort
+import com.niki914.zafiro.accessibility.port.A11yDisplayScreen
+import com.niki914.zafiro.accessibility.table.DisplayNodeTable
+import com.niki914.zafiro.api.screen.ActResult
+import com.niki914.zafiro.api.screen.AppHit
+import com.niki914.zafiro.api.screen.ImageFrame
+import com.niki914.zafiro.api.screen.ScreenAction
+import com.niki914.zafiro.api.screen.ScreenId
+import com.niki914.zafiro.api.screen.ScreenImageUnavailable
+import com.niki914.zafiro.api.screen.ScreenInfo
+import com.niki914.zafiro.api.screen.ScreenKind
+import com.niki914.zafiro.api.screen.ScreenSnapshot
+import com.niki914.zafiro.api.screen.ScreenTreeUnavailable
+import com.niki914.zafiro.api.screen.ShowResult
+import com.niki914.zafiro.api.screen.ShowTarget
+import com.niki914.zafiro.business.application.ApplicationService
+import com.niki914.zafiro.business.permission.Permission
+import com.niki914.zafiro.business.permission.PermissionManager
+import com.niki914.zafiro.business.permission.PermissionState
+import com.niki914.zafiro.chat.agentic.device.AppInfoProvider
+import com.niki914.zafiro.chat.agentic.device.AppMatchResult
+import com.niki914.zafiro.service.requireService
+
+/**
+ * 一块虚拟屏。读、点、截图走无障碍端口，自己持有版本表。不画主屏指针。
+ */
+internal class VirtualDisplayScreen(
+    private val frames: VirtualDisplayFrames,
+    private val access: PhoneScreenAccess = PhoneScreenAccess(),
+) : A11yDisplayScreen(
+    ScreenId("vd-${frames.displayId}"),
+    ScreenKind.VirtualDisplay,
+    A11yDisplayPort(frames.displayId),
+    DisplayNodeTable(),
+) {
+    fun info(): ScreenInfo = ScreenInfo(id, kind, frames.width, frames.height)
+
+    override suspend fun snapshot(): ScreenSnapshot {
+        access.prepare(PhoneScreenAccess.Need.Control)?.let { denied ->
+            throw ScreenTreeUnavailable(denied.message)
+        }
+        return super.snapshot()
+    }
+
+    override suspend fun image(): ImageFrame {
+        access.prepare(PhoneScreenAccess.Need.Capture)?.let { denied ->
+            throw ScreenImageUnavailable(denied.code, denied.message)
+        }
+        return super.image()
+    }
+
+    override suspend fun act(action: ScreenAction): ActResult {
+        access.prepare(PhoneScreenAccess.Need.Control)?.let { denied ->
+            return ActResult.Failed(denied.code, null)
+        }
+        return super.act(action)
+    }
+
+    override suspend fun show(target: ShowTarget): ShowResult {
+        return when (target) {
+            is ShowTarget.PackageName -> launch(target.packageName)
+            is ShowTarget.AppName -> when (val match = AppInfoProvider.cache().findByAppName(target.name)) {
+                is AppMatchResult.Found -> launch(match.app.packageName)
+                is AppMatchResult.Candidates -> ShowResult.Ambiguous(
+                    target.name,
+                    match.apps.map { app -> AppHit(app.packageName, app.appName) },
+                )
+                AppMatchResult.NotFound -> ShowResult.Failed("APP_NOT_FOUND")
+            }
+            is ShowTarget.Uri -> ShowResult.Unsupported("uri")
+        }
+    }
+
+    private suspend fun launch(packageName: String): ShowResult {
+        return when (ShizukuDisplay.startApp(port.displayId, packageName)) {
+            ShizukuDisplayService.START_OK -> ShowResult.Shown(packageName)
+            ShizukuDisplayService.START_IN_USE_ON_MAIN -> ShowResult.Failed("IN_USE_ON_MAIN")
+            ShizukuDisplayService.START_NOT_FOUND -> ShowResult.Failed("APP_NOT_FOUND")
+            else -> ShowResult.Failed("START_FAILED")
+        }
+    }
+
+    fun preview() = frames.frames
+
+    fun closeLocal() = frames.release()
+}
+
+internal fun virtualDisplaySize(context: Context): Triple<Int, Int, Int> {
+    val manager = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+    val (width, height) = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && manager != null) {
+        val bounds = manager.maximumWindowMetrics.bounds
+        bounds.width() to bounds.height()
+    } else {
+        val metrics = context.resources.displayMetrics
+        metrics.widthPixels to metrics.heightPixels
+    }
+    return Triple(width, height, context.resources.configuration.densityDpi)
+}
+
+internal suspend fun permissionGranted(permission: Permission): Boolean {
+    val manager = requireService<PermissionManager>()
+    if (manager.status(permission) == PermissionState.GRANTED) return true
+    return manager.request(permission).finalState == PermissionState.GRANTED
+}
+
+internal fun applicationContext(): Context = requireService<ApplicationService>().getApplication()
