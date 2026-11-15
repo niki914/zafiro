@@ -3,6 +3,7 @@ package com.niki914.uikit.infra.shape
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
@@ -85,12 +86,21 @@ private data class G2CornerBasedShape(
         layoutDirection: LayoutDirection,
     ): Outline {
         val maxRadius = size.minDimension / 2f
-        return continuity.createRoundedRectangleOutline(
+        val outline = continuity.createRoundedRectangleOutline(
             size = size,
             topLeft = topStart.fastCoerceAtMost(maxRadius),
             topRight = topEnd.fastCoerceAtMost(maxRadius),
             bottomRight = bottomEnd.fastCoerceAtMost(maxRadius),
             bottomLeft = bottomStart.fastCoerceAtMost(maxRadius),
         )
+        // RTL 下沿宽度做水平刚体镜像，保持非对称圆角曲率与 LTR 严格对称，同时规避底层库对非对称角的插值异常 (Capsule 的最新版有 Bug)
+        if (layoutDirection == LayoutDirection.Rtl && outline is Outline.Generic) {
+            val matrix = Matrix().apply {
+                translate(x = size.width, y = 0f)
+                scale(x = -1f, y = 1f)
+            }
+            outline.path.transform(matrix)
+        }
+        return outline
     }
 }
