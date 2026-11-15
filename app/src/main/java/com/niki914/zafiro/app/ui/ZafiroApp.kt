@@ -201,6 +201,18 @@ fun ZafiroApp(
         }
     }
 
+    // Links like [plan.md](zfile:plans/plan.md) written by agents open the in-app file viewer instead of an external app.
+    val defaultUriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+    val fileAwareUriHandler = remember(navigator, defaultUriHandler) {
+        object : androidx.compose.ui.platform.UriHandler {
+            override fun openUri(uri: String) {
+                if (uri.startsWith("zfile:")) {
+                    navigator.push(com.niki914.zafiro.app.ui.nav.FileViewPage(java.net.URLDecoder.decode(uri.removePrefix("zfile:").replace("+", "%2B"), "UTF-8")))
+                } else defaultUriHandler.openUri(uri)
+            }
+        }
+    }
+
     fun popOrMoveTaskToBack() {
         if (controller.canGoBack && currentPage.backEnabled) {
             navigator.pop()
@@ -369,6 +381,7 @@ fun ZafiroApp(
                                 LocalPageChrome provides pageChromeRegistrar,
                                 LocalPageTitle provides resolveTitle(entry.page.titleSpec),
                                 LocalViewerOpener provides openViewer,
+                                androidx.compose.ui.platform.LocalUriHandler provides fileAwareUriHandler,
                             ) {
                                 saveableStateHolder.SaveableStateProvider(entry.id) {
                                     ZafiroPageContent(

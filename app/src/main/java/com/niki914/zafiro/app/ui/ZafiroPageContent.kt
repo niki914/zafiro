@@ -3,6 +3,14 @@ package com.niki914.zafiro.app.ui
 import com.niki914.zafiro.app.ui.model.HomeNavEvents
 import com.niki914.zafiro.app.ui.content.AgentEditorContent
 import com.niki914.zafiro.app.ui.content.AgentsPageContent
+import com.niki914.zafiro.app.ui.content.DashboardPageContent
+import com.niki914.zafiro.app.ui.content.FileViewPageContent
+import com.niki914.zafiro.app.ui.content.FilesPageContent
+import com.niki914.zafiro.app.ui.content.WorkspacesPageContent
+import com.niki914.zafiro.app.ui.nav.DashboardPage
+import com.niki914.zafiro.app.ui.nav.FileViewPage
+import com.niki914.zafiro.app.ui.nav.FilesPage
+import com.niki914.zafiro.app.ui.nav.WorkspacesPage
 import com.niki914.zafiro.app.ui.nav.AgentEditorPage
 import com.niki914.zafiro.app.ui.nav.AgentsPage
 import androidx.compose.runtime.Composable
@@ -148,6 +156,13 @@ fun ZafiroPageContent(
                 onPopToRight()
             },
             onOpenAgents = { onPush(AgentsPage) },
+            onOpenFeature = { key ->
+                when (key) {
+                    "dashboard" -> onPush(DashboardPage)
+                    "workspaces" -> onPush(WorkspacesPage)
+                    "files" -> onPush(FilesPage)
+                }
+            },
             onOpenSettings = { onPush(SettingsHomePage) },
         )
 
@@ -216,6 +231,14 @@ fun ZafiroPageContent(
                 onPush(CustomPyToolDetailPage(name, index, isCreating))
             },
         )
+
+        DashboardPage -> DashboardPageContent(onOpenFiles = { onPush(FilesPage) })
+
+        WorkspacesPage -> WorkspacesPageContent()
+
+        FilesPage -> FilesPageContent(onOpen = { onPush(FileViewPage(it)) })
+
+        is FileViewPage -> FileViewPageContent(relative = page.path, onDeleted = onPop)
 
         AgentsPage -> AgentsPageContent(
             onOpenEditor = { agentId -> onPush(AgentEditorPage(agentId)) },

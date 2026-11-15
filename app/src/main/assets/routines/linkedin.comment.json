@@ -1,0 +1,38 @@
+{
+ "id": "linkedin.comment",
+ "version": 1,
+ "platform": "linkedin",
+ "description": "On the post currently open in LinkedIn, write a comment and send it. Only after an engage gate of AUTO or owner approval.",
+ "params": [
+  {
+   "name": "text",
+   "required": true
+  }
+ ],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Comment"
+   ],
+   "timeout_s": 6
+  },
+  {
+   "op": "type",
+   "labels": [
+    "What do you want to talk about",
+    "Share your thoughts",
+    "Start a post"
+   ],
+   "text": "{text}"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Post",
+    "Send"
+   ],
+   "timeout_s": 8
+  }
+ ]
+}

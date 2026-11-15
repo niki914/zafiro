@@ -1,0 +1,38 @@
+{
+ "id": "facebook.comment",
+ "version": 1,
+ "platform": "facebook",
+ "description": "On the post currently open in Facebook, write a comment and send it. Only after an engage gate of AUTO or owner approval.",
+ "params": [
+  {
+   "name": "text",
+   "required": true
+  }
+ ],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Comment",
+    "Write a comment"
+   ],
+   "timeout_s": 6
+  },
+  {
+   "op": "type",
+   "labels": [
+    "What's on your mind",
+    "Write something"
+   ],
+   "text": "{text}"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Send",
+    "Post"
+   ],
+   "timeout_s": 8
+  }
+ ]
+}

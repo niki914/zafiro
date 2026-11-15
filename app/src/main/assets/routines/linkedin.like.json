@@ -1,0 +1,15 @@
+{
+ "id": "linkedin.like",
+ "version": 1,
+ "platform": "linkedin",
+ "description": "Like the post currently open in LinkedIn.",
+ "params": [],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Like"
+   ]
+  }
+ ]
+}

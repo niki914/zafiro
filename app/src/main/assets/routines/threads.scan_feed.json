@@ -1,0 +1,37 @@
+{
+ "id": "threads.scan_feed",
+ "version": 1,
+ "platform": "threads",
+ "description": "Scroll the Threads feed and collect post texts to judge for engagement.",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.instagram.barcelona"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Home"
+   ],
+   "optional": true,
+   "timeout_s": 6
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "For you",
+    "Following"
+   ],
+   "optional": true
+  },
+  {
+   "op": "sleep",
+   "ms": 1200
+  },
+  {
+   "op": "collect",
+   "count": 5
+  }
+ ]
+}

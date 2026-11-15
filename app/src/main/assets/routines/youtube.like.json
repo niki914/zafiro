@@ -1,0 +1,16 @@
+{
+ "id": "youtube.like",
+ "version": 1,
+ "platform": "youtube",
+ "description": "Like the post currently open in YouTube.",
+ "params": [],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "like this video",
+    "Like"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,29 @@
+{
+ "id": "instagram.read_activity",
+ "version": 1,
+ "platform": "instagram",
+ "description": "Open Instagram notifications/activity and return what is shown (replies, likes, mentions).",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.instagram.android"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Activity",
+    "Notifications"
+   ],
+   "optional": true
+  },
+  {
+   "op": "sleep",
+   "ms": 1500
+  },
+  {
+   "op": "collect",
+   "count": 3
+  }
+ ]
+}

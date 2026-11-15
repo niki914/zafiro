@@ -1,0 +1,36 @@
+{
+ "id": "whatsapp.scan_feed",
+ "version": 1,
+ "platform": "whatsapp",
+ "description": "Scroll the WhatsApp feed and collect post texts to judge for engagement.",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.whatsapp.w4b"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Chats"
+   ],
+   "optional": true,
+   "timeout_s": 6
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Chats"
+   ],
+   "optional": true
+  },
+  {
+   "op": "sleep",
+   "ms": 1200
+  },
+  {
+   "op": "collect",
+   "count": 5
+  }
+ ]
+}

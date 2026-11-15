@@ -1,0 +1,15 @@
+{
+ "id": "instagram.like",
+ "version": 1,
+ "platform": "instagram",
+ "description": "Like the post currently open in Instagram.",
+ "params": [],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Like"
+   ]
+  }
+ ]
+}

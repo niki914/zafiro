@@ -1,0 +1,28 @@
+{
+ "id": "email.read_activity",
+ "version": 1,
+ "platform": "email",
+ "description": "Open Email (Gmail) notifications/activity and return what is shown (replies, likes, mentions).",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.google.android.gm"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Inbox"
+   ],
+   "optional": true
+  },
+  {
+   "op": "sleep",
+   "ms": 1500
+  },
+  {
+   "op": "collect",
+   "count": 3
+  }
+ ]
+}

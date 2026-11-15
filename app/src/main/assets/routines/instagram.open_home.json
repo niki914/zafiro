@@ -1,0 +1,21 @@
+{
+ "id": "instagram.open_home",
+ "version": 1,
+ "platform": "instagram",
+ "description": "Open Instagram and go to the home screen.",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.instagram.android"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Home"
+   ],
+   "optional": true,
+   "timeout_s": 6
+  }
+ ]
+}

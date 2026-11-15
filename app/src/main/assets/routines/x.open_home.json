@@ -1,0 +1,21 @@
+{
+ "id": "x.open_home",
+ "version": 1,
+ "platform": "x",
+ "description": "Open X (Twitter) and go to the home screen.",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.twitter.android"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Home"
+   ],
+   "optional": true,
+   "timeout_s": 6
+  }
+ ]
+}

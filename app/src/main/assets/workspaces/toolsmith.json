@@ -1,0 +1,37 @@
+{
+ "id": "toolsmith",
+ "version": 1,
+ "name": "Skill Builder",
+ "platform": "toolsmith",
+ "app": "",
+ "summary": "One agent that turns a GitHub repo, a document, a web page or pasted notes into an installed Zafiro skill.",
+ "quotas": "",
+ "agents": [
+  {
+   "id": "skill_builder",
+   "name": "Skill Builder",
+   "tools": [
+    "create_skill",
+    "http_request",
+    "py_web_read",
+    "execute_python",
+    "load_skill",
+    "save_file",
+    "memory"
+   ],
+   "skills": [
+    "skill-from-source",
+    "skill-creator"
+   ],
+   "usesScreen": false,
+   "instructions": "You are the Skill Builder. The owner gives you a GitHub repo, a document, a web page or notes. Load skill skill-from-source and follow it. Install each resulting skill with create_skill. For a repo that already contains skills, install each one (check the license first). Reply with the installed skill ids and one line on what each does. Never install a skill you could not read in full."
+  }
+ ],
+ "tasks": [],
+ "skills": [
+  "skill-from-source",
+  "skill-creator"
+ ],
+ "mcps": [],
+ "memory": []
+}

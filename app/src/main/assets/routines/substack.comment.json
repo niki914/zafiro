@@ -1,0 +1,41 @@
+{
+ "id": "substack.comment",
+ "version": 1,
+ "platform": "substack",
+ "description": "On the post currently open in Substack, write a comment and send it. Only after an engage gate of AUTO or owner approval.",
+ "params": [
+  {
+   "name": "text",
+   "required": true
+  }
+ ],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Comment",
+    "Reply"
+   ],
+   "timeout_s": 6
+  },
+  {
+   "op": "type",
+   "labels": [
+    "What's on your mind",
+    "Say something",
+    "Write a note",
+    "Start writing"
+   ],
+   "text": "{text}"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Post",
+    "Send",
+    "Reply"
+   ],
+   "timeout_s": 8
+  }
+ ]
+}

@@ -1,0 +1,37 @@
+{
+ "id": "pinterest.comment",
+ "version": 1,
+ "platform": "pinterest",
+ "description": "On the post currently open in Pinterest, write a comment and send it. Only after an engage gate of AUTO or owner approval.",
+ "params": [
+  {
+   "name": "text",
+   "required": true
+  }
+ ],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Add a comment"
+   ],
+   "timeout_s": 6
+  },
+  {
+   "op": "type",
+   "labels": [
+    "Add a title",
+    "Tell everyone what your Pin is about"
+   ],
+   "text": "{text}"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Post",
+    "Send"
+   ],
+   "timeout_s": 8
+  }
+ ]
+}

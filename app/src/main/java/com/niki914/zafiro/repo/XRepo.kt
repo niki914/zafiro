@@ -242,7 +242,7 @@ object XRepo {
      * 用户已删除的 seed 会被复活（tools 无删除墓碑，无法区分"未装过"与"删过"）。
      */
     /**
-     * Offers a few public MCP servers that need no login, once each and switched OFF (the owner enables what they want).
+     * Offers public MCP servers once each: keyless docs servers ON, login-required ones OFF until OAuth sign-in.
      * URLs are the providers' documented endpoints but could not be reached from the build sandbox: UNVERIFIED until enabled on a phone.
      */
     suspend fun seedMcpServers() {
@@ -251,6 +251,25 @@ object XRepo {
         val defaults = listOf(
             McpServer("DeepWiki", "https://mcp.deepwiki.com/mcp", enabled = false),
             McpServer("Context7", "https://mcp.context7.com/mcp", enabled = false),
+            // Keyless documentation servers: ON by default.
+            McpServer("Microsoft Learn", "https://learn.microsoft.com/api/mcp", enabled = true),
+            McpServer("Cloudflare Docs", "https://docs.mcp.cloudflare.com/mcp", enabled = true),
+            // Servers that need a login or key: OFF until you open the server and tap "Sign in with OAuth" (then switch on).
+            McpServer("Notion", "https://mcp.notion.com/mcp", enabled = false),
+            McpServer("Linear", "https://mcp.linear.app/mcp", enabled = false),
+            McpServer("GitHub", "https://api.githubcopilot.com/mcp/", enabled = false),
+            McpServer("Sentry", "https://mcp.sentry.dev/mcp", enabled = false),
+            McpServer("Asana", "https://mcp.asana.com/sse", enabled = false),
+            McpServer("Atlassian", "https://mcp.atlassian.com/v1/sse", enabled = false),
+            McpServer("Canva", "https://mcp.canva.com/mcp", enabled = false),
+            McpServer("Figma", "https://mcp.figma.com/mcp", enabled = false),
+            McpServer("Stripe", "https://mcp.stripe.com", enabled = false),
+            McpServer("PayPal", "https://mcp.paypal.com/mcp", enabled = false),
+            McpServer("Square", "https://mcp.squareup.com/sse", enabled = false),
+            McpServer("Vercel", "https://mcp.vercel.com", enabled = false),
+            McpServer("Supabase", "https://mcp.supabase.com/mcp", enabled = false),
+            McpServer("Hugging Face", "https://huggingface.co/mcp", enabled = false),
+            McpServer("Exa Search", "https://mcp.exa.ai/mcp", enabled = false),
         ).filter { it.name !in offered }
         if (defaults.isEmpty()) return
         updateJsonOrFalse(StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID) { json ->
@@ -260,6 +279,18 @@ object XRepo {
             if (missing.isEmpty()) null else McpSettingsCodec.encodeServers(existing + missing)
         }
         TextActionDefaults.writeOffered(marker, offered + defaults.map { it.name })
+    }
+
+    /** Stores (or removes, when [bearer] is null) the Authorization header of one MCP server; used by OAuth sign-in and token refresh. */
+    suspend fun setMcpAuthorization(serverName: String, bearer: String?) {
+        updateJsonOrFalse(StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID) { json ->
+            val servers = McpSettingsCodec.parseServers(json)
+            if (servers.none { it.name == serverName }) null
+            else McpSettingsCodec.encodeServers(servers.map {
+                if (it.name != serverName) it
+                else it.copy(headers = if (bearer == null) it.headers - "Authorization" else it.headers + ("Authorization" to "Bearer $bearer"))
+            })
+        }
     }
 
     /** Adds the bundled text actions once each; ones the owner deleted are not re-added. */

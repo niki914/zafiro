@@ -1,0 +1,28 @@
+{
+ "id": "threads.read_activity",
+ "version": 1,
+ "platform": "threads",
+ "description": "Open Threads notifications/activity and return what is shown (replies, likes, mentions).",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.instagram.barcelona"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Activity"
+   ],
+   "optional": true
+  },
+  {
+   "op": "sleep",
+   "ms": 1500
+  },
+  {
+   "op": "collect",
+   "count": 3
+  }
+ ]
+}

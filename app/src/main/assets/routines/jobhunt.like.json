@@ -1,0 +1,15 @@
+{
+ "id": "jobhunt.like",
+ "version": 1,
+ "platform": "jobhunt",
+ "description": "Like the post currently open in Job hunt.",
+ "params": [],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Star"
+   ]
+  }
+ ]
+}

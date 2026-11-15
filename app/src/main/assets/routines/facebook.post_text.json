@@ -1,0 +1,51 @@
+{
+ "id": "facebook.post_text",
+ "version": 1,
+ "platform": "facebook",
+ "description": "Create and publish a text post in Facebook. Only after an engage gate of AUTO or owner approval.",
+ "params": [
+  {
+   "name": "text",
+   "required": true
+  }
+ ],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.facebook.katana"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Home"
+   ],
+   "optional": true,
+   "timeout_s": 6
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "What's on your mind",
+    "Create post",
+    "Write something"
+   ],
+   "timeout_s": 6
+  },
+  {
+   "op": "type",
+   "labels": [
+    "What's on your mind",
+    "Write something"
+   ],
+   "text": "{text}"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "POST",
+    "Post"
+   ],
+   "timeout_s": 8
+  }
+ ]
+}

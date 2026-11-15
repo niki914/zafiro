@@ -1,0 +1,15 @@
+{
+ "id": "email.like",
+ "version": 1,
+ "platform": "email",
+ "description": "Like the post currently open in Email (Gmail).",
+ "params": [],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Star"
+   ]
+  }
+ ]
+}

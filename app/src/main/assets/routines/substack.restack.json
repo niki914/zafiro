@@ -1,0 +1,23 @@
+{
+ "id": "substack.restack",
+ "version": 1,
+ "platform": "substack",
+ "description": "Restack the note currently open in Substack.",
+ "params": [],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Restack"
+   ]
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Restack",
+    "Share"
+   ],
+   "optional": true
+  }
+ ]
+}

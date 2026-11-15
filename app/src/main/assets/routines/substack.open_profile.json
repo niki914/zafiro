@@ -1,0 +1,48 @@
+{
+ "id": "substack.open_profile",
+ "version": 1,
+ "platform": "substack",
+ "description": "Open a profile in Substack by name via search.",
+ "params": [
+  {
+   "name": "name",
+   "required": true
+  }
+ ],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.substack.app"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Search",
+    "Explore"
+   ],
+   "timeout_s": 6
+  },
+  {
+   "op": "type",
+   "labels": [
+    "Search"
+   ],
+   "text": "{name}"
+  },
+  {
+   "op": "key",
+   "code": 66
+  },
+  {
+   "op": "sleep",
+   "ms": 1500
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "{name}"
+   ],
+   "timeout_s": 8
+  }
+ ]
+}

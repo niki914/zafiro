@@ -1,0 +1,21 @@
+{
+ "id": "linkedin.open_home",
+ "version": 1,
+ "platform": "linkedin",
+ "description": "Open LinkedIn and go to the home screen.",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.linkedin.android"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Home"
+   ],
+   "optional": true,
+   "timeout_s": 6
+  }
+ ]
+}

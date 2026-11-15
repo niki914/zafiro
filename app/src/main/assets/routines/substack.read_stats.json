@@ -1,0 +1,38 @@
+{
+ "id": "substack.read_stats",
+ "version": 1,
+ "platform": "substack",
+ "description": "Open Substack stats and return the visible numbers (subscribers, views).",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.substack.app"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Dashboard",
+    "Stats",
+    "Profile"
+   ],
+   "optional": true
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Stats",
+    "Subscribers"
+   ],
+   "optional": true
+  },
+  {
+   "op": "sleep",
+   "ms": 2000
+  },
+  {
+   "op": "collect",
+   "count": 2
+  }
+ ]
+}

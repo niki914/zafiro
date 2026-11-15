@@ -2,6 +2,7 @@ package com.niki914.zafiro.app.ui.content.mcp
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -156,6 +157,31 @@ private fun McpServerDetailContentBody(
             fieldController = fieldController,
             onUrlChange = onUrlChange,
             onHeadersChange = onHeadersChange,
+        )
+
+        McpOAuthSignInRow(uiState = uiState)
+    }
+}
+
+/** For servers that need a login (Notion, Linear, GitHub...): runs the browser sign-in and saves the token as the Authorization header. */
+@Composable
+private fun McpOAuthSignInRow(uiState: McpSettingsUiState) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val name = uiState.formState.name
+    val url = uiState.formState.url
+    if (name.isBlank() || url.isBlank() || uiState.formState.editingIndex == null) return
+    com.niki914.uikit.infra.component.SettingsGroupCard {
+        com.niki914.uikit.infra.component.SettingNavigationItem(
+            title = "Sign in with OAuth",
+            summary = "For servers that ask you to log in. Opens your browser; Zafiro keeps the token and renews it automatically. Save the server first.",
+            currentState = if (com.niki914.zafiro.repo.oauth.McpOAuth.isSignedIn(context, name)) "Signed in" else null,
+            onClick = {
+                scope.launch {
+                    val msg = runCatching { com.niki914.zafiro.repo.oauth.McpOAuth.signIn(context, name, url) }.getOrElse { "Sign-in failed: ${it.message}" }
+                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+                }
+            },
         )
     }
 }

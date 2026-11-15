@@ -1,0 +1,52 @@
+{
+ "id": "x.post_text",
+ "version": 1,
+ "platform": "x",
+ "description": "Create and publish a text post in X (Twitter). Only after an engage gate of AUTO or owner approval.",
+ "params": [
+  {
+   "name": "text",
+   "required": true
+  }
+ ],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.twitter.android"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Home"
+   ],
+   "optional": true,
+   "timeout_s": 6
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Post",
+    "Compose",
+    "What is happening",
+    "What's happening"
+   ],
+   "timeout_s": 6
+  },
+  {
+   "op": "type",
+   "labels": [
+    "What is happening",
+    "What's happening",
+    "Post text"
+   ],
+   "text": "{text}"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Post"
+   ],
+   "timeout_s": 8
+  }
+ ]
+}

@@ -34,6 +34,7 @@ internal fun ConversationHistoryPageRoute(
     onOpenTasks: () -> Unit = {},
     onNewChat: () -> Unit = {},
     onOpenAgents: () -> Unit = {},
+    onOpenFeature: (String) -> Unit = {},
     onOpenSettings: () -> Unit = {},
 ) {
     val viewModel = pageViewModel<ConversationHistoryViewModel>()
@@ -213,6 +214,7 @@ internal fun ConversationHistoryPageRoute(
         onOpenTasks = onOpenTasks,
         onNewChat = onNewChat,
         onOpenAgents = onOpenAgents,
+        onOpenFeature = onOpenFeature,
         onOpenSettings = onOpenSettings,
         onConversationClick = { id ->
             viewModel.sendIntent(ConversationHistoryIntent.ClearUnread(id))

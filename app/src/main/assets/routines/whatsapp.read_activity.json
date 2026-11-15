@@ -1,0 +1,28 @@
+{
+ "id": "whatsapp.read_activity",
+ "version": 1,
+ "platform": "whatsapp",
+ "description": "Open WhatsApp notifications/activity and return what is shown (replies, likes, mentions).",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.whatsapp.w4b"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Chats"
+   ],
+   "optional": true
+  },
+  {
+   "op": "sleep",
+   "ms": 1500
+  },
+  {
+   "op": "collect",
+   "count": 3
+  }
+ ]
+}

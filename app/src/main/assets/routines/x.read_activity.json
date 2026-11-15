@@ -1,0 +1,28 @@
+{
+ "id": "x.read_activity",
+ "version": 1,
+ "platform": "x",
+ "description": "Open X (Twitter) notifications/activity and return what is shown (replies, likes, mentions).",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.twitter.android"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Notifications"
+   ],
+   "optional": true
+  },
+  {
+   "op": "sleep",
+   "ms": 1500
+  },
+  {
+   "op": "collect",
+   "count": 3
+  }
+ ]
+}

@@ -384,3 +384,43 @@ data class AgentEditorPage(val agentId: String?) : ZafiroPage {
     override val rightAction: TopBarActionSpec? =
         if (agentId == null) null else TopBarActionSpec(icon = Icons.Default.Delete, contentDescription = "Delete Button")
 }
+
+
+/** What the team is doing right now, what needs the owner, and what failed. */
+data object DashboardPage : ZafiroPage {
+    override val routeKey: String = "dashboard"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.dashboard_page_title)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? = null
+    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
+}
+
+/** Switchable per-platform teams. */
+data object WorkspacesPage : ZafiroPage {
+    override val routeKey: String = "workspaces"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.workspaces_page_title)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? = null
+    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
+}
+
+/** Files the agents saved. */
+data object FilesPage : ZafiroPage {
+    override val routeKey: String = "files"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.files_page_title)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? = null
+    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
+}
+
+/** One saved file ([path] is relative to files/outputs). */
+data class FileViewPage(val path: String) : ZafiroPage {
+    override val routeKey: String = "file:$path"
+    override val titleSpec: PageTitleSpec = NoTitle
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? = null
+}

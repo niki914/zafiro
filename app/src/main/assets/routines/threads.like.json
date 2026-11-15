@@ -1,0 +1,15 @@
+{
+ "id": "threads.like",
+ "version": 1,
+ "platform": "threads",
+ "description": "Like the post currently open in Threads.",
+ "params": [],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Like"
+   ]
+  }
+ ]
+}

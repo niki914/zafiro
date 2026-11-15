@@ -1,0 +1,36 @@
+{
+ "id": "jobhunt.scan_feed",
+ "version": 1,
+ "platform": "jobhunt",
+ "description": "Scroll the Job hunt feed and collect post texts to judge for engagement.",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.google.android.gm"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Inbox"
+   ],
+   "optional": true,
+   "timeout_s": 6
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Inbox"
+   ],
+   "optional": true
+  },
+  {
+   "op": "sleep",
+   "ms": 1200
+  },
+  {
+   "op": "collect",
+   "count": 5
+  }
+ ]
+}

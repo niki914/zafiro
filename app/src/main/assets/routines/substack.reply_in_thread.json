@@ -1,0 +1,39 @@
+{
+ "id": "substack.reply_in_thread",
+ "version": 1,
+ "platform": "substack",
+ "description": "Reply to the note or comment currently open in Substack.",
+ "params": [
+  {
+   "name": "text",
+   "required": true
+  }
+ ],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Reply"
+   ],
+   "timeout_s": 6
+  },
+  {
+   "op": "type",
+   "labels": [
+    "Reply",
+    "Write a reply",
+    "Add a reply"
+   ],
+   "text": "{text}"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Post",
+    "Send",
+    "Reply"
+   ],
+   "timeout_s": 8
+  }
+ ]
+}

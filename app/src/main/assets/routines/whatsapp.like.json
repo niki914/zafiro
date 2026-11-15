@@ -1,0 +1,15 @@
+{
+ "id": "whatsapp.like",
+ "version": 1,
+ "platform": "whatsapp",
+ "description": "Like the post currently open in WhatsApp.",
+ "params": [],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "React"
+   ]
+  }
+ ]
+}

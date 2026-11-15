@@ -9,4 +9,7 @@
     <cache-path
         name="updates"
         path="updates/" />
+    <files-path
+        name="outputs"
+        path="outputs/" />
 </paths>

@@ -1,0 +1,51 @@
+{
+ "id": "threads.post_text",
+ "version": 1,
+ "platform": "threads",
+ "description": "Create and publish a text post in Threads. Only after an engage gate of AUTO or owner approval.",
+ "params": [
+  {
+   "name": "text",
+   "required": true
+  }
+ ],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.instagram.barcelona"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Home"
+   ],
+   "optional": true,
+   "timeout_s": 6
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "New thread",
+    "Start a thread",
+    "What's new",
+    "Create"
+   ],
+   "timeout_s": 6
+  },
+  {
+   "op": "type",
+   "labels": [
+    "What's new",
+    "Start a thread"
+   ],
+   "text": "{text}"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Post"
+   ],
+   "timeout_s": 8
+  }
+ ]
+}

@@ -66,6 +66,7 @@ class App : Application() {
             { XRepo.seedPyTools() },
             { runCatching { XRepo.seedTextActions() } },
             { runCatching { XRepo.seedMcpServers() } },
+            { runCatching { com.niki914.zafiro.repo.WorkspaceManager.seedRoutines(this@App) } },
         )
         // OpenRouter 公共目录预热：免鉴权后台抓，30 分钟内不重拉；失败保留旧缓存
         applicationScope.launch {
@@ -73,6 +74,14 @@ class App : Application() {
         }
         applicationScope.launch {
             PyRuntime.warmUp()
+        }
+
+        // Renew MCP OAuth tokens before they expire (checked every 10 minutes while the app process lives).
+        applicationScope.launch {
+            while (true) {
+                runCatching { com.niki914.zafiro.repo.oauth.McpOAuth.refreshDue(this@App) }
+                kotlinx.coroutines.delay(10 * 60_000L)
+            }
         }
 
         observeFloatingBall()

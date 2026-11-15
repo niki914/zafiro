@@ -1,0 +1,29 @@
+{
+ "id": "tiktok.read_activity",
+ "version": 1,
+ "platform": "tiktok",
+ "description": "Open TikTok notifications/activity and return what is shown (replies, likes, mentions).",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.zhiliaoapp.musically"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Inbox",
+    "Activity"
+   ],
+   "optional": true
+  },
+  {
+   "op": "sleep",
+   "ms": 1500
+  },
+  {
+   "op": "collect",
+   "count": 3
+  }
+ ]
+}

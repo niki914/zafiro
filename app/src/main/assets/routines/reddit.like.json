@@ -1,0 +1,15 @@
+{
+ "id": "reddit.like",
+ "version": 1,
+ "platform": "reddit",
+ "description": "Like the post currently open in Reddit.",
+ "params": [],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Upvote"
+   ]
+  }
+ ]
+}

@@ -91,6 +91,14 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- OAuth redirect for MCP sign-in (zafiro-mcp://oauth?code=...&state=...) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="zafiro-mcp" android:host="oauth" />
+            </intent-filter>
         </activity>
 
         <!--

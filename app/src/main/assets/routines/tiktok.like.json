@@ -1,0 +1,15 @@
+{
+ "id": "tiktok.like",
+ "version": 1,
+ "platform": "tiktok",
+ "description": "Like the post currently open in TikTok.",
+ "params": [],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Like"
+   ]
+  }
+ ]
+}

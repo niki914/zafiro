@@ -5,6 +5,9 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Groups
 import android.text.format.DateUtils
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
@@ -106,6 +109,7 @@ internal fun ConversationHistoryPageContent(
     onOpenTasks: () -> Unit = {},
     onNewChat: () -> Unit = {},
     onOpenAgents: () -> Unit = {},
+    onOpenFeature: (String) -> Unit = {},
     onOpenSettings: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -153,6 +157,7 @@ internal fun ConversationHistoryPageContent(
             onOpenTasks = onOpenTasks,
             onNewChat = onNewChat,
             onOpenAgents = onOpenAgents,
+            onOpenFeature = onOpenFeature,
             onOpenSettings = onOpenSettings,
             modifier = modifier,
         )
@@ -300,6 +305,7 @@ private fun ConversationHistoryListContent(
     onOpenTasks: () -> Unit = {},
     onNewChat: () -> Unit = {},
     onOpenAgents: () -> Unit = {},
+    onOpenFeature: (String) -> Unit = {},
     onOpenSettings: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -365,7 +371,10 @@ private fun ConversationHistoryListContent(
                 item(key = "tasks_entry", contentType = "tasks_entry") {
                     HistoryMenuEntry(Icons.Default.Add, stringResource(R.string.sidebar_new_chat), null, onNewChat)
                     HistoryMenuEntry(Icons.Default.Schedule, stringResource(R.string.tasks_entry_title), stringResource(R.string.tasks_entry_summary), onOpenTasks)
+                    HistoryMenuEntry(Icons.Default.Dashboard, stringResource(R.string.dashboard_entry_title), stringResource(R.string.dashboard_entry_summary)) { onOpenFeature("dashboard") }
+                    HistoryMenuEntry(Icons.Default.Groups, stringResource(R.string.workspaces_entry_title), stringResource(R.string.workspaces_entry_summary)) { onOpenFeature("workspaces") }
                     HistoryMenuEntry(Icons.Default.SmartToy, stringResource(R.string.agents_entry_title), stringResource(R.string.agents_entry_summary), onOpenAgents)
+                    HistoryMenuEntry(Icons.Default.Folder, stringResource(R.string.files_entry_title), stringResource(R.string.files_entry_summary)) { onOpenFeature("files") }
                     HistoryMenuEntry(Icons.Default.Settings, stringResource(R.string.ui_settings_menu_entry), stringResource(R.string.sidebar_settings_summary), onOpenSettings)
                 }
             }

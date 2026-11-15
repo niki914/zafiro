@@ -1,0 +1,16 @@
+{
+ "id": "pinterest.like",
+ "version": 1,
+ "platform": "pinterest",
+ "description": "Like the post currently open in Pinterest.",
+ "params": [],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "React",
+    "Like"
+   ]
+  }
+ ]
+}

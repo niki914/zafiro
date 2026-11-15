@@ -1,0 +1,36 @@
+{
+ "id": "instagram.scan_feed",
+ "version": 1,
+ "platform": "instagram",
+ "description": "Scroll the Instagram feed and collect post texts to judge for engagement.",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.instagram.android"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Home"
+   ],
+   "optional": true,
+   "timeout_s": 6
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Home"
+   ],
+   "optional": true
+  },
+  {
+   "op": "sleep",
+   "ms": 1200
+  },
+  {
+   "op": "collect",
+   "count": 5
+  }
+ ]
+}

@@ -1,0 +1,21 @@
+{
+ "id": "substack.open_home",
+ "version": 1,
+ "platform": "substack",
+ "description": "Open Substack and go to the home screen.",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.substack.app"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Home"
+   ],
+   "optional": true,
+   "timeout_s": 6
+  }
+ ]
+}

@@ -1,0 +1,30 @@
+{
+ "id": "substack.read_activity",
+ "version": 1,
+ "platform": "substack",
+ "description": "Open Substack notifications/activity and return what is shown (replies, likes, mentions).",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.substack.app"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Activity",
+    "Notifications",
+    "Inbox"
+   ],
+   "optional": true
+  },
+  {
+   "op": "sleep",
+   "ms": 1500
+  },
+  {
+   "op": "collect",
+   "count": 3
+  }
+ ]
+}

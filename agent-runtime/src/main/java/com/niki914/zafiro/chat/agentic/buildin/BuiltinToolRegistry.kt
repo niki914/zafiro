@@ -1,6 +1,7 @@
 package com.niki914.zafiro.chat.agentic.buildin
 
 import com.niki914.zafiro.chat.agentic.buildin.impl.BoardBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.CreateSkillBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.EngageBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ExamplesBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ExecutePythonBuiltin
@@ -19,6 +20,7 @@ import com.niki914.zafiro.chat.agentic.buildin.impl.WaitBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.OpenUriBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.OpenBuiltin__V2
 import com.niki914.zafiro.chat.agentic.buildin.impl.PyMetaToolsBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.SaveFileBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenOperationBuiltin__V2
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenRoutineBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreensBuiltin__V2
@@ -61,6 +63,8 @@ class BuiltinToolRegistry(
                 FindInstalledAppsBuiltin(),
                 ScreenOperationBuiltin__V2(),
                 ScreenRoutineBuiltin(),
+                SaveFileBuiltin(),
+                CreateSkillBuiltin(),
                 ScreenshotBuiltin__V2(),
                 OpenBuiltin__V2(),
                 ScreensBuiltin__V2(),

@@ -1,0 +1,55 @@
+{
+ "id": "substack.post_text",
+ "version": 1,
+ "platform": "substack",
+ "description": "Create and publish a text post in Substack. Only after an engage gate of AUTO or owner approval.",
+ "params": [
+  {
+   "name": "text",
+   "required": true
+  }
+ ],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.substack.app"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Home"
+   ],
+   "optional": true,
+   "timeout_s": 6
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "New note",
+    "Write a note",
+    "Create",
+    "What's on your mind",
+    "Start a note"
+   ],
+   "timeout_s": 6
+  },
+  {
+   "op": "type",
+   "labels": [
+    "What's on your mind",
+    "Say something",
+    "Write a note",
+    "Start writing"
+   ],
+   "text": "{text}"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Post",
+    "Publish"
+   ],
+   "timeout_s": 8
+  }
+ ]
+}

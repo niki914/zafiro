@@ -1,0 +1,39 @@
+{
+ "id": "x.comment",
+ "version": 1,
+ "platform": "x",
+ "description": "On the post currently open in X (Twitter), write a comment and send it. Only after an engage gate of AUTO or owner approval.",
+ "params": [
+  {
+   "name": "text",
+   "required": true
+  }
+ ],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Reply",
+    "Post your reply"
+   ],
+   "timeout_s": 6
+  },
+  {
+   "op": "type",
+   "labels": [
+    "What is happening",
+    "What's happening",
+    "Post text"
+   ],
+   "text": "{text}"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Reply",
+    "Post"
+   ],
+   "timeout_s": 8
+  }
+ ]
+}

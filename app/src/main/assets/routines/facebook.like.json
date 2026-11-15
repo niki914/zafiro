@@ -1,0 +1,15 @@
+{
+ "id": "facebook.like",
+ "version": 1,
+ "platform": "facebook",
+ "description": "Like the post currently open in Facebook.",
+ "params": [],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Like"
+   ]
+  }
+ ]
+}

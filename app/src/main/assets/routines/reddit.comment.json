@@ -1,0 +1,40 @@
+{
+ "id": "reddit.comment",
+ "version": 1,
+ "platform": "reddit",
+ "description": "On the post currently open in Reddit, write a comment and send it. Only after an engage gate of AUTO or owner approval.",
+ "params": [
+  {
+   "name": "text",
+   "required": true
+  }
+ ],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Add a comment",
+    "Comment"
+   ],
+   "timeout_s": 6
+  },
+  {
+   "op": "type",
+   "labels": [
+    "Title",
+    "Body text",
+    "Add a comment"
+   ],
+   "text": "{text}"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Reply",
+    "Comment",
+    "Post"
+   ],
+   "timeout_s": 8
+  }
+ ]
+}

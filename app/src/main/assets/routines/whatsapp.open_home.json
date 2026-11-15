@@ -1,0 +1,21 @@
+{
+ "id": "whatsapp.open_home",
+ "version": 1,
+ "platform": "whatsapp",
+ "description": "Open WhatsApp and go to the home screen.",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.whatsapp.w4b"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Chats"
+   ],
+   "optional": true,
+   "timeout_s": 6
+  }
+ ]
+}

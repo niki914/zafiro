@@ -1,0 +1,21 @@
+{
+ "id": "tiktok.open_home",
+ "version": 1,
+ "platform": "tiktok",
+ "description": "Open TikTok and go to the home screen.",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.zhiliaoapp.musically"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Home"
+   ],
+   "optional": true,
+   "timeout_s": 6
+  }
+ ]
+}

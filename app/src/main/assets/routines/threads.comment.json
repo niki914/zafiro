@@ -1,0 +1,37 @@
+{
+ "id": "threads.comment",
+ "version": 1,
+ "platform": "threads",
+ "description": "On the post currently open in Threads, write a comment and send it. Only after an engage gate of AUTO or owner approval.",
+ "params": [
+  {
+   "name": "text",
+   "required": true
+  }
+ ],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Reply"
+   ],
+   "timeout_s": 6
+  },
+  {
+   "op": "type",
+   "labels": [
+    "What's new",
+    "Start a thread"
+   ],
+   "text": "{text}"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Post",
+    "Reply"
+   ],
+   "timeout_s": 8
+  }
+ ]
+}

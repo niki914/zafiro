@@ -1,0 +1,28 @@
+{
+ "id": "facebook.read_activity",
+ "version": 1,
+ "platform": "facebook",
+ "description": "Open Facebook notifications/activity and return what is shown (replies, likes, mentions).",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.facebook.katana"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Notifications"
+   ],
+   "optional": true
+  },
+  {
+   "op": "sleep",
+   "ms": 1500
+  },
+  {
+   "op": "collect",
+   "count": 3
+  }
+ ]
+}

@@ -1,0 +1,36 @@
+{
+ "id": "substack.scan_feed",
+ "version": 1,
+ "platform": "substack",
+ "description": "Scroll the Substack feed and collect post texts to judge for engagement.",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.substack.app"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Home"
+   ],
+   "optional": true,
+   "timeout_s": 6
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Notes"
+   ],
+   "optional": true
+  },
+  {
+   "op": "sleep",
+   "ms": 1200
+  },
+  {
+   "op": "collect",
+   "count": 5
+  }
+ ]
+}

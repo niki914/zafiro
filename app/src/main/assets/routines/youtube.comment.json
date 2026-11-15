@@ -1,0 +1,38 @@
+{
+ "id": "youtube.comment",
+ "version": 1,
+ "platform": "youtube",
+ "description": "On the post currently open in YouTube, write a comment and send it. Only after an engage gate of AUTO or owner approval.",
+ "params": [
+  {
+   "name": "text",
+   "required": true
+  }
+ ],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Comments",
+    "Add a comment"
+   ],
+   "timeout_s": 6
+  },
+  {
+   "op": "type",
+   "labels": [
+    "Add a comment",
+    "Title"
+   ],
+   "text": "{text}"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Send",
+    "Reply"
+   ],
+   "timeout_s": 8
+  }
+ ]
+}

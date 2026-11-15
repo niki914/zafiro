@@ -1,0 +1,38 @@
+{
+ "id": "instagram.comment",
+ "version": 1,
+ "platform": "instagram",
+ "description": "On the post currently open in Instagram, write a comment and send it. Only after an engage gate of AUTO or owner approval.",
+ "params": [
+  {
+   "name": "text",
+   "required": true
+  }
+ ],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Comment",
+    "Add a comment"
+   ],
+   "timeout_s": 6
+  },
+  {
+   "op": "type",
+   "labels": [
+    "Write a caption",
+    "Add a caption"
+   ],
+   "text": "{text}"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Post",
+    "Send"
+   ],
+   "timeout_s": 8
+  }
+ ]
+}

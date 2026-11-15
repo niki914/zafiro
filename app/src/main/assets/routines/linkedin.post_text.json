@@ -1,0 +1,51 @@
+{
+ "id": "linkedin.post_text",
+ "version": 1,
+ "platform": "linkedin",
+ "description": "Create and publish a text post in LinkedIn. Only after an engage gate of AUTO or owner approval.",
+ "params": [
+  {
+   "name": "text",
+   "required": true
+  }
+ ],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.linkedin.android"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Home"
+   ],
+   "optional": true,
+   "timeout_s": 6
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Start a post",
+    "Post",
+    "Create a post"
+   ],
+   "timeout_s": 6
+  },
+  {
+   "op": "type",
+   "labels": [
+    "What do you want to talk about",
+    "Share your thoughts",
+    "Start a post"
+   ],
+   "text": "{text}"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Post"
+   ],
+   "timeout_s": 8
+  }
+ ]
+}

@@ -1,0 +1,28 @@
+{
+ "id": "linkedin.read_activity",
+ "version": 1,
+ "platform": "linkedin",
+ "description": "Open LinkedIn notifications/activity and return what is shown (replies, likes, mentions).",
+ "params": [],
+ "steps": [
+  {
+   "op": "open_app",
+   "package": "com.linkedin.android"
+  },
+  {
+   "op": "tap",
+   "labels": [
+    "Notifications"
+   ],
+   "optional": true
+  },
+  {
+   "op": "sleep",
+   "ms": 1500
+  },
+  {
+   "op": "collect",
+   "count": 3
+  }
+ ]
+}

@@ -1,0 +1,15 @@
+{
+ "id": "x.like",
+ "version": 1,
+ "platform": "x",
+ "description": "Like the post currently open in X (Twitter).",
+ "params": [],
+ "steps": [
+  {
+   "op": "tap",
+   "labels": [
+    "Like"
+   ]
+  }
+ ]
+}

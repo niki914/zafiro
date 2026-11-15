@@ -83,6 +83,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleIncomingIntent(intent: Intent?) {
+        if (com.niki914.zafiro.repo.oauth.McpOAuth.onCallback(intent?.data)) return
         val targetConversationId =
             intent?.getStringExtra(ApplicationService.EXTRA_TARGET_CONVERSATION_ID)
         findService<ApplicationService>()?.handleNavigationIntent(targetConversationId)

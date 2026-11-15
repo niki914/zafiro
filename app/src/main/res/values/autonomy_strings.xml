@@ -141,4 +141,13 @@
     <string name="task_run_report">Report</string>
     <string name="task_run_problem">Problem</string>
     <string name="task_run_log">Log</string>
+    <string name="dashboard_page_title">Dashboard</string>
+    <string name="workspaces_page_title">Workspaces</string>
+    <string name="files_page_title">Files</string>
+    <string name="dashboard_entry_title">Dashboard</string>
+    <string name="dashboard_entry_summary">What the team is doing and what needs you</string>
+    <string name="workspaces_entry_title">Workspaces</string>
+    <string name="workspaces_entry_summary">Ready-made teams: Substack, LinkedIn, TikTok and more</string>
+    <string name="files_entry_title">Files</string>
+    <string name="files_entry_summary">Plans, drafts and reports the agents made</string>
 </resources>
