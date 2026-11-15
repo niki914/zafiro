@@ -9,6 +9,7 @@ import android.graphics.Point
 import android.hardware.display.DisplayManager
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.Display
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
@@ -17,6 +18,7 @@ import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.api.util.tryOrNull
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.resume
 
 /**
@@ -70,6 +72,16 @@ interface AccessibilityDriver {
      * 执行全局动作（返回、Home、最近任务等，仅适用于设备物理主屏）。
      */
     fun performGlobalAction(action: Int): Boolean
+
+    /**
+     * 记录指定 displayId 产生 UI 显著无障碍事件（内容变更、窗口切换、滚动等）的时间戳。
+     */
+    fun recordUiEvent(displayId: Int) {}
+
+    /**
+     * 获取指定 displayId 上一次发生显著无障碍事件的时间（开机毫秒时间戳）。
+     */
+    fun getLastUiEventTime(displayId: Int): Long = 0L
 }
 
 /**
@@ -83,6 +95,8 @@ object SystemAccessibilityDriver : AccessibilityDriver {
     @Volatile
     private var serviceRef: AccessibilityService? = null
 
+    private val lastEventTimes = ConcurrentHashMap<Int, Long>()
+
     val serviceContext: Context? get() = serviceRef
 
     override val isConnected: Boolean get() = serviceRef != null
@@ -94,7 +108,17 @@ object SystemAccessibilityDriver : AccessibilityDriver {
 
     fun detach() {
         serviceRef = null
+        lastEventTimes.clear()
         Logger.i(TAG, "AccessibilityService detached")
+    }
+
+    override fun recordUiEvent(displayId: Int) {
+        val now = tryOrNull { SystemClock.elapsedRealtime() } ?: System.currentTimeMillis()
+        lastEventTimes[displayId] = now
+    }
+
+    override fun getLastUiEventTime(displayId: Int): Long {
+        return lastEventTimes[displayId] ?: 0L
     }
 
     override fun getDisplayMetrics(displayId: Int): Pair<Int, Int> {

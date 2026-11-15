@@ -1,6 +1,7 @@
 // 保护：ToolPresentation.prettyPrintIfJson 缩进排版；subtitleOf ui_intent 优先裁决与参数降级，command 工具防裸露
 package com.niki914.zafiro.app.ui.model
 
+import com.niki914.zafiro.app.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -105,6 +106,32 @@ class ToolPresentationTest {
 
         val launchAppArgs = """{"name":"QQ"}"""
         assertEquals("QQ", ToolPresentation.subtitleOf("launch_app", launchAppArgs))
+
+        val openArgs = """{"app_name":"网易云音乐"}"""
+        assertEquals("网易云音乐", ToolPresentation.subtitleOf("open", openArgs))
+
+        val screenOpArgs = """{"operation":"tap"}"""
+        assertEquals("tap", ToolPresentation.subtitleOf("screen_operation", screenOpArgs))
+
+        val screensArgs = """{"operation":"list"}"""
+        assertEquals("list", ToolPresentation.subtitleOf("screens", screensArgs))
+
+        val screenshotArgs = """{"screen":"phone"}"""
+        assertEquals("phone", ToolPresentation.subtitleOf("screenshot", screenshotArgs))
+    }
+
+    @Test
+    fun screenTools_mapToPhoneUseAndOpenGroups() {
+        assertEquals(R.string.ui_tool_display_phone_use, ToolPresentation.displayNameResOf("screen_operation"))
+        assertEquals(R.string.ui_tool_display_phone_use, ToolPresentation.displayNameResOf("screens"))
+        assertEquals(R.string.ui_tool_display_phone_use, ToolPresentation.displayNameResOf("screen_operation_accessibility"))
+        assertEquals(R.string.ui_tool_display_phone_use, ToolPresentation.displayNameResOf("screen_operation_shell"))
+
+        assertEquals(R.string.ui_tool_display_open, ToolPresentation.displayNameResOf("open"))
+        assertEquals(R.string.ui_tool_display_open, ToolPresentation.displayNameResOf("launch_app"))
+        assertEquals(R.string.ui_tool_display_open, ToolPresentation.displayNameResOf("open_uri"))
+
+        assertEquals(R.string.ui_tool_display_screenshot, ToolPresentation.displayNameResOf("screenshot"))
     }
 
     @Test

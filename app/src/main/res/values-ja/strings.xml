@@ -469,6 +469,8 @@
     <string name="ui_tool_display_screen_operation_accessibility">画面操作</string>
     <string name="ui_tool_display_screen_operation_shell">画面操作</string>
     <string name="ui_tool_display_screenshot">スクリーンショット</string>
+    <string name="ui_tool_display_phone_use">Phone Use</string>
+    <string name="ui_tool_display_open">Openく</string>
     <string name="ui_tool_display_view_image">画像を表示</string>
     <string name="ui_tool_display_py_meta_tools">カスタム Python ツール</string>
     <string name="dialog_cancel">キャンセル</string>
