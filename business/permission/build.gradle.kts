@@ -23,11 +23,9 @@ dependencies {
     implementation(project(":business:application"))
     implementation(project(":libs:logging"))
 
-    // shell 通道：root（libsu）+ shizuku。实现由旧 :libs:permission-manager 迁移而来，
-    // 与 libterm 共存；战略迁移完成前不合流。
+    // shell 通道：root (libsu) + shizuku (:libs:shizuku)
     implementation("com.github.topjohnwu.libsu:core:6.0.0")
-    implementation("dev.rikka.shizuku:api:13.1.5")
-    implementation("dev.rikka.shizuku:provider:13.1.5")
+    implementation(project(":libs:shizuku"))
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.2.10")
