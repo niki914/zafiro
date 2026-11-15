@@ -431,6 +431,8 @@
     <string name="ui_tool_display_screen_operation_accessibility">Управление экраном</string>
     <string name="ui_tool_display_screen_operation_shell">Управление экраном</string>
     <string name="ui_tool_display_screenshot">Снимок экрана</string>
+    <string name="ui_tool_display_phone_use">Phone Use</string>
+    <string name="ui_tool_display_open">Open</string>
     <string name="ui_tool_display_view_image">Просмотр изображения</string>
     <string name="ui_tool_display_py_meta_tools">Свой инструмент на Python</string>
     <string name="dialog_cancel">Отмена</string>

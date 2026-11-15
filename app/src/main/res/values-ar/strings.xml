@@ -479,6 +479,8 @@
     <string name="ui_tool_display_screen_operation_accessibility">تشغيل الشاشة</string>
     <string name="ui_tool_display_screen_operation_shell">تشغيل الشاشة</string>
     <string name="ui_tool_display_screenshot">لقطة شاشة</string>
+    <string name="ui_tool_display_phone_use">Phone Use</string>
+    <string name="ui_tool_display_open">Open</string>
     <string name="ui_tool_display_view_image">عرض صورة</string>
     <string name="ui_tool_display_py_meta_tools">أدوات Python المخصصة</string>
     <string name="dialog_cancel">إلغاء</string>

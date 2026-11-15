@@ -1,5 +1,9 @@
 package com.niki914.zafiro.app.screen
 
+import com.niki914.logging.Logger
+import com.niki914.shizuku.display.VirtualDisplayController
+import com.niki914.shizuku.display.VirtualDisplayPrepareResult
+import com.niki914.zafiro.accessibility.driver.SystemAccessibilityDriver
 import com.niki914.zafiro.accessibility.port.A11yDisplayScreen
 import com.niki914.zafiro.accessibility.port.DefaultDisplayPort
 import com.niki914.zafiro.accessibility.table.DisplayNodeTable
@@ -24,14 +28,22 @@ import com.niki914.zafiro.api.screen.Screens
 import com.niki914.zafiro.api.screen.ShowResult
 import com.niki914.zafiro.api.screen.ShowTarget
 import com.niki914.zafiro.api.screen.Target
-import com.niki914.zafiro.chat.agentic.buildin.impl.LaunchAppBuiltin
-import com.niki914.zafiro.chat.agentic.buildin.impl.OpenUriBuiltin
+import com.niki914.zafiro.api.util.runCatchingCancellable
+import com.niki914.zafiro.business.permission.Permission
+import com.niki914.zafiro.chat.agentic.device.AppLauncher
+import com.niki914.zafiro.chat.agentic.device.UriOpener
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * 针对物理主屏的屏幕实现。
  * 读、点与截屏交由 [A11yDisplayScreen]，动手前先过 [PhoneScreenAccess]。
  * 滚动和滑动在主屏上与指针一起走。
- * 应用启动与 URI 打开在此层桥接 [LaunchAppBuiltin] 和 [OpenUriBuiltin]，不申请无障碍。
+ * 应用启动与 URI 打开在此层委托 [AppLauncher] 和 [UriOpener]，不申请无障碍。
  */
 class PhoneDisplayScreen(
     port: DefaultDisplayPort = DefaultDisplayPort(),
@@ -106,36 +118,169 @@ class PhoneDisplayScreen(
     }
 
     override suspend fun show(target: ShowTarget): ShowResult {
+        access.prepare(PhoneScreenAccess.Need.OpenApp)?.let { denied ->
+            return ShowResult.Failed(denied.code)
+        }
         return when (target) {
-            is ShowTarget.AppName -> LaunchAppBuiltin().showOnPhone(null, target.name)
-            is ShowTarget.PackageName -> LaunchAppBuiltin().showOnPhone(target.packageName, null)
-            is ShowTarget.Uri -> {
-                val opened = OpenUriBuiltin().openForScreen(target.uri)
-                if (opened.ok) {
-                    ShowResult.Shown(opened.message)
-                } else {
-                    ShowResult.Failed(opened.code)
-                }
-            }
+            is ShowTarget.AppName -> AppLauncher.launch(packageName = null, appName = target.name)
+            is ShowTarget.PackageName -> AppLauncher.launch(packageName = target.packageName, appName = null)
+            is ShowTarget.Uri -> UriOpener.open(target.uri)
         }
     }
 }
 
 /**
- * 屏幕目录服务。
- * 本轮仅装配物理主屏，不做虚拟副屏与浏览器屏。
+ * 屏幕目录。主屏一直在。虚拟屏最多一块，打开前向权限中心申请悬浮窗、无障碍和 Shizuku。
  */
 object AppScreens : Screens {
-    private val phone = PhoneDisplayScreen()
+    private const val TAG = "niki914_zafiro_AppScreens"
 
-    override fun list(): List<ScreenInfo> = listOf(phone.info())
+    private val access = PhoneScreenAccess()
+    private val phone = PhoneDisplayScreen(access = access)
+    private val gate = Mutex()
+    private val cardScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    override fun get(id: ScreenId): Screen? = if (id == PhoneScreenId) phone else null
+    @Volatile
+    private var virtual: VirtualDisplayScreen? = null
+    private val vdController: VirtualDisplayController by lazy {
+        VirtualDisplayController.create(applicationContext())
+    }
 
-    override suspend fun open(kind: OpenKind): OpenResult = OpenResult.Unsupported(kind)
+    override fun list(): List<ScreenInfo> {
+        val extra = virtual?.info()
+        return if (extra == null) listOf(phone.info()) else listOf(phone.info(), extra)
+    }
+
+    override fun get(id: ScreenId): Screen? {
+        if (id == PhoneScreenId) return phone
+        val screen = virtual
+        return if (screen?.id == id) screen else null
+    }
+
+    override suspend fun open(kind: OpenKind): OpenResult {
+        if (kind != OpenKind.VirtualDisplay) return OpenResult.Unsupported(kind)
+        return gate.withLock { openVirtual() }
+    }
 
     override suspend fun close(id: ScreenId): CloseResult {
         if (id == PhoneScreenId) return CloseResult.Rejected("PHONE_NOT_CLOSABLE")
-        return CloseResult.Rejected("UNKNOWN_SCREEN")
+        return gate.withLock {
+            val screen = virtual
+            if (screen == null || screen.id != id) return@withLock CloseResult.Rejected("UNKNOWN_SCREEN")
+            dismiss(screen)
+            CloseResult.Closed
+        }
+    }
+
+    /** 无障碍服务重新连上后，把已经开着的预览挂回去。 */
+    fun restoreCard() {
+        val screen = virtual ?: return
+        if (VirtualDisplayCard.isShowing) return
+        cardScope.launch {
+            if (virtual == null || VirtualDisplayCard.isShowing) return@launch
+            VirtualDisplayCard.show(
+                frames = screen.preview(),
+                status = screen.status,
+                vdWidth = screen.width,
+                vdHeight = screen.height,
+                onClose = {
+                    cardScope.launch {
+                        gate.withLock {
+                            val current = virtual ?: return@withLock
+                            dismiss(current)
+                        }
+                    }
+                },
+                onNavKey = { keyCode ->
+                    cardScope.launch {
+                        runCatchingCancellable {
+                            screen.act(ScreenAction.Key(keyCode))
+                        }.onFailure { error ->
+                            Logger.e(TAG, "onNavKey failed keyCode=$keyCode", error)
+                        }
+                    }
+                },
+                onQualityChanged = { highQuality ->
+                    screen.setHighQuality(highQuality)
+                },
+                onTouch = { event ->
+                    screen.injectTouch(event)
+                },
+            )
+        }
+    }
+
+    private suspend fun openVirtual(): OpenResult {
+        virtual?.let { return OpenResult.Opened(it.info()) }
+        access.prepare(PhoneScreenAccess.Need.VirtualDisplay)?.let { denied ->
+            return OpenResult.Rejected(denied.code)
+        }
+        if (!permissionGranted(Permission.OVERLAY)) {
+            return OpenResult.Rejected("DISPLAY_FAILED")
+        }
+        when (vdController.prepare()) {
+            VirtualDisplayPrepareResult.Ready -> Unit
+            VirtualDisplayPrepareResult.Denied,
+            VirtualDisplayPrepareResult.Unavailable,
+            VirtualDisplayPrepareResult.BindFailed -> return OpenResult.Rejected("SHIZUKU_UNAVAILABLE")
+        }
+        return runCatchingCancellable {
+            val (width, height, dpi) = virtualDisplaySize(applicationContext())
+            val frames = VirtualDisplayFrames.open(vdController, width, height, dpi)
+            if (frames == null) {
+                vdController.close()
+                return@runCatchingCancellable OpenResult.Rejected("DISPLAY_FAILED")
+            }
+            val screen = VirtualDisplayScreen(frames, vdController, access)
+            val shown = VirtualDisplayCard.show(
+                frames = screen.preview(),
+                status = screen.status,
+                vdWidth = screen.width,
+                vdHeight = screen.height,
+                onClose = {
+                    cardScope.launch {
+                        gate.withLock {
+                            val current = virtual ?: return@withLock
+                            dismiss(current)
+                        }
+                    }
+                },
+                onNavKey = { keyCode ->
+                    cardScope.launch {
+                        runCatchingCancellable {
+                            screen.act(ScreenAction.Key(keyCode))
+                        }.onFailure { error ->
+                            Logger.e(TAG, "onNavKey failed keyCode=$keyCode", error)
+                        }
+                    }
+                },
+                onQualityChanged = { highQuality ->
+                    screen.setHighQuality(highQuality)
+                },
+                onTouch = { event ->
+                    screen.injectTouch(event)
+                },
+            )
+            if (!shown) {
+                vdController.release(frames.displayId)
+                screen.closeLocal()
+                vdController.close()
+                return@runCatchingCancellable OpenResult.Rejected("DISPLAY_FAILED")
+            }
+            virtual = screen
+            OpenResult.Opened(screen.info())
+        }.getOrElse { error ->
+            Logger.e(TAG, "openVirtual failed unexpectedly", error)
+            runCatchingCancellable { vdController.close() }
+            OpenResult.Rejected("UNKNOWN_ERROR")
+        }
+    }
+
+    private suspend fun dismiss(screen: VirtualDisplayScreen) {
+        runCatchingCancellable { VirtualDisplayCard.hide() }
+        runCatchingCancellable { vdController.release(screen.port.displayId) }
+        runCatchingCancellable { screen.closeLocal() }
+        virtual = null
+        runCatchingCancellable { vdController.close() }
     }
 }

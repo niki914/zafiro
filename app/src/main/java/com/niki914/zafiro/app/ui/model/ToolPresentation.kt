@@ -3,11 +3,13 @@ package com.niki914.zafiro.app.ui.model
 import android.content.Context
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.niki914.zafiro.api.util.tryOrNull
 import com.niki914.zafiro.app.R
@@ -40,8 +42,22 @@ object ToolPresentation {
 
     private val TerminalIcon = Icons.Filled.Terminal
     private val Skill = Icons.AutoMirrored.Filled.MenuBook
-    private val Camera = Icons.Filled.CameraAlt
+    private val Phone = Icons.Rounded.PhoneAndroid
+    private val OpenInNew = Icons.AutoMirrored.Filled.OpenInNew
     private val ImageTool = Icons.Filled.Image
+
+    val PHONE_USE_TOOLS = setOf(
+        "screen_operation",
+        "screens",
+        "screen_operation_accessibility",
+        "screen_operation_shell",
+    )
+
+    val OPEN_TOOLS = setOf(
+        "open",
+        "launch_app",
+        "open_uri",
+    )
 
     /** 默认（兜底）图标：扳手。 */
     val Default = Icons.Filled.Build
@@ -50,10 +66,11 @@ object ToolPresentation {
     val Multi = Icons.Filled.Layers
 
     fun iconSourceForTool(name: String): IconSource = when {
+        name in PHONE_USE_TOOLS || name == "screenshot" -> IconSource.Vector(Phone)
+        name in OPEN_TOOLS -> IconSource.Vector(OpenInNew)
         name.contains("python", ignoreCase = true) -> IconSource.DrawableRes(R.drawable.python_logo)
         name.contains("shell", ignoreCase = true) || name.contains("ssh", ignoreCase = true) ->
             IconSource.Vector(TerminalIcon)
-        name == "screenshot" -> IconSource.Vector(Camera)
         name == "view_image" -> IconSource.Vector(ImageTool)
         name.contains("skill", ignoreCase = true) -> IconSource.Vector(Skill)
         else -> IconSource.Vector(Default)
@@ -66,14 +83,12 @@ object ToolPresentation {
         "load_skill" -> R.string.ui_tool_display_load_skill
         "execute_python" -> R.string.ui_tool_display_execute_python
         "create_custom_tool" -> R.string.ui_tool_display_create_custom_tool
-        "launch_app" -> R.string.ui_tool_display_launch_app
+        in PHONE_USE_TOOLS -> R.string.ui_tool_display_phone_use
+        in OPEN_TOOLS -> R.string.ui_tool_display_open
         "memory" -> R.string.ui_tool_display_memory
         "notify" -> R.string.ui_tool_display_notify
-        "open_uri" -> R.string.ui_tool_display_open_uri
         "read_custom_tool" -> R.string.ui_tool_display_read_custom_tool
         "find_installed_apps" -> R.string.ui_tool_display_find_installed_apps
-        "screen_operation_accessibility" -> R.string.ui_tool_display_screen_operation_accessibility
-        "screen_operation_shell" -> R.string.ui_tool_display_screen_operation_shell
         "screenshot" -> R.string.ui_tool_display_screenshot
         "view_image" -> R.string.ui_tool_display_view_image
         "py_meta_tools" -> R.string.ui_tool_display_py_meta_tools
@@ -121,12 +136,15 @@ object ToolPresentation {
 
         val fallback = when (name) {
             "load_skill" -> args["id"]
+            "open" -> args["app_name"] ?: args["package_name"] ?: args["name"] ?: args["uri"] ?: args["url"] ?: args["app"]
             "open_uri" -> args["uri"] ?: args["url"]
             "launch_app" -> args["name"] ?: args["package_name"] ?: args["app"]
+            "screen_operation", "screens" -> args["operation"] ?: args["action"]
             "find_installed_apps" -> args["query"] ?: args["keyword"]
             "notify" -> args["content"] ?: args["title"]
             "memory" -> args["content"] ?: args["query"]
             "view_image" -> args["path"] ?: args["uri"]
+            "screenshot" -> args["screen"]
             "screen_operation_accessibility", "screen_operation_shell" -> args["action"]
             else -> null
         }?.let { (it as? JsonPrimitive)?.contentOrNull }
@@ -147,13 +165,16 @@ object ToolPresentation {
             "shell", "ssh" -> args["command"] ?: args["action"]
             "load_skill" -> args["id"]
             "execute_python" -> args["code"]
+            "open" -> args["app_name"] ?: args["package_name"] ?: args["name"] ?: args["uri"] ?: args["url"] ?: args["app"]
             "open_uri" -> args["uri"] ?: args["url"]
             "launch_app" -> args["name"] ?: args["package_name"] ?: args["app"]
             "find_installed_apps" -> args["query"] ?: args["keyword"]
             "notify" -> args["content"] ?: args["title"]
             "memory" -> args["content"] ?: args["query"]
             "view_image" -> args["path"] ?: args["uri"]
+            "screenshot" -> args["screen"]
             "py_meta_tools" -> args["tool"] ?: args["action"]
+            "screen_operation", "screens" -> args["operation"] ?: args["action"]
             "screen_operation_accessibility", "screen_operation_shell" -> args["action"]
             else -> null
         }?.let { (it as? JsonPrimitive)?.contentOrNull }
