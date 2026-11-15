@@ -231,6 +231,36 @@
     <string name="ui_settings_configure_error_proxy_invalid">Proxy address is not a valid URI</string>
     <string name="ui_settings_mcp_config">MCP Configuration</string>
 
+    <!-- Context Injection -->
+    <string name="ui_settings_context_injection">Context Injection</string>
+    <string name="ui_settings_context_injection_summary">Attach time, device state, and custom content with messages</string>
+    <string name="ui_settings_env_context_description">Attaches current context to user messages each turn. Placing frequently changing content in the system prompt would break model prompt cache hits and increase costs.</string>
+    <string name="ui_settings_env_context_master_toggle">Enable context injection</string>
+    <string name="ui_settings_env_context_master_summary">Allow time, device information, and custom content to be provided to the model</string>
+    <string name="ui_settings_env_context_group_builtin">Built-in Variables</string>
+    <string name="ui_settings_env_context_key_date">Date</string>
+    <string name="ui_settings_env_context_key_time">Time</string>
+    <string name="ui_settings_env_context_key_device">Device Status</string>
+    <string name="ui_settings_env_context_group_custom">Custom Variables</string>
+    <string name="ui_settings_env_context_empty_custom">No custom variables. Tap \'+\' in the top right to add.</string>
+    <string name="ui_settings_env_context_variable_title_create">Add Variable</string>
+    <string name="ui_settings_env_context_variable_description">Add static context attached to messages. The name is for management, and the model reads the content configured here in each turn.</string>
+    <string name="ui_settings_env_context_field_name">Name</string>
+    <string name="ui_settings_env_context_field_name_hint">Alphanumeric, underscores, and dashes only</string>
+    <string name="ui_settings_env_context_field_enabled">Enabled</string>
+    <string name="ui_settings_env_context_field_content">Content</string>
+    <string name="ui_settings_env_context_field_content_hint">Enter text to attach with messages</string>
+    <string name="ui_settings_env_context_save_action">Save Variable</string>
+    <string name="ui_settings_env_context_delete_dialog_title">Delete Variable</string>
+    <string name="ui_settings_env_context_delete_dialog_text">Are you sure you want to delete variable \"%1$s\"?</string>
+    <string name="ui_settings_env_context_error_key_required">Name cannot be empty</string>
+    <string name="ui_settings_env_context_error_key_reserved">Cannot use reserved names: date, time, device</string>
+    <string name="ui_settings_env_context_error_key_duplicate">Name already exists, please choose another</string>
+    <string name="ui_settings_env_context_error_key_invalid_format">Invalid name format. Only letters, numbers, underscores, and dashes are allowed.</string>
+    <string name="ui_settings_env_context_error_value_required">Content cannot be empty</string>
+    <string name="ui_settings_env_context_error_save_failed">Failed to save: %1$s</string>
+    <string name="ui_settings_env_context_error_delete_failed">Failed to delete: %1$s</string>
+
     <!-- Memory Module -->
     <string name="memory_page_description">Manage saved memories. Swipe left or right to delete, or tap an item to edit it. Once added, the Agent will remember this information even in new conversations.</string>
     <string name="memory_page_empty_description">No memories have been saved yet. Tap the top right to add your first memory.</string>

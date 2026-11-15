@@ -18,6 +18,11 @@ enum class ZafiroSettingsGroup(
         summaryRes = R.string.ui_settings_memory_summary,
         routeSuffix = "memory",
     ),
+    ContextInjection(
+        titleRes = R.string.ui_settings_context_injection,
+        summaryRes = R.string.ui_settings_context_injection_summary,
+        routeSuffix = "context-injection",
+    ),
     RuntimeControl(
         titleRes = R.string.ui_settings_runtime_control,
         summaryRes = R.string.ui_settings_runtime_control_summary,
