@@ -46,6 +46,16 @@ import java.io.File
 import java.text.DateFormat
 import java.util.Date
 
+/** Space the page chrome (status bar + title/back bar) takes at the top; custom pages draw edge to edge, so they must start below it. */
+@Composable
+internal fun topChromePadding(): androidx.compose.ui.unit.Dp =
+    with(androidx.compose.ui.platform.LocalDensity.current) { androidx.compose.foundation.layout.WindowInsets.statusBars.getTop(this).toDp() } + 68.dp
+
+/** Space the system navigation bar takes at the bottom. */
+@Composable
+internal fun bottomChromePadding(): androidx.compose.ui.unit.Dp =
+    with(androidx.compose.ui.platform.LocalDensity.current) { androidx.compose.foundation.layout.WindowInsets.navigationBars.getBottom(this).toDp() } + 8.dp
+
 private fun spec(description: String, vararg sections: SettingsSectionSpec) =
     SettingsPageSpec(description = description, sections = sections.filter { it.rows.isNotEmpty() })
 
@@ -183,7 +193,7 @@ fun FileViewPageContent(relative: String, onDeleted: () -> Unit) {
         h3 = body.copy(fontSize = 17.sp, lineHeight = 23.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
     )
     Column(Modifier.fillMaxSize()) {
-        Text(file.name, style = androidx.compose.material3.MaterialTheme.typography.titleMedium, maxLines = 1, modifier = Modifier.padding(start = 72.dp, end = 16.dp, top = 12.dp, bottom = 8.dp))
+        Text(file.name, style = androidx.compose.material3.MaterialTheme.typography.titleMedium, maxLines = 1, modifier = Modifier.padding(start = 76.dp, end = 16.dp, top = topChromePadding() - 56.dp, bottom = 8.dp))
         Column(Modifier.weight(1f).fillMaxSize()) {
             when {
                 ext == "html" || ext == "htm" -> WebBlock(file.readText())
@@ -201,7 +211,7 @@ fun FileViewPageContent(relative: String, onDeleted: () -> Unit) {
             }
         }
         androidx.compose.material3.Surface(tonalElevation = 3.dp) {
-            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 12.dp + bottomChromePadding()), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
                 Button(modifier = Modifier.weight(1f).height(52.dp), onClick = {
                     context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType(mime).putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "Share"))
                 }) { Text("Share") }

@@ -53,7 +53,7 @@ private val TABS = listOf("Teams", "Tasks", "Agents", "Skills", "MCP", "Memory",
 @Composable
 fun ManagePageContent() {
     var tab by rememberSaveable { mutableStateOf(0) }
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().padding(top = topChromePadding())) {
         ScrollableTabRow(selectedTabIndex = tab, edgePadding = 8.dp) {
             TABS.forEachIndexed { i, t -> Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t) }) }
         }
@@ -197,7 +197,7 @@ private fun ResetTab() {
     val scope = rememberCoroutineScope()
     var picked by remember { mutableStateOf(setOf<ResetKind>()) }
     var confirm by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + bottomChromePadding()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Reset to defaults", style = MaterialTheme.typography.titleLarge)
         Text("Tick only what should go. Everything that came with the app (bundled skills, workspaces, MCP servers) stays, and your model configurations are never touched.", style = MaterialTheme.typography.bodyMedium)
         LazyColumn(Modifier.weight(1f)) {
@@ -244,7 +244,7 @@ internal fun SelectList(items: List<ManageItem>, deleteLabel: String, onDelete: 
             }
         }
         Surface(tonalElevation = 3.dp) {
-            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 12.dp + bottomChromePadding()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(onClick = { selected = if (selected.size == items.size) emptySet() else items.map { it.id }.toSet() }, enabled = items.isNotEmpty(), modifier = Modifier.weight(1f).padding(vertical = 2.dp)) {
                     Text(if (selected.size == items.size && items.isNotEmpty()) "Select none" else "Select all (${items.size})")
                 }

@@ -212,8 +212,7 @@ fun DashboardVisualContent(onOpenFiles: () -> Unit, onOpenWorkspaces: () -> Unit
     var confirmPause by remember { mutableStateOf(false) }
     var task by remember { mutableStateOf("") }
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 76.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        item { Text("Dashboard", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold) }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = topChromePadding(), bottom = 24.dp + bottomChromePadding()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 RoundAction(androidx.compose.material.icons.Icons.Default.PlayArrow, "Run now", Good) {

@@ -393,7 +393,6 @@ data object DashboardPage : ZafiroPage {
     override val leftAction: TopBarActionSpec =
         TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
     override val rightAction: TopBarActionSpec? = null
-    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
 }
 
 /** Switchable per-platform teams. */
@@ -403,7 +402,6 @@ data object WorkspacesPage : ZafiroPage {
     override val leftAction: TopBarActionSpec =
         TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
     override val rightAction: TopBarActionSpec? = null
-    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
 }
 
 /** Files the agents saved. */

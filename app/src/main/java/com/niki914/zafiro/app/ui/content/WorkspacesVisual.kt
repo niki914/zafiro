@@ -51,8 +51,8 @@ fun WorkspacesVisualContent() {
     val on = states.filter { it.enabled }.map { it.id }.toSet()
     var confirm by remember { mutableStateOf<WorkspaceDef?>(null) }
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 80.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { Text("Teams", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold); Text("${on.size} on", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary) }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = topChromePadding(), bottom = 24.dp + bottomChromePadding()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item { Text("${on.size} on", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary) }
         items(defs, key = { it.id }) { d ->
             val isOn = d.id in on
             Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = if (isOn) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))) {
