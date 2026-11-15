@@ -20,7 +20,7 @@ object WorkspaceManager {
     fun defs(context: Context): List<WorkspaceDef> = cache ?: synchronized(this) {
         cache ?: (context.assets.list("workspaces").orEmpty().filter { it.endsWith(".json") }.sorted().mapNotNull { name ->
             runCatching { WorkspaceDef.parse(context.assets.open("workspaces/$name").bufferedReader().readText()) }
-                .onFailure { Logger.e(TAG, "bad bundled workspace $name: ${it.message}") }.getOrNull()
+                .onFailure { Logger.w(TAG, "bad bundled workspace $name: ${it.message}") }.getOrNull()
         }).also { cache = it }
     }
 

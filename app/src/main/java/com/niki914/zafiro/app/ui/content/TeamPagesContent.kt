@@ -40,7 +40,7 @@ import java.io.File
 import java.text.DateFormat
 import java.util.Date
 
-private fun spec(description: String?, vararg sections: SettingsSectionSpec) =
+private fun spec(description: String, vararg sections: SettingsSectionSpec) =
     SettingsPageSpec(description = description, sections = sections.filter { it.rows.isNotEmpty() })
 
 private fun section(title: String, rows: List<SettingsRowSpec>) = SettingsSectionSpec(title = title, layout = SettingsSectionLayout.GroupedCard, rows = rows)
