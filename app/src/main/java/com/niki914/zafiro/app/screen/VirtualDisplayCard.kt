@@ -3,10 +3,12 @@ package com.niki914.zafiro.app.screen
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.graphics.PixelFormat
 import android.os.SystemClock
 import android.view.Gravity
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import androidx.compose.animation.core.Animatable
@@ -47,11 +49,13 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
@@ -65,7 +69,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -129,9 +135,12 @@ internal object VirtualDisplayCard {
     suspend fun show(
         frames: StateFlow<Bitmap?>,
         status: StateFlow<VirtualDisplayStatus>,
+        vdWidth: Int = 1080,
+        vdHeight: Int = 2400,
         onClose: () -> Unit = {},
         onNavKey: (Int) -> Unit = {},
         onQualityChanged: (Boolean) -> Unit = {},
+        onTouch: (MotionEvent) -> Unit = {},
     ): Boolean = withContext(Dispatchers.Main.immediate) {
         if (isShowing) hideOnMain()
         val context = SystemAccessibilityDriver.serviceContext ?: return@withContext false
@@ -203,9 +212,12 @@ internal object VirtualDisplayCard {
                                 owner = owner,
                                 frames = frames,
                                 status = status,
+                                vdWidth = vdWidth,
+                                vdHeight = vdHeight,
                                 onClose = onClose,
                                 onNavKey = onNavKey,
                                 onQualityChanged = onQualityChanged,
+                                onTouch = onTouch,
                             )
                         },
                         onClose = {
@@ -256,9 +268,12 @@ internal object VirtualDisplayCard {
         owner: OverlayLifecycleOwner,
         frames: StateFlow<Bitmap?>,
         status: StateFlow<VirtualDisplayStatus>,
+        vdWidth: Int,
+        vdHeight: Int,
         onClose: () -> Unit,
         onNavKey: (Int) -> Unit,
         onQualityChanged: (Boolean) -> Unit,
+        onTouch: (MotionEvent) -> Unit,
     ) {
         if (expandedView != null) return
         val miniLayout = miniTouchLayout ?: return
@@ -339,6 +354,8 @@ internal object VirtualDisplayCard {
                         miniHeight = (miniH / density).dp,
                         frames = frames,
                         status = status,
+                        vdWidth = vdWidth,
+                        vdHeight = vdHeight,
                         onFirstFrameReady = {
                             // 大窗首帧真实绘制完毕，此时无缝隐藏小窗
                             miniTouchLayout?.visibility = View.INVISIBLE
@@ -374,6 +391,7 @@ internal object VirtualDisplayCard {
                                 manager.updateViewLayout(this, expandedLp)
                             }
                         },
+                        onTouch = onTouch,
                     )
                 }
             }
@@ -537,6 +555,7 @@ private fun MiniPreviewCard(
 /**
  * 大窗展开态核心视图（独立卡片 Window 内部流体连续膨胀，零外部遮罩，事件完全穿透）。
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun ExpandedCardOverlay(
     dockSide: DockSide,
@@ -546,16 +565,22 @@ private fun ExpandedCardOverlay(
     miniHeight: Dp,
     frames: StateFlow<Bitmap?>,
     status: StateFlow<VirtualDisplayStatus>,
+    vdWidth: Int,
+    vdHeight: Int,
     onFirstFrameReady: () -> Unit,
     onRequestCollapse: () -> Unit,
     onCollapseFinished: () -> Unit,
     onClose: () -> Unit,
     onNavKey: (Int) -> Unit,
     onDrag: (Float, Float) -> Unit,
+    onTouch: (MotionEvent) -> Unit,
 ) {
     val frame by frames.collectAsState()
     val currentStatus by status.collectAsState()
     val coroutineScope = rememberCoroutineScope()
+    val transformMatrix = remember { Matrix() }
+    var viewWidthPx by remember { mutableIntStateOf(0) }
+    var viewHeightPx by remember { mutableIntStateOf(0) }
 
     // 抓取启动瞬间的低清 Bitmap 作为平滑形变基底，避免形变期间 live frame 缩放撕裂
     val initialLowResBitmap = remember {
@@ -677,7 +702,25 @@ private fun ExpandedCardOverlay(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .onSizeChanged { size ->
+                            viewWidthPx = size.width
+                            viewHeightPx = size.height
+                        }
+                        .pointerInteropFilter { motionEvent ->
+                            if (p >= 0.99f && viewWidthPx > 0 && viewHeightPx > 0) {
+                                val clonedEvent = MotionEvent.obtain(motionEvent)
+                                val scaleX = vdWidth.toFloat() / viewWidthPx.toFloat()
+                                val scaleY = vdHeight.toFloat() / viewHeightPx.toFloat()
+                                transformMatrix.setScale(scaleX, scaleY)
+                                clonedEvent.transform(transformMatrix)
+                                onTouch(clonedEvent)
+                                clonedEvent.recycle()
+                                true
+                            } else {
+                                false
+                            }
+                        },
                     contentAlignment = Alignment.Center,
                 ) {
                     if (activeMorphingBitmap != null && p < 0.99f && !activeMorphingBitmap.isRecycled) {

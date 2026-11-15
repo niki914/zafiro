@@ -177,6 +177,8 @@ object AppScreens : Screens {
             VirtualDisplayCard.show(
                 frames = screen.preview(),
                 status = screen.status,
+                vdWidth = screen.width,
+                vdHeight = screen.height,
                 onClose = {
                     cardScope.launch {
                         gate.withLock {
@@ -196,6 +198,9 @@ object AppScreens : Screens {
                 },
                 onQualityChanged = { highQuality ->
                     screen.setHighQuality(highQuality)
+                },
+                onTouch = { event ->
+                    screen.injectTouch(event)
                 },
             )
         }
@@ -229,6 +234,8 @@ object AppScreens : Screens {
             val shown = VirtualDisplayCard.show(
                 frames = screen.preview(),
                 status = screen.status,
+                vdWidth = screen.width,
+                vdHeight = screen.height,
                 onClose = {
                     cardScope.launch {
                         gate.withLock {
@@ -248,6 +255,9 @@ object AppScreens : Screens {
                 },
                 onQualityChanged = { highQuality ->
                     screen.setHighQuality(highQuality)
+                },
+                onTouch = { event ->
+                    screen.injectTouch(event)
                 },
             )
             if (!shown) {

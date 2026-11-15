@@ -2,6 +2,7 @@ package com.niki914.zafiro.app.screen
 
 import android.content.Context
 import android.os.Build
+import android.view.MotionEvent
 import android.view.WindowManager
 import com.niki914.shizuku.display.StartAppResult
 import com.niki914.shizuku.display.VirtualDisplayController
@@ -110,6 +111,11 @@ internal class VirtualDisplayScreen(
     fun preview() = frames.frames
 
     fun setHighQuality(enabled: Boolean) = frames.setHighQuality(enabled)
+
+    val width: Int get() = frames.width
+    val height: Int get() = frames.height
+
+    fun injectTouch(event: MotionEvent) = controller.injectTouch(frames.displayId, event)
 
     fun closeLocal() = frames.release()
 }

@@ -2,6 +2,7 @@ package com.niki914.shizuku.display
 
 import android.content.Context
 import android.os.Binder
+import android.view.MotionEvent
 import android.view.Surface
 import com.niki914.logging.Logger
 import com.niki914.shizuku.ShizukuClient
@@ -33,6 +34,7 @@ interface VirtualDisplayController {
     suspend fun create(surface: Surface, width: Int, height: Int, dpi: Int): Int
     suspend fun release(displayId: Int)
     suspend fun startApp(displayId: Int, packageName: String): StartAppResult
+    fun injectTouch(displayId: Int, event: MotionEvent)
     fun close()
 
     companion object {
@@ -106,6 +108,13 @@ internal class RealVirtualDisplayController(
                 else -> StartAppResult.Failed
             }
         }
+
+    override fun injectTouch(displayId: Int, event: MotionEvent) {
+        val remote = connection?.service ?: return
+        runCatchingCancellable {
+            remote.injectMotionEvent(displayId, event)
+        }
+    }
 
     override fun close() {
         val current = connection
