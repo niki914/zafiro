@@ -1,6 +1,7 @@
 package com.niki914.shizuku.display;
 
 import android.os.IBinder;
+import android.view.MotionEvent;
 import android.view.Surface;
 
 interface IShizukuVirtualDisplayService {
@@ -9,4 +10,5 @@ interface IShizukuVirtualDisplayService {
     void releaseDisplay(int displayId);
     int startApp(int displayId, String packageName);
     void destroy();
+    oneway void injectMotionEvent(int displayId, in MotionEvent event);
 }

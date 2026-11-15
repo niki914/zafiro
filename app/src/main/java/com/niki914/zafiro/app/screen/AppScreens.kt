@@ -178,7 +178,35 @@ object AppScreens : Screens {
         if (VirtualDisplayCard.isShowing) return
         cardScope.launch {
             if (virtual == null || VirtualDisplayCard.isShowing) return@launch
-            VirtualDisplayCard.show(screen.preview())
+            VirtualDisplayCard.show(
+                frames = screen.preview(),
+                status = screen.status,
+                vdWidth = screen.width,
+                vdHeight = screen.height,
+                onClose = {
+                    cardScope.launch {
+                        gate.withLock {
+                            val current = virtual ?: return@withLock
+                            dismiss(current)
+                        }
+                    }
+                },
+                onNavKey = { keyCode ->
+                    cardScope.launch {
+                        runCatchingCancellable {
+                            screen.act(ScreenAction.Key(keyCode))
+                        }.onFailure { error ->
+                            Logger.e(TAG, "onNavKey failed keyCode=$keyCode", error)
+                        }
+                    }
+                },
+                onQualityChanged = { highQuality ->
+                    screen.setHighQuality(highQuality)
+                },
+                onTouch = { event ->
+                    screen.injectTouch(event)
+                },
+            )
         }
     }
 
@@ -204,7 +232,36 @@ object AppScreens : Screens {
                 return@runCatchingCancellable OpenResult.Rejected("DISPLAY_FAILED")
             }
             val screen = VirtualDisplayScreen(frames, vdController, access)
-            if (!VirtualDisplayCard.show(screen.preview())) {
+            val shown = VirtualDisplayCard.show(
+                frames = screen.preview(),
+                status = screen.status,
+                vdWidth = screen.width,
+                vdHeight = screen.height,
+                onClose = {
+                    cardScope.launch {
+                        gate.withLock {
+                            val current = virtual ?: return@withLock
+                            dismiss(current)
+                        }
+                    }
+                },
+                onNavKey = { keyCode ->
+                    cardScope.launch {
+                        runCatchingCancellable {
+                            screen.act(ScreenAction.Key(keyCode))
+                        }.onFailure { error ->
+                            Logger.e(TAG, "onNavKey failed keyCode=$keyCode", error)
+                        }
+                    }
+                },
+                onQualityChanged = { highQuality ->
+                    screen.setHighQuality(highQuality)
+                },
+                onTouch = { event ->
+                    screen.injectTouch(event)
+                },
+            )
+            if (!shown) {
                 vdController.release(frames.displayId)
                 screen.closeLocal()
                 vdController.close()

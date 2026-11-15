@@ -31,8 +31,9 @@ internal class VirtualDisplayFrames private constructor(
     var displayId: Int = -1
         private set
 
-    private val previewWidth = minOf(PREVIEW_MAX_WIDTH, width)
-    private val previewHeight = maxOf(1, height * previewWidth / width)
+    @Volatile
+    private var highQuality: Boolean = false
+
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val previews = MutableStateFlow<Bitmap?>(null)
     val frames: StateFlow<Bitmap?> = previews.asStateFlow()
@@ -43,6 +44,12 @@ internal class VirtualDisplayFrames private constructor(
 
     @Volatile
     private var released = false
+
+    fun setHighQuality(enabled: Boolean) {
+        if (highQuality != enabled) {
+            highQuality = enabled
+        }
+    }
 
     init {
         reader.setOnImageAvailableListener({ scheduleNext() }, handler)
@@ -62,7 +69,8 @@ internal class VirtualDisplayFrames private constructor(
     private fun scheduleNext() {
         if (pending || released) return
         pending = true
-        val wait = lastProcessedAt + FRAME_INTERVAL_MS - SystemClock.uptimeMillis()
+        val interval = if (highQuality) FRAME_INTERVAL_HIGH_QUALITY_MS else FRAME_INTERVAL_LOW_POWER_MS
+        val wait = lastProcessedAt + interval - SystemClock.uptimeMillis()
         val task = Runnable {
             pending = false
             lastProcessedAt = SystemClock.uptimeMillis()
@@ -97,11 +105,14 @@ internal class VirtualDisplayFrames private constructor(
                 (tempBuffer as Buffer).rewind()
                 bitmap.copyPixelsFromBuffer(tempBuffer)
             }
-            val preview = Bitmap.createBitmap(previewWidth, previewHeight, Bitmap.Config.ARGB_8888)
+            val targetMaxWidth = if (highQuality) width else minOf(PREVIEW_MINI_MAX_WIDTH, width)
+            val previewW = targetMaxWidth
+            val previewH = maxOf(1, height * previewW / width)
+            val preview = Bitmap.createBitmap(previewW, previewH, Bitmap.Config.ARGB_8888)
             Canvas(preview).drawBitmap(
                 bitmap,
                 Rect(0, 0, width, height),
-                Rect(0, 0, previewWidth, previewHeight),
+                Rect(0, 0, previewW, previewH),
                 paint,
             )
             previews.value = preview
@@ -114,8 +125,9 @@ internal class VirtualDisplayFrames private constructor(
 
     companion object {
         private const val TAG = "niki914_zafiro_VirtualDisplayFrames"
-        private const val FRAME_INTERVAL_MS = 80L
-        private const val PREVIEW_MAX_WIDTH = 360
+        private const val FRAME_INTERVAL_LOW_POWER_MS = 80L
+        private const val FRAME_INTERVAL_HIGH_QUALITY_MS = 16L
+        private const val PREVIEW_MINI_MAX_WIDTH = 360
 
         suspend fun open(
             controller: VirtualDisplayController,
