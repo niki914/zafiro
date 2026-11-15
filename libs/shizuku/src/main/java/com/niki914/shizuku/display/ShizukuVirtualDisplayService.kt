@@ -10,11 +10,14 @@ import android.hardware.display.VirtualDisplay
 import android.os.Build
 import android.os.IBinder
 import android.view.Display
+import android.view.InputEvent
+import android.view.MotionEvent
 import android.view.Surface
 import com.niki914.logging.Logger
 import com.niki914.shizuku.internal.runCatchingCancellable
 import com.niki914.shizuku.privileged.HostDeathWatcher
 import com.niki914.shizuku.privileged.ShellContext
+import java.lang.reflect.Method
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlin.system.exitProcess
@@ -115,6 +118,15 @@ class ShizukuVirtualDisplayService : IShizukuVirtualDisplayService.Stub() {
         exitProcess(0)
     }
 
+    override fun injectMotionEvent(displayId: Int, event: MotionEvent?) {
+        if (event == null) return
+        try {
+            InputInjector.inject(displayId, event)
+        } finally {
+            runCatchingCancellable { event.recycle() }
+        }
+    }
+
     private fun createDisplay(
         surface: Surface,
         width: Int,
@@ -180,5 +192,61 @@ class ShizukuVirtualDisplayService : IShizukuVirtualDisplayService.Stub() {
         const val START_IN_USE_ON_MAIN = 1
         const val START_NOT_FOUND = 2
         const val START_ERROR = 3
+    }
+}
+
+@SuppressLint("PrivateApi")
+private object InputInjector {
+    private const val TAG = "niki914_zafiro_InputInjector"
+    private const val INJECT_INPUT_EVENT_MODE_ASYNC = 0
+
+    private val inputManagerInstance: Any?
+    private val injectMethod: Method?
+    private val setDisplayIdMethod: Method?
+
+    init {
+        var im: Any? = null
+        var inject: Method? = null
+        var setDisplayId: Method? = null
+
+        try {
+            val inputManagerClass = runCatchingCancellable {
+                Class.forName("android.hardware.input.InputManagerGlobal")
+            }.getOrElse {
+                Class.forName("android.hardware.input.InputManager")
+            }
+            im = inputManagerClass.getMethod("getInstance").invoke(null)
+            inject = inputManagerClass.getMethod(
+                "injectInputEvent",
+                InputEvent::class.java,
+                Int::class.javaPrimitiveType,
+            ).apply { isAccessible = true }
+
+            setDisplayId = runCatchingCancellable {
+                InputEvent::class.java.getMethod("setDisplayId", Int::class.javaPrimitiveType)
+            }.getOrElse {
+                MotionEvent::class.java.getMethod("setDisplayId", Int::class.javaPrimitiveType)
+            }.apply { isAccessible = true }
+        } catch (e: Exception) { // githooks:ignore bare-catch 保护特权服务反射初始化失败不崩溃
+            Logger.e(TAG, "Failed to initialize InputInjector reflection", e)
+        }
+
+        inputManagerInstance = im
+        injectMethod = inject
+        setDisplayIdMethod = setDisplayId
+    }
+
+    fun inject(displayId: Int, event: MotionEvent): Boolean {
+        val im = inputManagerInstance ?: return false
+        val inject = injectMethod ?: return false
+        val setDisplay = setDisplayIdMethod ?: return false
+
+        return try {
+            setDisplay.invoke(event, displayId)
+            inject.invoke(im, event, INJECT_INPUT_EVENT_MODE_ASYNC) as? Boolean ?: true
+        } catch (e: Exception) { // githooks:ignore bare-catch 保护特权服务注入异常不崩溃
+            Logger.e(TAG, "injectInputEvent failed for displayId=$displayId", e)
+            false
+        }
     }
 }

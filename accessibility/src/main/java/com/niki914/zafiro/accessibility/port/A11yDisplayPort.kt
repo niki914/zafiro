@@ -311,7 +311,12 @@ open class A11yDisplayPort(
                         return ActionStatus.Done
                     }
                 }
-                shell.key(displayId, action.code)
+                runCatchingCancellable {
+                    shell.key(displayId, action.code)
+                }.getOrElse { error ->
+                    Logger.w(TAG, "shell.key failed for displayId=$displayId code=${action.code}", error)
+                    false
+                }
             }
         }
         return if (ok) ActionStatus.Done else ActionStatus.Failed("ACTION_FAILED")

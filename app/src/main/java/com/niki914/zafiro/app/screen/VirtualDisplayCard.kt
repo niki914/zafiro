@@ -1,75 +1,146 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.app.screen
 
-import android.animation.ValueAnimator
-import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.graphics.PixelFormat
-import android.os.Bundle
+import android.os.SystemClock
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.MotionEvent
-import android.view.ViewConfiguration
+import android.view.View
 import android.view.WindowManager
-import android.view.animation.DecelerateInterpolator
-import android.widget.FrameLayout
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
-import androidx.lifecycle.ViewModelStore
-import androidx.lifecycle.ViewModelStoreOwner
+import androidx.compose.ui.unit.lerp
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
-import androidx.savedstate.SavedStateRegistry
-import androidx.savedstate.SavedStateRegistryController
-import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.BaseTheme
+import com.niki914.uikit.base.LocalThemeStyle
+import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.infra.shape.G2CardShape
 import com.niki914.zafiro.api.util.runCatchingCancellable
+import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.overlay.OverlayLifecycleOwner
+import com.niki914.zafiro.app.ui.model.ThemeController
+import com.niki914.zafiro.remoteview.floatingball.DockSide
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.hypot
+import kotlin.math.sin
 
 /**
- * 只能拖的虚拟屏预览。触摸留在卡片上，不进虚拟屏。
- * 使用全局应用悬浮窗（TYPE_APPLICATION_OVERLAY）。加不上去时返回 false，调用方释放刚建的屏。
+ * 虚拟屏小窗与大窗展开层（双 Window / 零系统级 Resize 架构）。
+ *
+ * 核心特征：
+ * - **两级窗口分离架构**：
+ *   - [Mini Window]：终生固定尺寸 (100dp x 220dp)，专职小窗常态、拖动吸边；
+ *   - [Expanded Window]：展开时按需挂载全屏透明窗口 (MATCH_PARENT x MATCH_PARENT)，形变在 Compose 内部完成；
+ * - **零系统级 Resize 缺陷**：
+ *   彻底绕开底层 SurfaceFlinger 逐帧 Resize 导致的动画 Leash 打断与黑屏闪烁；
+ * - **首帧绘制无缝交接 (`makeVisibleAndNotifyDrawn`)**：
+ *   展开与收起交接那一刻，利用 OnDrawListener 确保覆盖层真实上屏，杜绝 1 帧空白闪烁；
+ * - **独立顶栏 (40dp) 兼作全局拖拽把手**：
+ *   将收起/关闭按钮移至顶部独立操作条，视口下移不遮挡应用 Tab，顶栏支持全方向手势拖拽；
+ * - **经典三大金刚键**：
+ *   返回键换用向左实心三角形（◁），圆圈（Home），方块（Recents），全量走 Screens 契约；
+ * - **动态高刷与画质档位**：
+ *   小窗态 12.5 FPS / 360p 节能，大窗态升至 60 FPS / 原生 1080p 细腻流畅。
  */
 internal object VirtualDisplayCard {
     private const val TAG = "niki914_zafiro_VirtualDisplayCard"
 
     private var windowManager: WindowManager? = null
-    private var touchLayout: DragLayout? = null
-    private var lifecycleOwner: OverlayLifecycle? = null
+    private var miniTouchLayout: VirtualDisplayTouchLayout? = null
+    private var expandedView: View? = null
+    private var lifecycleOwner: OverlayLifecycleOwner? = null
 
     @Volatile
     var isShowing: Boolean = false
         private set
 
-    suspend fun show(frames: StateFlow<Bitmap?>): Boolean = withContext(Dispatchers.Main.immediate) {
+    suspend fun show(
+        frames: StateFlow<Bitmap?>,
+        status: StateFlow<VirtualDisplayStatus>,
+        vdWidth: Int = 1080,
+        vdHeight: Int = 2400,
+        onClose: () -> Unit = {},
+        onNavKey: (Int) -> Unit = {},
+        onQualityChanged: (Boolean) -> Unit = {},
+        onTouch: (MotionEvent) -> Unit = {},
+    ): Boolean = withContext(Dispatchers.Main.immediate) {
         if (isShowing) hideOnMain()
         val context = applicationContext()
         val manager = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
@@ -77,74 +148,292 @@ internal object VirtualDisplayCard {
         val density = context.resources.displayMetrics.density
         val screenWidth = context.resources.displayMetrics.widthPixels
         val widthPx = (100 * density).toInt()
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+        val heightPx = (220 * density).toInt()
+
+        val miniLp = WindowManager.LayoutParams(
+            widthPx,
+            heightPx,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = (screenWidth - widthPx - (16 * density).toInt()).coerceAtLeast(0)
+            y = (240 * density).toInt()
+            windowAnimations = 0
+        }
+
+        val owner = OverlayLifecycleOwner().apply {
+            onCreate()
+            onStart()
+            onResume()
+        }
+
+        var isMiniFocused by mutableStateOf(false)
+        var lastTouchEpoch by mutableStateOf(0L)
+
+        lateinit var root: VirtualDisplayTouchLayout
+
+        val composeView = ComposeView(context).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+            setViewTreeLifecycleOwner(owner)
+            setViewTreeSavedStateRegistryOwner(owner)
+            setViewTreeViewModelStoreOwner(owner)
+            setContent {
+                val themePrefs = ThemeController.prefs
+                val isSystemDark = isSystemInDarkTheme()
+                val isDark = themePrefs.resolveDarkTheme(isSystemDark)
+                val seed = themePrefs.seedColor?.let { Color(it) }
+
+                BaseTheme(
+                    darkTheme = isDark,
+                    dynamicColor = themePrefs.seedColor == null,
+                    seedColor = seed,
+                    themeStyle = themePrefs.themeStyle,
+                ) {
+                    MiniPreviewCard(
+                        frames = frames,
+                        status = status,
+                        isFocused = isMiniFocused,
+                        touchEpoch = lastTouchEpoch,
+                        onToggleFocus = {
+                            isMiniFocused = !isMiniFocused
+                            lastTouchEpoch = SystemClock.uptimeMillis()
+                        },
+                        onFocusTimeout = { isMiniFocused = false },
+                        onRequestExpand = {
+                            isMiniFocused = false
+                            showExpandedWindow(
+                                context = context,
+                                manager = manager,
+                                owner = owner,
+                                frames = frames,
+                                status = status,
+                                vdWidth = vdWidth,
+                                vdHeight = vdHeight,
+                                onClose = onClose,
+                                onNavKey = onNavKey,
+                                onQualityChanged = onQualityChanged,
+                                onTouch = onTouch,
+                            )
+                        },
+                        onClose = {
+                            hideOnMain()
+                            onClose()
+                        },
+                    )
+                }
+            }
+        }
+
+        root = VirtualDisplayTouchLayout(
+            context = context,
+            manager = manager,
+            params = miniLp,
+            onOutsideTouch = {
+                if (isMiniFocused) {
+                    isMiniFocused = false
+                }
+            },
+        ).apply {
+            addView(composeView)
+            setViewTreeLifecycleOwner(owner)
+            setViewTreeSavedStateRegistryOwner(owner)
+            setViewTreeViewModelStoreOwner(owner)
+        }
+
+        val added = runCatchingCancellable {
+            manager.addView(root, miniLp)
+            true
+        }.getOrElse { error ->
+            Logger.e(TAG, "overlay add mini window failed", error)
+            owner.onDestroy()
+            false
+        }
+        if (!added) return@withContext false
+
+        windowManager = manager
+        miniTouchLayout = root
+        lifecycleOwner = owner
+        isShowing = true
+        true
+    }
+
+    private fun showExpandedWindow(
+        context: Context,
+        manager: WindowManager,
+        owner: OverlayLifecycleOwner,
+        frames: StateFlow<Bitmap?>,
+        status: StateFlow<VirtualDisplayStatus>,
+        vdWidth: Int,
+        vdHeight: Int,
+        onClose: () -> Unit,
+        onNavKey: (Int) -> Unit,
+        onQualityChanged: (Boolean) -> Unit,
+        onTouch: (MotionEvent) -> Unit,
+    ) {
+        if (expandedView != null) return
+        val miniLayout = miniTouchLayout ?: return
+
+        // 升至高刷与高清 Profile
+        onQualityChanged(true)
+
+        val density = context.resources.displayMetrics.density
+        val screenWidth = context.resources.displayMetrics.widthPixels
+        val screenHeight = context.resources.displayMetrics.heightPixels
+
+        val miniX = miniLayout.ballX
+        val miniY = miniLayout.ballY
+        val miniW = miniLayout.width
+        val miniH = miniLayout.height
+        val dockSide = miniLayout.getDockSide()
+
+        val targetWidthDp = 290.dp
+        val targetWidthPx = (targetWidthDp.value * density).toInt()
+
+        val currentFrame = frames.value
+        val aspect = if (currentFrame != null && currentFrame.width > 0 && currentFrame.height > 0) {
+            currentFrame.height.toFloat() / currentFrame.width.toFloat()
+        } else {
+            screenHeight.toFloat() / screenWidth.toFloat()
+        }
+
+        // Top bar (24dp) + Bottom bar (40dp) = 64dp
+        val targetHeightDp = ((targetWidthDp * aspect) + 64.dp).coerceIn(360.dp, (screenHeight / density).dp - 64.dp)
+        val targetHeightPx = (targetHeightDp.value * density).toInt()
+
+        val initialTargetX = if (dockSide.isRight) {
+            (miniX + miniW - targetWidthPx).coerceAtLeast(0)
+        } else {
+            miniX.coerceAtMost(screenWidth - targetWidthPx)
+        }
+        val initialTargetY = (miniY + (miniH - targetHeightPx) / 2).coerceIn(
+            (32 * density).toInt(),
+            (screenHeight - targetHeightPx - (32 * density).toInt()).coerceAtLeast((32 * density).toInt()),
+        )
+
+        val expandedLp = WindowManager.LayoutParams(
+            targetWidthPx,
+            targetHeightPx,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = screenWidth - widthPx - (16 * density).toInt()
-            y = (200 * density).toInt()
+            x = initialTargetX
+            y = initialTargetY
+            windowAnimations = 0
         }
-        val owner = OverlayLifecycle().apply {
-            performRestore(null)
-            handle(Lifecycle.Event.ON_CREATE)
-            handle(Lifecycle.Event.ON_START)
-            handle(Lifecycle.Event.ON_RESUME)
-        }
-        val root = DragLayout(context, manager, params).apply {
-            setViewTreeLifecycleOwner(owner)
-            setViewTreeViewModelStoreOwner(owner)
-            setViewTreeSavedStateRegistryOwner(owner)
-        }
+
         val composeView = ComposeView(context).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setViewTreeLifecycleOwner(owner)
-            setViewTreeViewModelStoreOwner(owner)
             setViewTreeSavedStateRegistryOwner(owner)
+            setViewTreeViewModelStoreOwner(owner)
             setContent {
-                val frame by frames.collectAsState()
-                BaseTheme { PreviewCard(frame) }
+                val themePrefs = ThemeController.prefs
+                val isSystemDark = isSystemInDarkTheme()
+                val isDark = themePrefs.resolveDarkTheme(isSystemDark)
+                val seed = themePrefs.seedColor?.let { Color(it) }
+
+                BaseTheme(
+                    darkTheme = isDark,
+                    dynamicColor = themePrefs.seedColor == null,
+                    seedColor = seed,
+                    themeStyle = themePrefs.themeStyle,
+                ) {
+                    ExpandedCardOverlay(
+                        dockSide = dockSide,
+                        targetWidth = targetWidthDp,
+                        targetHeight = targetHeightDp,
+                        miniWidth = (miniW / density).dp,
+                        miniHeight = (miniH / density).dp,
+                        frames = frames,
+                        status = status,
+                        vdWidth = vdWidth,
+                        vdHeight = vdHeight,
+                        onFirstFrameReady = {
+                            // 大窗首帧真实绘制完毕，此时无缝隐藏小窗
+                            miniTouchLayout?.visibility = View.INVISIBLE
+                        },
+                        onRequestCollapse = {
+                            // 收起时降采样至低功耗
+                            onQualityChanged(false)
+                        },
+                        onCollapseFinished = {
+                            val finalMiniX = if (dockSide.isRight) {
+                                expandedLp.x + targetWidthPx - miniW
+                            } else {
+                                expandedLp.x
+                            }
+                            val finalMiniY = expandedLp.y + (targetHeightPx - miniH) / 2
+                            miniLayout.syncPosition(finalMiniX, finalMiniY)
+                            miniLayout.makeVisibleAndNotifyDrawn {
+                                removeExpandedWindow()
+                            }
+                        },
+                        onClose = {
+                            hideOnMain()
+                            onClose()
+                        },
+                        onNavKey = onNavKey,
+                        onDrag = { dxPx, dyPx ->
+                            expandedLp.x = (expandedLp.x + dxPx.toInt()).coerceIn(0, screenWidth - targetWidthPx)
+                            expandedLp.y = (expandedLp.y + dyPx.toInt()).coerceIn(
+                                (32 * density).toInt(),
+                                (screenHeight - targetHeightPx - (32 * density).toInt()).coerceAtLeast((32 * density).toInt()),
+                            )
+                            if (isAttachedToWindow) {
+                                manager.updateViewLayout(this, expandedLp)
+                            }
+                        },
+                        onTouch = onTouch,
+                    )
+                }
             }
         }
-        root.addView(composeView)
-        val added = runCatchingCancellable {
-            manager.addView(root, params)
-            true
-        }.getOrElse { error ->
-            Logger.e(TAG, "overlay add failed", error)
-            owner.handle(Lifecycle.Event.ON_DESTROY)
-            owner.clear()
-            false
+
+        expandedView = composeView
+        runCatchingCancellable {
+            manager.addView(composeView, expandedLp)
+            Logger.i(TAG, "VirtualDisplay expanded window added on-demand")
+        }.onFailure { error ->
+            Logger.e(TAG, "Failed to add expanded window", error)
+            removeExpandedWindow()
         }
-        if (!added) return@withContext false
-        windowManager = manager
-        touchLayout = root
-        lifecycleOwner = owner
-        isShowing = true
-        true
+    }
+
+    private fun removeExpandedWindow() {
+        val view = expandedView ?: return
+        expandedView = null
+        runCatchingCancellable {
+            windowManager?.removeViewImmediate(view)
+            Logger.i(TAG, "VirtualDisplay expanded window removed")
+        }.onFailure { error ->
+            Logger.w(TAG, "remove expanded window failed", error)
+        }
     }
 
     suspend fun hide() = withContext(Dispatchers.Main.immediate) { hideOnMain() }
 
     fun hideOnMain() {
-        val layout = touchLayout
+        removeExpandedWindow()
+        val layout = miniTouchLayout
         val manager = windowManager
         val owner = lifecycleOwner
-        touchLayout = null
+        miniTouchLayout = null
         windowManager = null
         lifecycleOwner = null
         isShowing = false
-        owner?.handle(Lifecycle.Event.ON_PAUSE)
-        owner?.handle(Lifecycle.Event.ON_STOP)
-        owner?.handle(Lifecycle.Event.ON_DESTROY)
-        owner?.clear()
+        owner?.onPause()
+        owner?.onStop()
+        owner?.onDestroy()
         if (layout != null && manager != null) {
             runCatchingCancellable {
-                manager.removeView(layout)
+                manager.removeViewImmediate(layout)
             }.onFailure { error ->
                 Logger.w(TAG, "overlay already gone", error)
             }
@@ -152,159 +441,440 @@ internal object VirtualDisplayCard {
     }
 }
 
+/**
+ * 小窗常态渲染（Mini PIP 卡片）。
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun PreviewCard(frame: Bitmap?) {
-    val context = LocalContext.current
-    val aspect = remember(context) {
-        val metrics = context.resources.displayMetrics
-        if (metrics.widthPixels > 0 && metrics.heightPixels > 0) {
-            metrics.heightPixels.toFloat() / metrics.widthPixels.toFloat()
-        } else {
-            2.2f
+private fun MiniPreviewCard(
+    frames: StateFlow<Bitmap?>,
+    status: StateFlow<VirtualDisplayStatus>,
+    isFocused: Boolean,
+    touchEpoch: Long,
+    onToggleFocus: () -> Unit,
+    onFocusTimeout: () -> Unit,
+    onRequestExpand: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val frame by frames.collectAsState()
+    val currentStatus by status.collectAsState()
+    val colors = MaterialTheme.colorScheme
+    val cardShape = G2CardShape(8.dp)
+
+    LaunchedEffect(isFocused, touchEpoch) {
+        if (isFocused) {
+            delay(3500L)
+            onFocusTimeout()
         }
     }
-    val width = 100.dp
-    val shape = G2CardShape(6.dp)
+
     Box(
         modifier = Modifier
-            .size(width, width * aspect)
-            .clip(shape)
-            .background(Color(0xF0121216))
-            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), shape),
+            .fillMaxSize()
+            .clip(cardShape)
+            .background(colors.surfaceContainerHigh)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onToggleFocus,
+            ),
         contentAlignment = Alignment.Center,
     ) {
-        if (frame != null && !frame.isRecycled) {
-            val bitmap = remember(frame) { frame.asImageBitmap() }
+        if (frame != null && !frame!!.isRecycled) {
+            val bitmap = remember(frame) { frame!!.asImageBitmap() }
             Image(
                 bitmap = bitmap,
                 contentDescription = "Screen preview",
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit,
+                contentScale = ContentScale.FillBounds,
             )
+        } else if (currentStatus == VirtualDisplayStatus.Launching) {
+            val themeStyle = LocalThemeStyle.current
+            if (themeStyle == ThemeStyle.Material3Expressive) {
+                LoadingIndicator(
+                    modifier = Modifier.size(28.dp),
+                    color = colors.primary,
+                )
+            } else {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = colors.primary,
+                    strokeWidth = 2.2.dp,
+                )
+            }
         } else {
-            CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                color = MaterialTheme.colorScheme.primary,
-                strokeWidth = 2.dp,
+            Icon(
+                painter = painterResource(R.drawable.ic_launcher_monochrome),
+                contentDescription = "Ready standby",
+                tint = colors.primary.copy(alpha = 0.35f),
+                modifier = Modifier.size(40.dp),
+            )
+        }
+
+        if (isFocused) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.45f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(vertical = 20.dp),
+                    verticalArrangement = Arrangement.SpaceEvenly,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    CircleActionButton(
+                        icon = Icons.Default.Fullscreen,
+                        contentDescription = "Fullscreen",
+                        size = 38.dp,
+                        iconSize = 20.dp,
+                        onClick = onRequestExpand,
+                    )
+                    CircleActionButton(
+                        icon = Icons.Default.Close,
+                        contentDescription = "Close",
+                        size = 38.dp,
+                        iconSize = 20.dp,
+                        onClick = onClose,
+                    )
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .border(1.dp, colors.outlineVariant.copy(alpha = 0.5f), cardShape),
+        )
+    }
+}
+
+/**
+ * 大窗展开态核心视图（独立卡片 Window 内部流体连续膨胀，零外部遮罩，事件完全穿透）。
+ */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun ExpandedCardOverlay(
+    dockSide: DockSide,
+    targetWidth: Dp,
+    targetHeight: Dp,
+    miniWidth: Dp,
+    miniHeight: Dp,
+    frames: StateFlow<Bitmap?>,
+    status: StateFlow<VirtualDisplayStatus>,
+    vdWidth: Int,
+    vdHeight: Int,
+    onFirstFrameReady: () -> Unit,
+    onRequestCollapse: () -> Unit,
+    onCollapseFinished: () -> Unit,
+    onClose: () -> Unit,
+    onNavKey: (Int) -> Unit,
+    onDrag: (Float, Float) -> Unit,
+    onTouch: (MotionEvent) -> Unit,
+) {
+    val frame by frames.collectAsState()
+    val currentStatus by status.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+    val transformMatrix = remember { Matrix() }
+    var viewWidthPx by remember { mutableIntStateOf(0) }
+    var viewHeightPx by remember { mutableIntStateOf(0) }
+
+    // 抓取启动瞬间的低清 Bitmap 作为平滑形变基底，避免形变期间 live frame 缩放撕裂
+    val initialLowResBitmap = remember {
+        val currentFrame = frames.value
+        if (currentFrame != null && !currentFrame.isRecycled) {
+            runCatchingCancellable {
+                Bitmap.createScaledBitmap(
+                    currentFrame,
+                    (currentFrame.width / 4).coerceAtLeast(1),
+                    (currentFrame.height / 4).coerceAtLeast(1),
+                    true,
+                )
+            }.getOrNull()
+        } else null
+    }
+
+    val animProgress = remember { Animatable(0f) }
+    var isClosing by remember { mutableStateOf(false) }
+    var frozenFrameForCollapse by remember { mutableStateOf<Bitmap?>(null) }
+    val firstFrameReported = remember { booleanArrayOf(false) }
+
+    LaunchedEffect(Unit) {
+        animProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+        )
+    }
+
+    fun startCollapse() {
+        if (!isClosing) {
+            isClosing = true
+            val currentFrame = frames.value
+            if (currentFrame != null && !currentFrame.isRecycled) {
+                frozenFrameForCollapse = runCatchingCancellable {
+                    Bitmap.createScaledBitmap(
+                        currentFrame,
+                        (currentFrame.width / 4).coerceAtLeast(1),
+                        (currentFrame.height / 4).coerceAtLeast(1),
+                        true,
+                    )
+                }.getOrNull()
+            }
+            onRequestCollapse()
+            coroutineScope.launch {
+                animProgress.animateTo(
+                    targetValue = 0f,
+                    animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                )
+                onCollapseFinished()
+            }
+        }
+    }
+
+    val p = animProgress.value
+    val currentWidth = lerp(miniWidth, targetWidth, p)
+    val currentHeight = lerp(miniHeight, targetHeight, p)
+    val cardOffsetX = if (dockSide.isRight) targetWidth - currentWidth else 0.dp
+    val cardOffsetY = (targetHeight - currentHeight) / 2
+    val currentCornerRadius = lerp(8.dp, 16.dp, p)
+    val blurRadiusDp = if (p < 0.99f) ((sin(p * Math.PI.toFloat())) * 22f).dp else 0.dp
+    val activeMorphingBitmap = if (isClosing) (frozenFrameForCollapse ?: initialLowResBitmap) else initialLowResBitmap
+
+    val topBarHeight = lerp(0.dp, 24.dp, p)
+    val bottomBarHeight = lerp(0.dp, 40.dp, p)
+    val barContentAlpha = ((p - 0.35f) / 0.65f).coerceIn(0f, 1f)
+
+    LaunchedEffect(p) {
+        if (!firstFrameReported[0]) {
+            firstFrameReported[0] = true
+            onFirstFrameReady()
+        }
+    }
+
+    val colors = MaterialTheme.colorScheme
+    val cardShape = G2CardShape(currentCornerRadius)
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(x = cardOffsetX, y = cardOffsetY)
+                .size(currentWidth, currentHeight)
+                .clip(cardShape)
+                .background(colors.surfaceContainerHigh),
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                // --- 1. 独立极简拖拽把手栏 (随 p 动态从 0dp 等比生长至 24dp) ---
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(topBarHeight)
+                        .clipToBounds()
+                        .background(Color.Black.copy(alpha = 0.52f * p))
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, dragAmount ->
+                                if (p >= 0.99f) {
+                                    change.consume()
+                                    onDrag(dragAmount.x, dragAmount.y)
+                                }
+                            }
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (barContentAlpha > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .size(width = 34.dp, height = 4.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.38f * barContentAlpha)),
+                        )
+                    }
+                }
+
+                // --- 2. 核心视口渲染区域 (纯净独立，等比无形变恒定高宽比) ---
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .onSizeChanged { size ->
+                            viewWidthPx = size.width
+                            viewHeightPx = size.height
+                        }
+                        .pointerInteropFilter { motionEvent ->
+                            if (p >= 0.99f && viewWidthPx > 0 && viewHeightPx > 0) {
+                                val clonedEvent = MotionEvent.obtain(motionEvent)
+                                val scaleX = vdWidth.toFloat() / viewWidthPx.toFloat()
+                                val scaleY = vdHeight.toFloat() / viewHeightPx.toFloat()
+                                transformMatrix.setScale(scaleX, scaleY)
+                                clonedEvent.transform(transformMatrix)
+                                onTouch(clonedEvent)
+                                clonedEvent.recycle()
+                                true
+                            } else {
+                                false
+                            }
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (activeMorphingBitmap != null && p < 0.99f && !activeMorphingBitmap.isRecycled) {
+                        Image(
+                            bitmap = activeMorphingBitmap.asImageBitmap(),
+                            contentDescription = "Morphing preview",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(if (blurRadiusDp > 0.dp) Modifier.blur(blurRadiusDp) else Modifier),
+                            contentScale = ContentScale.FillBounds,
+                        )
+                    } else if (frame != null && !frame!!.isRecycled) {
+                        val bitmap = remember(frame) { frame!!.asImageBitmap() }
+                        Image(
+                            bitmap = bitmap,
+                            contentDescription = "Screen preview",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.FillBounds,
+                        )
+                    } else if (currentStatus == VirtualDisplayStatus.Launching) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(28.dp),
+                            color = colors.primary,
+                            strokeWidth = 2.5.dp,
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_launcher_monochrome),
+                            contentDescription = "Ready standby",
+                            tint = colors.primary.copy(alpha = 0.35f),
+                            modifier = Modifier.size(48.dp),
+                        )
+                    }
+                }
+
+                // --- 3. 底栏三大件 (随 p 动态从 0dp 等比生长至 40dp) ---
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(bottomBarHeight)
+                        .clipToBounds()
+                        .background(Color.Black.copy(alpha = 0.52f * p)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (barContentAlpha > 0f) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 24.dp)
+                                .alpha(barContentAlpha),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            NavKeyButton(
+                                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                onClick = { if (p >= 0.9f) onNavKey(KeyEvent.KEYCODE_BACK) },
+                            )
+                            NavKeyButton(
+                                icon = IconNavMinimize,
+                                contentDescription = "Collapse",
+                                onClick = { if (p >= 0.9f) startCollapse() },
+                            )
+                            NavKeyButton(
+                                icon = Icons.Default.Close,
+                                contentDescription = "Close",
+                                onClick = { if (p >= 0.9f) onClose() },
+                            )
+                        }
+                    }
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .border(1.dp, colors.outlineVariant.copy(alpha = 0.5f), cardShape),
             )
         }
     }
 }
 
-@SuppressLint("ViewConstructor", "ClickableViewAccessibility")
-private class DragLayout(
-    context: Context,
-    private val manager: WindowManager,
-    private val params: WindowManager.LayoutParams,
-) : FrameLayout(context) {
-    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
-    private var downRawX = 0f
-    private var downRawY = 0f
-    private var lastRawX = 0f
-    private var lastRawY = 0f
-    private var dragging = false
-    private var currentX = params.x
-    private var currentY = params.y
-    private var animator: ValueAnimator? = null
-
-    override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                animator?.cancel()
-                currentX = params.x
-                currentY = params.y
-                downRawX = event.rawX
-                downRawY = event.rawY
-                lastRawX = event.rawX
-                lastRawY = event.rawY
-                dragging = false
-            }
-            MotionEvent.ACTION_MOVE -> {
-                val distance = hypot(
-                    (event.rawX - downRawX).toDouble(),
-                    (event.rawY - downRawY).toDouble(),
-                ).toFloat()
-                if (distance > touchSlop) {
-                    dragging = true
-                    return true
-                }
-            }
-        }
-        return false
-    }
-
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> return true
-            MotionEvent.ACTION_MOVE -> {
-                val dx = event.rawX - lastRawX
-                val dy = event.rawY - lastRawY
-                lastRawX = event.rawX
-                lastRawY = event.rawY
-                val density = context.resources.displayMetrics.density
-                val screenHeight = context.resources.displayMetrics.heightPixels
-                val minY = (32 * density).toInt()
-                val maxY = (screenHeight - height - minY).coerceAtLeast(minY)
-                currentX += dx.toInt()
-                currentY = (currentY + dy.toInt()).coerceIn(minY, maxY)
-                params.x = currentX
-                params.y = currentY
-                if (isAttachedToWindow) manager.updateViewLayout(this, params)
-                return true
-            }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (dragging) {
-                    dragging = false
-                    snapToEdge()
-                }
-                return true
-            }
-        }
-        return super.onTouchEvent(event)
-    }
-
-    private fun snapToEdge() {
-        val density = context.resources.displayMetrics.density
-        val screenWidth = context.resources.displayMetrics.widthPixels
-        val margin = (16 * density).toInt()
-        val targetX = if (currentX + width / 2 < screenWidth / 2) {
-            margin
-        } else {
-            (screenWidth - width - margin).coerceAtLeast(margin)
-        }
-        animator?.cancel()
-        animator = ValueAnimator.ofInt(currentX, targetX).apply {
-            duration = 200
-            interpolator = DecelerateInterpolator()
-            addUpdateListener {
-                currentX = it.animatedValue as Int
-                params.x = currentX
-                if (isAttachedToWindow) manager.updateViewLayout(this@DragLayout, params)
-            }
-            start()
-        }
-    }
-
-    override fun onDetachedFromWindow() {
-        animator?.cancel()
-        animator = null
-        super.onDetachedFromWindow()
+@Composable
+private fun CircleActionButton(
+    icon: ImageVector,
+    contentDescription: String?,
+    size: Dp = 40.dp,
+    iconSize: Dp = 22.dp,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.50f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(bounded = true, radius = size / 2),
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            modifier = Modifier.size(iconSize),
+            tint = Color.White.copy(alpha = 0.95f),
+        )
     }
 }
 
-private class OverlayLifecycle :
-    LifecycleOwner,
-    ViewModelStoreOwner,
-    SavedStateRegistryOwner {
-    private val registry = LifecycleRegistry(this)
-    private val savedState = SavedStateRegistryController.create(this)
-    private val store = ViewModelStore()
+@Composable
+private fun NavKeyButton(
+    icon: ImageVector,
+    contentDescription: String?,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(bounded = true, radius = 18.dp),
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            modifier = Modifier.size(20.dp),
+            tint = Color.White.copy(alpha = 0.88f),
+        )
+    }
+}
 
-    override val lifecycle: Lifecycle get() = registry
-    override val savedStateRegistry: SavedStateRegistry get() = savedState.savedStateRegistry
-    override val viewModelStore: ViewModelStore get() = store
-
-    fun handle(event: Lifecycle.Event) = registry.handleLifecycleEvent(event)
-    fun performRestore(state: Bundle?) = savedState.performRestore(state)
-    fun clear() = store.clear()
+/**
+ * 经典极简最小化横杠图标（纯净圆角水平线条，与返回箭头和关闭叉叉保持统一的线条语言）。
+ */
+private val IconNavMinimize: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "NavMinimize",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.White),
+            strokeLineWidth = 2.4f,
+            strokeLineCap = StrokeCap.Round,
+        ) {
+            moveTo(6f, 12f)
+            lineTo(18f, 12f)
+        }
+    }.build()
 }

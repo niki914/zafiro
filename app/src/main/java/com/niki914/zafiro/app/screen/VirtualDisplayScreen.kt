@@ -2,6 +2,7 @@ package com.niki914.zafiro.app.screen
 
 import android.content.Context
 import android.os.Build
+import android.view.MotionEvent
 import android.view.WindowManager
 import com.niki914.shizuku.display.StartAppResult
 import com.niki914.shizuku.display.VirtualDisplayController
@@ -27,6 +28,17 @@ import com.niki914.zafiro.business.permission.PermissionState
 import com.niki914.zafiro.chat.agentic.device.AppInfoProvider
 import com.niki914.zafiro.chat.agentic.device.AppMatchResult
 import com.niki914.zafiro.service.requireService
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+/**
+ * 虚拟屏运行状态（待命、启动中）。
+ */
+internal enum class VirtualDisplayStatus {
+    Idle,
+    Launching,
+}
 
 /**
  * 一块虚拟屏。读、点、截图走无障碍端口，自己持有版本表。不画主屏指针。
@@ -41,6 +53,9 @@ internal class VirtualDisplayScreen(
     A11yDisplayPort(frames.displayId),
     DisplayNodeTable(),
 ) {
+    private val _status = MutableStateFlow(VirtualDisplayStatus.Idle)
+    val status: StateFlow<VirtualDisplayStatus> = _status.asStateFlow()
+
     fun info(): ScreenInfo = ScreenInfo(id, kind, frames.width, frames.height)
 
     override suspend fun snapshot(): ScreenSnapshot {
@@ -68,7 +83,8 @@ internal class VirtualDisplayScreen(
         access.prepare(PhoneScreenAccess.Need.OpenApp)?.let { denied ->
             return ShowResult.Failed(denied.code)
         }
-        return when (target) {
+        _status.value = VirtualDisplayStatus.Launching
+        val result = when (target) {
             is ShowTarget.PackageName -> launch(target.packageName)
             is ShowTarget.AppName -> when (val match = AppInfoProvider.cache().findByAppName(target.name)) {
                 is AppMatchResult.Found -> launch(match.app.packageName)
@@ -80,6 +96,10 @@ internal class VirtualDisplayScreen(
             }
             is ShowTarget.Uri -> ShowResult.Unsupported("uri")
         }
+        if (result !is ShowResult.Shown) {
+            _status.value = VirtualDisplayStatus.Idle
+        }
+        return result
     }
 
     private suspend fun launch(packageName: String): ShowResult {
@@ -92,6 +112,13 @@ internal class VirtualDisplayScreen(
     }
 
     fun preview() = frames.frames
+
+    fun setHighQuality(enabled: Boolean) = frames.setHighQuality(enabled)
+
+    val width: Int get() = frames.width
+    val height: Int get() = frames.height
+
+    fun injectTouch(event: MotionEvent) = controller.injectTouch(frames.displayId, event)
 
     fun closeLocal() = frames.release()
 }
