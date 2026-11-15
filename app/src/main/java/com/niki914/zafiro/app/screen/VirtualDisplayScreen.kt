@@ -3,6 +3,8 @@ package com.niki914.zafiro.app.screen
 import android.content.Context
 import android.os.Build
 import android.view.WindowManager
+import com.niki914.shizuku.display.StartAppResult
+import com.niki914.shizuku.display.VirtualDisplayController
 import com.niki914.zafiro.accessibility.port.A11yDisplayPort
 import com.niki914.zafiro.accessibility.port.A11yDisplayScreen
 import com.niki914.zafiro.accessibility.table.DisplayNodeTable
@@ -31,6 +33,7 @@ import com.niki914.zafiro.service.requireService
  */
 internal class VirtualDisplayScreen(
     private val frames: VirtualDisplayFrames,
+    private val controller: VirtualDisplayController,
     private val access: PhoneScreenAccess = PhoneScreenAccess(),
 ) : A11yDisplayScreen(
     ScreenId("vd-${frames.displayId}"),
@@ -77,11 +80,11 @@ internal class VirtualDisplayScreen(
     }
 
     private suspend fun launch(packageName: String): ShowResult {
-        return when (ShizukuDisplay.startApp(port.displayId, packageName)) {
-            ShizukuDisplayService.START_OK -> ShowResult.Shown(packageName)
-            ShizukuDisplayService.START_IN_USE_ON_MAIN -> ShowResult.Failed("IN_USE_ON_MAIN")
-            ShizukuDisplayService.START_NOT_FOUND -> ShowResult.Failed("APP_NOT_FOUND")
-            else -> ShowResult.Failed("START_FAILED")
+        return when (controller.startApp(port.displayId, packageName)) {
+            StartAppResult.Ok -> ShowResult.Shown(packageName)
+            StartAppResult.InUseOnMain -> ShowResult.Failed("IN_USE_ON_MAIN")
+            StartAppResult.NotFound -> ShowResult.Failed("APP_NOT_FOUND")
+            StartAppResult.Failed -> ShowResult.Failed("START_FAILED")
         }
     }
 
