@@ -13,6 +13,7 @@ import android.content.ServiceConnection
 import android.content.pm.ApplicationInfo
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
+import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.os.Process
@@ -44,6 +45,7 @@ internal object ShizukuDisplay {
     private const val PROCESS_SUFFIX = "vd_service"
 
     private val connecting = AtomicBoolean(false)
+    private val hostToken = Binder()
     private var service: IVirtualDisplayService? = null
     private var pending: CompletableDeferred<IVirtualDisplayService?>? = null
     private var appContext: Context? = null
@@ -52,6 +54,7 @@ internal object ShizukuDisplay {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             val remote = IVirtualDisplayService.Stub.asInterface(binder)
             service = remote
+            runCatchingCancellable { remote?.registerClient(hostToken) }
             pending?.complete(remote)
             connecting.set(false)
         }
@@ -68,7 +71,8 @@ internal object ShizukuDisplay {
             val result = manager.request(Permission.SHIZUKU)
             if (result.finalState != PermissionState.GRANTED) return PrepareResult.Denied
         }
-        if (!Shizuku.pingBinder()) return PrepareResult.Unavailable
+        val pingOk = runCatchingCancellable { Shizuku.pingBinder() }.getOrDefault(false)
+        if (!pingOk) return PrepareResult.Unavailable
         appContext = context.applicationContext
         return if (bind(context)) PrepareResult.Ready else PrepareResult.BindFailed
     }
@@ -176,6 +180,12 @@ class ShizukuDisplayService : IVirtualDisplayService.Stub() {
     private val context: Context by lazy { ShellContext.create() }
     private val displays = ConcurrentHashMap<Int, VirtualDisplay>()
     private val launchLock = Any()
+    private var clientToken: IBinder? = null
+
+    private val deathRecipient = IBinder.DeathRecipient {
+        Logger.w(TAG, "host process died, tearing down virtual displays")
+        destroy()
+    }
 
     private val displayManager: DisplayManager by lazy {
         DisplayManager::class.java.getDeclaredConstructor(Context::class.java)
@@ -187,22 +197,35 @@ class ShizukuDisplayService : IVirtualDisplayService.Stub() {
         Class.forName("android.app.ActivityTaskManager").getMethod("getService").invoke(null)!!
     }
 
+    override fun registerClient(token: IBinder?) {
+        if (token == null) return
+        clientToken?.unlinkToDeath(deathRecipient, 0)
+        clientToken = token
+        runCatchingCancellable {
+            token.linkToDeath(deathRecipient, 0)
+        }
+    }
+
     override fun createVirtualDisplay(surface: Surface, width: Int, height: Int, dpi: Int): Int {
         try {
             return createDisplay(surface, width, height, dpi, trusted = true)
         } catch (error: SecurityException) {
             Logger.w(TAG, "trusted virtual display rejected", error)
+        } catch (error: Exception) { // githooks:ignore bare-catch 保护跨进程服务不因未知图形异常崩溃
+            Logger.e(TAG, "trusted virtual display unexpected failure", error)
         }
         return try {
             createDisplay(surface, width, height, dpi, trusted = false)
-        } catch (error: SecurityException) {
+        } catch (error: Exception) { // githooks:ignore bare-catch 保护跨进程服务不因未知图形异常崩溃
             Logger.e(TAG, "virtual display fallback rejected", error)
             -1
         }
     }
 
     override fun releaseDisplay(displayId: Int) {
-        displays.remove(displayId)?.release()
+        displays.remove(displayId)?.let { display ->
+            runCatchingCancellable { display.release() }
+        }
     }
 
     override fun startApp(displayId: Int, packageName: String): Int {
@@ -244,7 +267,11 @@ class ShizukuDisplayService : IVirtualDisplayService.Stub() {
     }
 
     override fun destroy() {
-        displays.values.forEach { display -> display.release() }
+        runCatchingCancellable { clientToken?.unlinkToDeath(deathRecipient, 0) }
+        clientToken = null
+        displays.values.forEach { display ->
+            runCatchingCancellable { display.release() }
+        }
         displays.clear()
         exitProcess(0)
     }
