@@ -552,6 +552,7 @@
     <string name="ui_settings_runtime_sensitivity_stricter">Stricter</string>
     <string name="ui_settings_runtime_sensitivity_strictest">Strictest</string>
     <string name="ui_settings_runtime_sensitivity_off">Off</string>
+    <string name="ui_settings_runtime_stop_on_command_deny">Stop the turn after a denied command</string>
     <string name="ui_settings_general_always_show_message_actions">Always show message actions</string>
     <string name="ui_settings_general_always_show_detailed_tool_output">Always show detailed tool output</string>
     <string name="ui_settings_general_always_show_detailed_tool_output_summary">Very large output may cause UI stuttering</string>

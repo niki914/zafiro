@@ -57,6 +57,9 @@ internal data class AppStateSettings(
     /** 回答进行中保持屏幕常亮。 */
     @SerialName("keep_screen_on")
     val keepScreenOn: Boolean = true,
+    /** 命令确认被拒绝后立刻停止本回合。默认开。 */
+    @SerialName("stop_round_on_command_deny")
+    val stopRoundOnCommandDeny: Boolean = true,
     /** 消息操作行（复制/重新生成/fork 等）是否常显。 */
     @SerialName("always_show_message_actions")
     val alwaysShowMessageActions: Boolean = true,

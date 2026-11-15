@@ -30,6 +30,7 @@ dependencies {
     // 委托实现阶段：执行转发到遗留 LLMController（架空完成后删除）
     implementation(project(":agent-runtime"))
     implementation(project(":libs:logging"))
+    implementation(project(":xsettings"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 
     testImplementation("junit:junit:4.13.2")

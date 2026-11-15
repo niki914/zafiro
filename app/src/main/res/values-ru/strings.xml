@@ -512,6 +512,7 @@
     <string name="ui_settings_runtime_sensitivity_stricter">Более строгая</string>
     <string name="ui_settings_runtime_sensitivity_strictest">Максимальная</string>
     <string name="ui_settings_runtime_sensitivity_off">Выкл.</string>
+    <string name="ui_settings_runtime_stop_on_command_deny">Останавливать ход после отказа от команды</string>
     <string name="ui_settings_general_always_show_message_actions">Всегда показывать действия с сообщением</string>
     <string name="ui_settings_general_always_show_detailed_tool_output">Всегда показывать подробный вывод инструментов</string>
     <string name="ui_settings_general_always_show_detailed_tool_output_summary">Очень большой вывод может приводить к зависаниям интерфейса</string>

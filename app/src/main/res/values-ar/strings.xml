@@ -566,6 +566,7 @@
     <string name="ui_settings_runtime_sensitivity_stricter">أكثر صرامة</string>
     <string name="ui_settings_runtime_sensitivity_strictest">أشد صرامة</string>
     <string name="ui_settings_runtime_sensitivity_off">إيقاف</string>
+    <string name="ui_settings_runtime_stop_on_command_deny">إيقاف الجولة بعد رفض أمر</string>
     <string name="ui_settings_general_always_show_message_actions">إظهار إجراءات الرسالة دائمًا</string>
     <string name="ui_settings_general_always_show_detailed_tool_output">إظهار إخراج الأداة المفصّل دائمًا</string>
     <string name="ui_settings_general_always_show_detailed_tool_output_summary">الإخراج الكبير جدًا قد يبطئ الواجهة</string>

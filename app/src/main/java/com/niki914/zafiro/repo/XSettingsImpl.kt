@@ -17,6 +17,9 @@ object XSettingsImpl : XSettings {
     override val appLanguageTag: StateFlow<String>
         get() = XRepo.appLanguageTagSetting
 
+    override val stopRoundOnCommandDeny: StateFlow<Boolean>
+        get() = XRepo.stopRoundOnCommandDenySetting
+
     override val phoneUseConsentGranted: StateFlow<Boolean>
         get() = XRepo.phoneUseConsentGrantedSetting
 
