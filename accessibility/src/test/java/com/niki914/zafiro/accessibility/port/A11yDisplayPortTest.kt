@@ -11,7 +11,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-// 保护：手势或全局按键失败时，shell 的结果必须交回；上一级成功时不调用 shell。
+// 保护：手势与主副屏按键路由；副屏拦截全局逃逸按键；上一级成功时不调用 shell。
 class A11yDisplayPortTest {
 
     @Test
@@ -57,13 +57,43 @@ class A11yDisplayPortTest {
         assertEquals(0, shellCalls)
     }
 
+    @Test
+    fun rejectsGlobalSystemKeyOnSecondaryDisplay() = runBlocking {
+        var shellCalls = 0
+        val port = port(displayId = 39) {
+            shellCalls += 1
+            true
+        }
+
+        val status = port.inject(PointerAction.Key(3)) // KEYCODE_HOME
+
+        assertTrue(status is ActionStatus.Failed)
+        assertEquals("UNSUPPORTED_GLOBAL_KEY_ON_VIRTUAL_SCREEN", (status as ActionStatus.Failed).code)
+        assertEquals(0, shellCalls)
+    }
+
+    @Test
+    fun allowsBackKeyOnSecondaryDisplay() = runBlocking {
+        var lastCmd = ""
+        val port = port(displayId = 39) { cmd ->
+            lastCmd = cmd
+            true
+        }
+
+        val status = port.inject(PointerAction.Key(4)) // KEYCODE_BACK
+
+        assertTrue(status is ActionStatus.Done)
+        assertEquals("input -d 39 keyevent 4", lastCmd)
+    }
+
     private fun port(
+        displayId: Int = 0,
         gestureResult: Boolean = false,
         globalResult: Boolean = false,
         shell: suspend (String) -> Boolean,
     ): A11yDisplayPort {
         return A11yDisplayPort(
-            displayId = 0,
+            displayId = displayId,
             driver = FakeDriver(gestureResult, globalResult),
             shell = ShellPointerDriver(shell),
         )

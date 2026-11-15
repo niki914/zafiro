@@ -2,6 +2,8 @@ package com.niki914.zafiro.mod.feat
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.os.Build
+import android.view.Display
 import android.view.accessibility.AccessibilityEvent
 import com.niki914.zafiro.accessibility.driver.SystemAccessibilityDriver
 import com.niki914.zafiro.app.screen.AppScreens
@@ -23,7 +25,20 @@ class ZafiroAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // 无状态驱动，不需要在每次系统 UI 事件时做全局标记
+        val type = event?.eventType ?: return
+        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED ||
+            type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+            type == AccessibilityEvent.TYPE_WINDOWS_CHANGED ||
+            type == AccessibilityEvent.TYPE_VIEW_SCROLLED ||
+            type == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
+        ) {
+            val displayId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                event.displayId
+            } else {
+                Display.DEFAULT_DISPLAY
+            }
+            SystemAccessibilityDriver.recordUiEvent(displayId)
+        }
     }
 
     override fun onInterrupt() {
