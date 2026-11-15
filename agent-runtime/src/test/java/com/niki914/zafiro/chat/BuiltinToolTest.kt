@@ -16,9 +16,12 @@ class BuiltinToolTest {
         assertEquals(
             listOf(
                 "agent",
+                "board",
                 "clipboard",
                 "compose_message",
                 "device_info",
+                "engage",
+                "examples",
                 "execute_python",
                 "find_installed_apps",
                 "http_request",
@@ -31,6 +34,7 @@ class BuiltinToolTest {
                 "open_uri",
                 "py_meta_tools",
                 "screen_operation",
+                "screen_routine",
                 "screens",
                 "screenshot",
                 "shell",

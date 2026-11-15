@@ -17,6 +17,7 @@ data class DelegateResult(val status: String, val text: String, val handle: Stri
  */
 interface AgentDelegator {
     suspend fun list(): List<DelegateAgentInfo>
-    suspend fun call(agent: String, task: String, background: Boolean): DelegateResult
+    /** [depth] is the caller's depth in the delegation chain (0 = started by a task or the owner); chains stop at 3. */
+    suspend fun call(agent: String, task: String, background: Boolean, depth: Int = 0): DelegateResult
     suspend fun result(handle: String, waitMs: Long): DelegateResult
 }

@@ -23,9 +23,15 @@ object BackupManager {
     fun suggestedFileName(nowMs: Long = System.currentTimeMillis()): String =
         "zafiro-backup-" + SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date(nowMs)) + ".zip"
 
-    private fun includesFile(relative: String): Boolean =
-        relative !in EXCLUDED &&
-            (relative.startsWith("settings/") || relative == "local_settings.json" || relative.startsWith("skills/"))
+    /** Directories that are scratch space or the restore machinery itself; everything else under filesDir is the owner's data. */
+    private val EXCLUDED_PREFIXES = listOf(
+        "logs/", "tool_output/", "cache/", "code_cache/", "datastore/tmp/", "leakcanary/",
+        PendingRestore.STAGING + "/", PendingRestore.UNDO + "/",
+    )
+
+    /** The whole files folder is backed up (settings, skills AND the agents' workspaces such as zafiro-autonomous/). */
+    fun includesFile(relative: String): Boolean =
+        relative !in EXCLUDED && EXCLUDED_PREFIXES.none { relative.startsWith(it) } && !relative.endsWith(".lock")
 
     private fun databasesDir(context: Context): File =
         context.getDatabasePath(DATABASES.first()).parentFile ?: context.filesDir

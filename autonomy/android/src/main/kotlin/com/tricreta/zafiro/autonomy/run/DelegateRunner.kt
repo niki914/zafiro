@@ -17,6 +17,7 @@ import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.service.requireService
 import com.tricreta.zafiro.autonomy.core.AgentBrief
 import com.tricreta.zafiro.autonomy.core.AgentNames
+import com.tricreta.zafiro.autonomy.core.BoardRules
 import com.tricreta.zafiro.autonomy.core.Breach
 import com.tricreta.zafiro.autonomy.core.Budget
 import com.tricreta.zafiro.autonomy.core.BudgetTracker
@@ -60,20 +61,21 @@ class DelegateRunner(
     override suspend fun list(): List<DelegateAgentInfo> =
         repo.agents().filter { it.enabled }.map { DelegateAgentInfo(it.name, it.instructions.lineSequence().first().take(120), it.usesScreen) }
 
-    override suspend fun call(agent: String, task: String, background: Boolean): DelegateResult {
+    override suspend fun call(agent: String, task: String, background: Boolean, depth: Int): DelegateResult {
+        if (!BoardRules.canDelegate(depth)) return DelegateResult("ERROR", "Delegation is limited to ${BoardRules.MAX_DEPTH} levels; do this work yourself.")
         if (task.isBlank()) return DelegateResult("ERROR", "Give the agent a task.")
         val profiles = repo.agents().filter { it.enabled }
         val name = AgentNames.find(agent, profiles.map { it.name })
             ?: return DelegateResult("ERROR", "No enabled agent named \"$agent\". Available: ${profiles.joinToString { it.name }.ifEmpty { "none" }}.")
         val profile = profiles.first { it.name == name }
-        if (!background) return runOnce(profile, task)
+        if (!background) return runOnce(profile, task, depth)
 
         val handle = UUID.randomUUID().toString().take(8)
         val deferred = CompletableDeferred<DelegateResult>()
         this.background[handle] = deferred
         scope.launch {
             val result = try {
-                runOnce(profile, task)
+                runOnce(profile, task, depth)
             } catch (e: CancellationException) {
                 DelegateResult("ERROR", "Cancelled.")
             } catch (t: Throwable) {
@@ -90,12 +92,16 @@ class DelegateRunner(
         return done?.also { background.remove(handle) } ?: DelegateResult("RUNNING", "Still working.", handle)
     }
 
-    private suspend fun runOnce(profile: AgentProfileEntity, task: String): DelegateResult =
+    private suspend fun runOnce(profile: AgentProfileEntity, task: String, depth: Int): DelegateResult =
         concurrency.withPermit {
-            if (profile.usesScreen) screenLock.withLock { execute(profile, task) } else execute(profile, task)
+            if (!profile.usesScreen) return@withPermit execute(profile, task, depth)
+            // One screen: wait for it, but never forever (a stuck holder must not freeze the whole team).
+            val got = withTimeoutOrNull(SCREEN_WAIT_MS) { screenLock.lock(); true } ?: false
+            if (!got) return@withPermit DelegateResult("ERROR", "The screen has been busy for ${SCREEN_WAIT_MS / 60_000} minutes; try again later.")
+            try { execute(profile, task, depth) } finally { screenLock.unlock() }
         }
 
-    private suspend fun execute(profile: AgentProfileEntity, task: String): DelegateResult {
+    private suspend fun execute(profile: AgentProfileEntity, task: String, depth: Int): DelegateResult {
         val manager: AgentManager = requireService()
         val agent = manager.createTaskAgent(isPersistent = true)
         val approver = object : Approver {
@@ -110,7 +116,7 @@ class DelegateRunner(
             val prompt = AgentBrief.compose(
                 profile.name, profile.instructions,
                 profile.tools.split(',').filter { it.isNotBlank() }, profile.skills.split(',').filter { it.isNotBlank() },
-                task, delegated = true,
+                task, delegated = true, depth = depth,
             )
             coroutineScope {
                 val watchdog = launch {
@@ -159,10 +165,11 @@ class DelegateRunner(
 
     private companion object {
         const val LOG_TAG = "AutonomyDelegate"
-        const val MAX_CONCURRENT = 3
-        const val MAX_STEPS = 40
-        const val MAX_MS = 10 * 60_000L
-        const val MAX_TOKENS = 300_000L
+        const val MAX_CONCURRENT = 8
+        const val MAX_STEPS = 60
+        const val MAX_MS = 15 * 60_000L
+        const val MAX_TOKENS = 400_000L
+        const val SCREEN_WAIT_MS = 10 * 60_000L
         const val MAX_TEXT = 6_000
         const val MAX_WAIT_MS = 120_000L
     }

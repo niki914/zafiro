@@ -26,10 +26,10 @@ class AgentBuiltin : BuiltinTool() {
     override val description: String =
         "Work with other Zafiro agents. action=list shows available agents. action=call (agent, task, background) gives an agent a task: " +
             "background=false waits for its answer, background=true returns a handle immediately so you can keep working or call more agents in parallel. " +
-            "action=result (handle, wait_seconds) collects a background agent's answer. Give each agent a complete, self-contained task."
+            "action=result (handle, wait_seconds) collects a background agent's answer. Give each agent a complete, self-contained task. If your own brief says \"delegation depth N\", pass depth=N (chains stop at depth 3)."
     override val defaultEnabled: Boolean = true
     override val inputSchemaJson: String =
-        """{"type":"object","properties":{"action":{"type":"string","enum":["list","call","result"]},"agent":{"type":"string"},"task":{"type":"string"},"background":{"type":"boolean"},"handle":{"type":"string"},"wait_seconds":{"type":"number"}},"required":["action"]}"""
+        """{"type":"object","properties":{"action":{"type":"string","enum":["list","call","result"]},"agent":{"type":"string"},"task":{"type":"string"},"background":{"type":"boolean"},"depth":{"type":"number"},"handle":{"type":"string"},"wait_seconds":{"type":"number"}},"required":["action"]}"""
 
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
         val args = runCatching { Json.parseToJsonElement(request.argumentsJson) as? JsonObject }.getOrNull()
@@ -52,7 +52,7 @@ class AgentBuiltin : BuiltinTool() {
             "call" -> {
                 if (str("agent").isEmpty() || str("task").isEmpty()) return invalid("call needs 'agent' and 'task'.")
                 val background = args["background"]?.jsonPrimitive?.booleanOrNull ?: false
-                toResult(delegator.call(str("agent"), str("task"), background))
+                toResult(delegator.call(str("agent"), str("task"), background, (args["depth"]?.jsonPrimitive?.doubleOrNull ?: 0.0).toInt()))
             }
             "result" -> {
                 if (str("handle").isEmpty()) return invalid("result needs a 'handle'.")

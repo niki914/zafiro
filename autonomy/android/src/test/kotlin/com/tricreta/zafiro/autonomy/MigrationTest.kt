@@ -40,7 +40,7 @@ class MigrationTest {
     )
 
     @Test
-    fun `v1 database with tasks and runs opens as v3 through both migrations and keeps its data`() {
+    fun `v1 database with tasks and runs opens as v4 through all migrations and keeps its data`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val file = context.getDatabasePath(AutonomyDatabase.NAME)
         file.parentFile?.mkdirs()
@@ -69,7 +69,11 @@ class MigrationTest {
                 assertEquals(2, task.recoveries)
                 assertEquals("", task.agentId)
                 assertEquals(true, task.learn)
+                assertEquals("", task.workspaceId)
                 assertEquals(0, db.dao().agents().size)
+                assertEquals(0, db.dao().workspaces().size)
+                assertEquals(0, db.dao().boardItems("", 10).size)
+                assertEquals(0, db.dao().actions("", 10).size)
                 assertEquals(1, db.dao().runsForTask("t1", 10).size)
                 assertEquals(0, db.dao().runsForTask("t1", 10).single().recoveries)
                 assertEquals(4, db.dao().runsForTask("t1", 10).single().steps)

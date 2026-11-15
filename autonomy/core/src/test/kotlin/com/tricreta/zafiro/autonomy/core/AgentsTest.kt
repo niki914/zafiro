@@ -35,9 +35,11 @@ class AgentsTest {
     }
 
     @Test
-    fun `delegated brief forbids further delegation and empty lists add no restriction lines`() {
+    fun `delegated brief allows delegation to depth three and empty lists add no restriction lines`() {
         val p = AgentBrief.compose("A", "i", emptyList(), emptyList(), "t", delegated = true)
-        assertTrue(p.contains("do not call other agents"))
+        assertTrue(p.contains("pass depth=1"))
+        val deepest = AgentBrief.compose("A", "i", emptyList(), emptyList(), "t", delegated = true, depth = 2)
+        assertTrue(deepest.contains("never call other agents"))
         assertFalse(p.contains("Use ONLY"))
         assertFalse(p.contains("load_skill"))
     }

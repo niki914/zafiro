@@ -6,7 +6,9 @@ import com.niki914.zafiro.api.AgentDelegator
 import com.niki914.zafiro.service.installService
 import com.tricreta.zafiro.autonomy.data.AutonomyDatabase
 import com.tricreta.zafiro.autonomy.data.AutonomyRepository
+import com.niki914.zafiro.api.TeamService
 import com.tricreta.zafiro.autonomy.run.DelegateRunner
+import com.tricreta.zafiro.autonomy.team.TeamServiceImpl
 import com.tricreta.zafiro.autonomy.run.RunExecutor
 import com.tricreta.zafiro.autonomy.schedule.AlarmProjection
 import com.tricreta.zafiro.autonomy.schedule.AutonomyScheduler
@@ -46,6 +48,7 @@ object AutonomyInstaller {
     fun install(application: Application) {
         val graph = AutonomyGraph.get(application)
         installService<AgentDelegator>(DelegateRunner(graph.repo, graph.scope))
+        installService<TeamService>(TeamServiceImpl(graph.repo.teamDao()))
         // Re-arm the alarm and record anything missed whenever the process starts.
         graph.scope.launch { graph.scheduler.reconcile("app_start") }
     }

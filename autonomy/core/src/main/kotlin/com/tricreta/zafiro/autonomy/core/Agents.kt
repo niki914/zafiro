@@ -30,6 +30,7 @@ object AgentBrief {
         task: String,
         delegated: Boolean,
         history: String = "",
+        depth: Int = 0,
     ): String = buildString {
         appendLine("You are the agent \"$agentName\".")
         appendLine(instructions.trim())
@@ -37,7 +38,14 @@ object AgentBrief {
         if (tools.isNotEmpty()) appendLine("Use ONLY these tools unless the task is impossible without another: ${tools.joinToString(", ")}.")
         if (skills.isNotEmpty()) appendLine("Before starting, load these skills with load_skill and follow them: ${skills.joinToString(", ")}.")
         if (delegated) {
-            appendLine("You were called by another agent. Do only the task below, do not call other agents, and do not use the screen unless the task needs it.")
+            if (BoardRules.canDelegate(depth + 1)) {
+                appendLine(
+                    "You were called by another agent (delegation depth ${depth + 1}). Do the task below yourself. Call another agent with the agent tool " +
+                        "(pass depth=${depth + 1}) only when a specialist is clearly needed, and wait for its answer. Do not use the screen unless the task needs it.",
+                )
+            } else {
+                appendLine("You were called by another agent at the deepest allowed level (delegation depth ${depth + 1}). Do the task below yourself; never call other agents. Do not use the screen unless the task needs it.")
+            }
         }
         appendLine("Never bypass CAPTCHA, login, 2FA, consent screens or payments: ask for a human with take_over instead.")
         appendLine(StatusProtocol.INSTRUCTION)

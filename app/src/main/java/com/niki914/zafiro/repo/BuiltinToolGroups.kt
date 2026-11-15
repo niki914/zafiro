@@ -38,7 +38,7 @@ object BuiltinToolGroups {
             titleRes = R.string.tool_group_android_native,
             summaryRes = R.string.tool_group_android_native_summary,
             mode = BuiltinToolGroupMode.PER_TOOL,
-            members = listOf("open", "open_uri", "launch_app", "find_installed_apps", "notify", "wait", "device_info", "clipboard", "take_over", "compose_message", "http_request", "agent", "lock_screen"),
+            members = listOf("open", "open_uri", "launch_app", "find_installed_apps", "notify", "wait", "device_info", "clipboard", "take_over", "compose_message", "http_request", "agent", "board", "engage", "examples", "lock_screen"),
         ),
         BuiltinToolGroup(
             id = "screen_operation",
@@ -47,6 +47,7 @@ object BuiltinToolGroups {
             mode = BuiltinToolGroupMode.WHOLE,
             members = listOf(
                 "screen_operation",
+                "screen_routine",
                 "screenshot",
                 "open",
                 "screens",

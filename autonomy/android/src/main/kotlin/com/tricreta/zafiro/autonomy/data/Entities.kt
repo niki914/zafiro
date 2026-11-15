@@ -48,6 +48,8 @@ data class TaskEntity(
     @ColumnInfo(defaultValue = "''") val agentId: String = "",
     /** After the run, the agent saves lessons to memory. Added in schema v3. */
     @ColumnInfo(defaultValue = "1") val learn: Boolean = true,
+    /** Workspace that installed this task ("" = created by hand). Added in schema v4. */
+    @ColumnInfo(defaultValue = "''") val workspaceId: String = "",
 )
 
 @Entity(
@@ -110,4 +112,78 @@ data class AgentProfileEntity(
     val enabled: Boolean,
     val createdAtMs: Long,
     val updatedAtMs: Long,
+    /** Workspace that installed this agent ("" = created by hand). Added in schema v4. */
+    @ColumnInfo(defaultValue = "''") val workspaceId: String = "",
+)
+
+/** A switchable bundle (agents + tasks + skills + MCPs + memory) for one platform. Content lives in assets; this row is its state. */
+@Entity(tableName = "workspace")
+data class WorkspaceEntity(
+    @PrimaryKey val id: String,
+    val enabled: Boolean,
+    /** Version of the bundled definition last installed, so an app update can add new defaults without overwriting edits. */
+    val installedVersion: Int,
+    val updatedAtMs: Long,
+    /** Daily caps, "comment=15,like=30". Blank = defaults. */
+    @ColumnInfo(defaultValue = "''") val quotas: String = "",
+)
+
+/** One unit of work handed between agents. The board is the shared truth: owner, status, result. */
+@Entity(tableName = "board_item", indices = [Index("workspaceId"), Index("status"), Index("parentId")])
+data class BoardItemEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val workspaceId: String,
+    val parentId: Long?,
+    val title: String,
+    val detail: String,
+    val ownerAgent: String,
+    val createdBy: String,
+    /** TODO | DOING | DONE | FAILED | BLOCKED */
+    val status: String,
+    val result: String,
+    val depth: Int,
+    val createdAtMs: Long,
+    val updatedAtMs: Long,
+)
+
+/** Every outward action (post, comment, reply, like...), for daily caps, approvals, tiering and the dashboard. */
+@Entity(tableName = "action_log", indices = [Index("dayKey"), Index("workspaceId")])
+data class ActionLogEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val workspaceId: String,
+    val platform: String,
+    /** post | note | comment | reply | like | restack | follow | dm | other */
+    val action: String,
+    val target: String,
+    val text: String,
+    /** yyyy-MM-dd in the owner's zone. */
+    val dayKey: String,
+    /** PENDING | APPROVED | DONE | REJECTED | FAILED */
+    val status: String,
+    val agent: String,
+    val reason: String,
+    val createdAtMs: Long,
+    val updatedAtMs: Long,
+)
+
+/** Owner-judged samples the Reviewer compares new drafts with. */
+@Entity(tableName = "example", indices = [Index("platform")])
+data class ExampleEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val platform: String,
+    val kind: String,
+    val text: String,
+    /** GOOD | BAD */
+    val verdict: String,
+    val reason: String,
+    val createdAtMs: Long,
+)
+
+/** Approval streak per (workspace, action type) for tiered autonomy. */
+@Entity(tableName = "tier", primaryKeys = ["workspaceId", "action"])
+data class TierEntity(
+    val workspaceId: String,
+    val action: String,
+    val streak: Int,
+    val auto: Boolean,
 )
