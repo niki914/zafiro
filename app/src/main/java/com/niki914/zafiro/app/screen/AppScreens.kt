@@ -28,8 +28,8 @@ import com.niki914.zafiro.api.screen.ShowTarget
 import com.niki914.zafiro.api.screen.Target
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.business.permission.Permission
-import com.niki914.zafiro.chat.agentic.buildin.impl.LaunchAppBuiltin
-import com.niki914.zafiro.chat.agentic.buildin.impl.OpenUriBuiltin
+import com.niki914.zafiro.chat.agentic.device.AppLauncher
+import com.niki914.zafiro.chat.agentic.device.UriOpener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -41,7 +41,7 @@ import kotlinx.coroutines.sync.withLock
  * 针对物理主屏的屏幕实现。
  * 读、点与截屏交由 [A11yDisplayScreen]，动手前先过 [PhoneScreenAccess]。
  * 滚动和滑动在主屏上与指针一起走。
- * 应用启动与 URI 打开在此层桥接 [LaunchAppBuiltin] 和 [OpenUriBuiltin]，不申请无障碍。
+ * 应用启动与 URI 打开在此层委托 [AppLauncher] 和 [UriOpener]，不申请无障碍。
  */
 class PhoneDisplayScreen(
     port: DefaultDisplayPort = DefaultDisplayPort(),
@@ -117,16 +117,9 @@ class PhoneDisplayScreen(
 
     override suspend fun show(target: ShowTarget): ShowResult {
         return when (target) {
-            is ShowTarget.AppName -> LaunchAppBuiltin().showOnPhone(null, target.name)
-            is ShowTarget.PackageName -> LaunchAppBuiltin().showOnPhone(target.packageName, null)
-            is ShowTarget.Uri -> {
-                val opened = OpenUriBuiltin().openForScreen(target.uri)
-                if (opened.ok) {
-                    ShowResult.Shown(opened.message)
-                } else {
-                    ShowResult.Failed(opened.code)
-                }
-            }
+            is ShowTarget.AppName -> AppLauncher.launch(packageName = null, appName = target.name)
+            is ShowTarget.PackageName -> AppLauncher.launch(packageName = target.packageName, appName = null)
+            is ShowTarget.Uri -> UriOpener.open(target.uri)
         }
     }
 }
