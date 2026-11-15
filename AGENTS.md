@@ -101,3 +101,8 @@ Owner prerequisite: Actions must be **enabled** on the fork (Actions tab → "I 
 
 ## Status
 Evidence-based status: ROADMAP.md and TESTING.md. As of 2026-11-10: `feat/foundation` builds and passes the CI gate (APK artifact `zafiro-autonomous-debug-apk` on the run); **nothing has been verified on a physical phone yet**; `main` is still pristine upstream; no PR opened.
+
+## Findings from owner's real backup (2026-11-15, app 1.12.0) — VERIFIED
+- The owner's Zafiro already runs a Python-engine team built BY the agent: 9 agent_profiles, 15 tasks (Substack-focused, 80-100 step budgets), upstream `settings/agents/*` registry (incl. jh_* job-hunt agents) is a SECOND agent system beside our `agent_profile` table. Workspace dirs (files/zafiro-autonomous, substack, jobhunt, turing, journal.md, rish) were NOT in the backup: BackupManager only includes settings/, skills/, local_settings.json → BUG, a restore would lose the engine. Fix: back up the whole filesDir minus caches.
+- Real failures seen: `Transport` provider errors (no fallback configured), `Busy` start, MISSED/LATE (phone asleep), INTERRUPTED (process killed), PIN-locked screen during unattended runs, Shizuku down. "SUCCEEDED" runs were date-guard no-ops → success must be judged by outcome evidence, not DONE.
+- Plan in progress: "Workspaces" (per-platform bundles: agents+skills+tasks+memory+MCP+routines), Files viewer, Dashboard, verified screen routines. Plan awaiting owner approval; do not build before.
