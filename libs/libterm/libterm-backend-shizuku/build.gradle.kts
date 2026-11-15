@@ -35,10 +35,9 @@ android {
 
 dependencies {
     implementation(project(":libs:libterm-core"))
+    implementation(project(":libs:shizuku"))
     implementation("androidx.annotation:annotation:1.10.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-    implementation("dev.rikka.shizuku:api:13.1.5")
-    implementation("dev.rikka.shizuku:provider:13.1.5")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.2.10")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")

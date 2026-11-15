@@ -126,7 +126,10 @@ open class A11yDisplayScreen(
 
     private suspend fun statusToActResult(status: ActionStatus): ActResult {
         return when (status) {
-            is ActionStatus.Done -> ActResult.Done(snapshot(), tabs = null)
+            is ActionStatus.Done -> {
+                port.settle()
+                ActResult.Done(snapshot(), tabs = null)
+            }
             is ActionStatus.Failed -> ActResult.Failed(status.code, null)
         }
     }
