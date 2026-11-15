@@ -17,33 +17,34 @@ class AndroidDeviceStateProvider(
 
     override fun getDeviceState(): DeviceStateSnapshot {
         val model = Build.MODEL.orEmpty()
-        val batteryLevel = resolveBatteryLevel()
+        val battery = resolveBattery()
         val networkType = resolveNetworkType()
         return DeviceStateSnapshot(
             model = model,
-            batteryLevel = batteryLevel,
+            battery = battery,
             networkType = networkType,
         )
     }
 
-    private fun resolveBatteryLevel(): Int? {
+    private fun resolveBattery(): String {
         return try {
             val bm = application.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
             val capacity = bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-            if (capacity != null && capacity in 0..100) {
+            val level = if (capacity != null && capacity in 0..100) {
                 capacity
             } else {
                 val intent = application.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-                val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+                val rawLevel = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
                 val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
-                if (level >= 0 && scale > 0) {
-                    level * 100 / scale
+                if (rawLevel >= 0 && scale > 0) {
+                    rawLevel * 100 / scale
                 } else {
                     null
                 }
             }
+            if (level != null) "Battery: $level%" else ""
         } catch (_: Throwable) {
-            null
+            ""
         }
     }
 

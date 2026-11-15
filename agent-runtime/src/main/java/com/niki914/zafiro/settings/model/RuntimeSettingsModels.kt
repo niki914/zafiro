@@ -47,10 +47,9 @@ data class RuntimeLlmConfig(
 )
 
 data class RuntimeEnvContextConfig(
-    // TODO(debug-temp): 临时调试配置，验证后待删除并恢复默认值 (enabled = false, keys = emptySet(), variables = emptyMap())
-    val enabled: Boolean = true,
-    val keys: Set<String> = setOf(KEY_DATE, KEY_TIME, KEY_DEVICE, "debug_role"),
-    val variables: Map<String, String> = mapOf("debug_role" to "Tester"),
+    val enabled: Boolean = false,
+    val keys: Set<String> = DEFAULT_KEYS,
+    val variables: Map<String, String> = emptyMap(),
 ) {
     companion object {
         const val KEY_DATE = "date"
