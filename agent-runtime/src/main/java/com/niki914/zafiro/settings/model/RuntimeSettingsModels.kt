@@ -42,7 +42,22 @@ data class RuntimeLlmConfig(
     val repetitionSensitivity: RepetitionSensitivity = RepetitionSensitivity.DEFAULT,
     /** 上下文自动压缩阈值百分比（例如 70 表示 70%，0 表示关闭）。 */
     val compactionThresholdPercent: Int = 70,
+    /** 环境与时态上下文注入配置。 */
+    val envContext: RuntimeEnvContextConfig = RuntimeEnvContextConfig(),
 )
+
+data class RuntimeEnvContextConfig(
+    val enabled: Boolean = false,
+    val keys: Set<String> = DEFAULT_KEYS,
+    val variables: Map<String, String> = emptyMap(),
+) {
+    companion object {
+        const val KEY_DATE = "date"
+        const val KEY_TIME = "time"
+        const val KEY_DEVICE = "device"
+        val DEFAULT_KEYS = setOf(KEY_DATE, KEY_TIME, KEY_DEVICE)
+    }
+}
 
 enum class RuntimeAgentMemoryMode {
     Disabled,

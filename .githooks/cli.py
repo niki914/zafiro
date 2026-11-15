@@ -342,11 +342,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--staged", action="store_true",
-        help="仅检查暂存区增量变动（默认行为）。",
+        help="仅检查暂存区增量变动（git pre-commit 钩子使用）。",
     )
     parser.add_argument(
         "--worktree", action="store_true",
-        help="检查工作区变动（含未暂存与已暂存）。",
+        help="检查工作区变动（含未暂存与已暂存，默认行为）。",
     )
     parser.add_argument(
         "--category", "-c", action="append", dest="categories",
@@ -376,7 +376,7 @@ def main(argv: list[str] | None = None) -> int:
         print("githooks: 不在 git 仓库内", file=sys.stderr)
         return 0
 
-    mode = "all" if args.all else ("worktree" if args.worktree else "staged")
+    mode = "all" if args.all else ("staged" if args.staged else "worktree")
     active_rules = resolve_active_rules(args.categories, args.rules)
 
     result = run_checks(root, active_rules, mode, args.scope)

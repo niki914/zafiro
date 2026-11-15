@@ -248,6 +248,20 @@ data object PromptEditPage : ZafiroPage {
     override val rightAction: TopBarActionSpec? = null
 }
 
+data class EnvContextVariableDetailPage(
+    val variableKey: String?,
+    val isCreating: Boolean,
+) : ZafiroPage {
+    override val routeKey: String = "env-context-variable-detail:${variableKey ?: "new"}"
+    override val titleSpec: PageTitleSpec =
+        if (isCreating) ResTitle(R.string.ui_settings_env_context_variable_title_create)
+        else TextTitle(variableKey.orEmpty())
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? =
+        if (isCreating) null else TopBarActionSpec(icon = Icons.Default.Delete, contentDescription = "Delete Button")
+}
+
 data class SavedConfigPromptEditPage(
     val configId: String?,
     val providerId: String? = null,

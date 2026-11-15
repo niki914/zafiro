@@ -11,6 +11,7 @@ import com.niki914.zafiro.app.ui.nav.ConversationHistoryPage
 import com.niki914.zafiro.app.ui.nav.CustomPyToolDetailPage
 import com.niki914.zafiro.app.ui.nav.CustomPyToolsPage
 import com.niki914.zafiro.app.ui.nav.DonePage
+import com.niki914.zafiro.app.ui.nav.EnvContextVariableDetailPage
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.FloatingBallSettingsPage
 import com.niki914.zafiro.app.ui.nav.MaskingRuleDetailPage
@@ -36,6 +37,7 @@ import com.niki914.zafiro.app.ui.route.BuiltinToolGroupDetailRoute
 import com.niki914.zafiro.app.ui.route.ConfigurePageRoute
 import com.niki914.zafiro.app.ui.route.ConversationHistoryPageRoute
 import com.niki914.zafiro.app.ui.route.DonePageRoute
+import com.niki914.zafiro.app.ui.route.EnvContextVariableDetailRoute
 import com.niki914.zafiro.app.ui.route.ExecutionRuleDetailRoute
 import com.niki914.zafiro.app.ui.route.FloatingBallSettingsPageRoute
 import com.niki914.zafiro.app.ui.route.MaskingRuleDetailRoute
@@ -144,6 +146,11 @@ fun ZafiroPageContent(
         )
 
         PromptEditPage -> PromptEditRoute(
+            onBack = onPop,
+        )
+
+        is EnvContextVariableDetailPage -> EnvContextVariableDetailRoute(
+            page = page,
             onBack = onPop,
         )
 

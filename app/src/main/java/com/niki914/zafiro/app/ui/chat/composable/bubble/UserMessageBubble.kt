@@ -26,12 +26,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
 import com.niki914.uikit.infra.shape.G2FieldShape
@@ -41,16 +44,16 @@ import com.niki914.zafiro.app.ui.viewer.ViewerContent
 
 /** User 气泡在连续用户消息组内的位置（渲染层分组：组边界 = 相邻 UserBubble 之间存在任何内容，见 userBubblePosition）。 */
 enum class UserBubblePosition {
-    /** 独立单条：右上圆角、右下直角 + 尾巴 */
+    /** 独立单条：结束边上圆角、结束边下直角 + 尾巴 */
     Single,
 
-    /** 组首：右上圆角、右下直角 */
+    /** 组首：结束边上圆角、结束边下小圆角 */
     GroupFirst,
 
-    /** 组中：右上、右下均直角 */
+    /** 组中：结束边上下都是小圆角 */
     GroupMid,
 
-    /** 组末：右上、右下均直角 + 尾巴 */
+    /** 组末：结束边上小圆角、结束边下直角 + 尾巴 */
     GroupLast,
 }
 
@@ -73,7 +76,7 @@ fun UserMessageBubble(
     val actualBubbleBg = remember(bubbleBg, colorScheme.background) {
         bubbleBg.compositeOver(colorScheme.background)
     }
-    // 接缝侧（右）小圆角与命令工具结果体分割侧一致（2dp）；带尾巴的角保持直角
+    // 接缝侧（结束边）小圆角与命令工具结果体分割侧一致（2dp）；带尾巴的角保持直角
     val bubbleShape = when (position) {
         UserBubblePosition.Single -> G2FieldShape(
             topStart = 24.dp,
@@ -169,8 +172,9 @@ fun UserMessageBubble(
 
             if (isHeightCapped && hasVisualOverflow) {
                 val transparentBg = actualBubbleBg.copy(alpha = 0f)
+                val mirrorFade = LocalLayoutDirection.current == LayoutDirection.Rtl
 
-                // 1. 底部整行水平渐变蒙层：左淡右深，使最后一行向右平滑隐入气泡底色
+                // 底部整行渐变：靠结束边的一侧变实，最后一行隐入气泡底色。
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -182,12 +186,12 @@ fun UserMessageBubble(
                                     transparentBg,
                                     actualBubbleBg.copy(alpha = 0.5f),
                                     actualBubbleBg,
-                                )
+                                ).let { colors -> if (mirrorFade) colors.asReversed() else colors }
                             )
                         )
                 )
 
-                // 2. 右下角“查看”动作按钮：带有局部水平过渡蒙层，确保文字尾部与按钮自然融合
+                // 结束边的「查看」：靠近正文的一侧淡出，贴边的一侧与气泡底色接上。
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
@@ -196,7 +200,7 @@ fun UserMessageBubble(
                                 listOf(
                                     transparentBg,
                                     actualBubbleBg,
-                                )
+                                ).let { colors -> if (mirrorFade) colors.asReversed() else colors }
                             )
                         )
                         .clickable(
@@ -218,25 +222,30 @@ fun UserMessageBubble(
 }
 
 /**
- * 右下角尾巴：沿气泡右缘向上突的小竖条。右上角为 1/4 圆角（普通圆角），
- * 右下角与接缝一致的 2dp 小圆角，顶边平直、左缘贴气泡右缘、底缘贴气泡底边，
- * 不叠入主体（避免半透明背景两次绘制产生色差）。
+ * 结束边的尾巴：沿气泡结束缘向外突的小竖条。
+ * 路径按物理右侧书写。从右往左时绕气泡中心水平镜像，仍不叠入主体。
  */
 private fun DrawScope.drawUserBubbleTail(color: Color) {
     val w = size.width
     val h = size.height
-    val tw = 5.dp.toPx()                  // 尾巴宽度
-    val th = 8.dp.toPx()                 // 尾巴高度（沿右缘向上突）
-    val rTop = 4.dp.toPx()                // 右上 1/4 圆角半径
-    val rBot = UserBubbleInnerCorner.toPx() // 右下小圆角，与接缝一致
+    val tw = 5.dp.toPx()
+    val th = 8.dp.toPx()
+    val rTop = 4.dp.toPx()
+    val rBot = UserBubbleInnerCorner.toPx()
     val path = Path().apply {
-        moveTo(w, h)                             // 气泡右下角
-        lineTo(w + tw - rBot, h)                 // 底边
-        quadraticTo(w + tw, h, w + tw, h - rBot) // 右下 1/4 圆角
-        lineTo(w + tw, h - th + rTop)            // 右缘向上
-        quadraticTo(w + tw, h - th, w + tw - rTop, h - th) // 右上 1/4 圆角
-        lineTo(w, h - th)                        // 平直顶边
-        close()                                  // 沿气泡右缘回到底角
+        moveTo(w, h)
+        lineTo(w + tw - rBot, h)
+        quadraticTo(w + tw, h, w + tw, h - rBot)
+        lineTo(w + tw, h - th + rTop)
+        quadraticTo(w + tw, h - th, w + tw - rTop, h - th)
+        lineTo(w, h - th)
+        close()
     }
-    drawPath(path, color)
+    if (layoutDirection == LayoutDirection.Rtl) {
+        scale(scaleX = -1f, scaleY = 1f) {
+            drawPath(path, color)
+        }
+    } else {
+        drawPath(path, color)
+    }
 }
