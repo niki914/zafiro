@@ -229,6 +229,36 @@
     <string name="ui_settings_configure_error_proxy_invalid">プロキシアドレスが有効な URI ではありません</string>
     <string name="ui_settings_mcp_config">MCP 設定</string>
 
+    <!-- Context Injection -->
+    <string name="ui_settings_context_injection">コンテキスト注入</string>
+    <string name="ui_settings_context_injection_summary">メッセージに時間、端末状態、カスタム内容を添付</string>
+    <string name="ui_settings_env_context_description">毎ターンのユーザーメッセージに現在のコンテキストを添付します。頻繁に変化する内容をシステムプロンプトに置くと、キャッシュヒットが損なわれコストが増加します。</string>
+    <string name="ui_settings_env_context_master_toggle">コンテキスト注入を有効化</string>
+    <string name="ui_settings_env_context_master_summary">時間、端末情報、カスタム内容のモデルへの提供を許可</string>
+    <string name="ui_settings_env_context_group_builtin">組み込み変数</string>
+    <string name="ui_settings_env_context_key_date">日付</string>
+    <string name="ui_settings_env_context_key_time">時刻</string>
+    <string name="ui_settings_env_context_key_device">端末ステータス</string>
+    <string name="ui_settings_env_context_group_custom">カスタム変数</string>
+    <string name="ui_settings_env_context_empty_custom">カスタム変数はまだありません。右上の「+」をタップして追加してください。</string>
+    <string name="ui_settings_env_context_variable_title_create">変数を追加</string>
+    <string name="ui_settings_env_context_variable_description">メッセージに添付する静的コンテキストを追加します。名前は管理用の識別子であり、モデルは各ターンでここで設定された内容を読み取ります。</string>
+    <string name="ui_settings_env_context_field_name">名前</string>
+    <string name="ui_settings_env_context_field_name_hint">半角英数字、アンダースコア、ハイフンのみ</string>
+    <string name="ui_settings_env_context_field_enabled">有効</string>
+    <string name="ui_settings_env_context_field_content">内容</string>
+    <string name="ui_settings_env_context_field_content_hint">メッセージに添付するテキストを入力</string>
+    <string name="ui_settings_env_context_save_action">変数を保存</string>
+    <string name="ui_settings_env_context_delete_dialog_title">変数を削除</string>
+    <string name="ui_settings_env_context_delete_dialog_text">変数「%1$s」を削除してもよろしいですか？</string>
+    <string name="ui_settings_env_context_error_key_required">名前を入力してください</string>
+    <string name="ui_settings_env_context_error_key_reserved">予約された名前は使用できません：date、time、device</string>
+    <string name="ui_settings_env_context_error_key_duplicate">この名前は既に存在します</string>
+    <string name="ui_settings_env_context_error_key_invalid_format">形式が無効です。半角英数字、アンダースコア、ハイフンのみ使用できます</string>
+    <string name="ui_settings_env_context_error_value_required">内容を入力してください</string>
+    <string name="ui_settings_env_context_error_save_failed">保存に失敗しました：%1$s</string>
+    <string name="ui_settings_env_context_error_delete_failed">削除に失敗しました：%1$s</string>
+
     <!-- Memory Module -->
     <string name="memory_page_description">メモリを管理します。左右にスワイプして削除、タップして単一のメモリを編集できます。追加された内容は、新しい会話でも Agent に記憶されます。</string>
     <string name="memory_page_empty_description">保存されたメモリはありません。右上のボタンをタップして最初のメモリを追加してください。</string>

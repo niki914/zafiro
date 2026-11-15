@@ -37,11 +37,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.Backdrop
 import com.niki914.uikit.base.LocalThemeStyle
@@ -115,6 +117,8 @@ internal fun ZafiroTopBarLayout(
     }
     val displayedRightButton = rightButton ?: lastNonNullRightButton
     val isRightButtonVisible = showRightButton && rightButton != null
+    val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
+    val dirSign = if (isLtr) 1 else -1
 
     // 按钮显隐转场规范：按风格分流
     val (leftEnterTransition, leftExitTransition) = remember(isLiquid) {
@@ -177,19 +181,19 @@ internal fun ZafiroTopBarLayout(
                 val titleEasing = FastOutSlowInEasing
                 val enterForward = slideInHorizontally(
                     animationSpec = tween(titleDuration, easing = titleEasing),
-                    initialOffsetX = { fullWidth -> fullWidth },
+                    initialOffsetX = { fullWidth -> fullWidth * dirSign },
                 ) + fadeIn(tween(titleDuration, easing = titleEasing))
                 val exitForward = slideOutHorizontally(
                     animationSpec = tween(titleDuration, easing = titleEasing),
-                    targetOffsetX = { fullWidth -> -fullWidth },
+                    targetOffsetX = { fullWidth -> -fullWidth * dirSign },
                 ) + fadeOut(tween(titleDuration, easing = titleEasing))
                 val enterBack = slideInHorizontally(
                     animationSpec = tween(titleDuration, easing = titleEasing),
-                    initialOffsetX = { fullWidth -> -fullWidth },
+                    initialOffsetX = { fullWidth -> -fullWidth * dirSign },
                 ) + fadeIn(tween(titleDuration, easing = titleEasing))
                 val exitBack = slideOutHorizontally(
                     animationSpec = tween(titleDuration, easing = titleEasing),
-                    targetOffsetX = { fullWidth -> fullWidth },
+                    targetOffsetX = { fullWidth -> fullWidth * dirSign },
                 ) + fadeOut(tween(titleDuration, easing = titleEasing))
 
                 when (titleDirection) {

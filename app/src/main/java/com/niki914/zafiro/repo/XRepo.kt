@@ -34,6 +34,7 @@ import com.niki914.zafiro.settings.model.RuntimeAgentProfile as AgentProfile
 import com.niki914.zafiro.settings.model.RuntimeAgentValidation as AgentValidation
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting as BuiltinToolSetting
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
+import com.niki914.zafiro.settings.model.RuntimeEnvContextConfig
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.zafiro.settings.model.RuntimeMaskingRule as MaskingRule
@@ -865,6 +866,32 @@ class LlmConfigsApi internal constructor(
             val doc = LlmConfigsSettingsCodec.parse(json)
             if (doc.prompt == normalizedPrompt) return@updateJson json
             LlmConfigsSettingsCodec.encode(doc.copy(prompt = normalizedPrompt))
+        }
+        bumpRevision()
+    }
+
+    suspend fun envContext(): RuntimeEnvContextConfig = document().envContext
+
+    suspend fun saveEnvContext(config: RuntimeEnvContextConfig) {
+        val sanitizedConfig = config.copy(
+            keys = config.keys.map { it.trim() }.filter { it.isNotBlank() }.toSet(),
+            variables = config.variables
+                .mapNotNull { (k, v) ->
+                    val trimmed = k.trim()
+                    if (trimmed.isNotBlank() &&
+                        trimmed != RuntimeEnvContextConfig.KEY_DATE &&
+                        trimmed != RuntimeEnvContextConfig.KEY_TIME &&
+                        trimmed != RuntimeEnvContextConfig.KEY_DEVICE
+                    ) {
+                        trimmed to v.trim()
+                    } else null
+                }
+                .toMap()
+        )
+        repo.updateJson(StoreDescriptorRegistry.LLM_CONFIGS_ID) { json ->
+            val doc = LlmConfigsSettingsCodec.parse(json)
+            if (doc.envContext == sanitizedConfig) return@updateJson json
+            LlmConfigsSettingsCodec.encode(doc.copy(envContext = sanitizedConfig))
         }
         bumpRevision()
     }

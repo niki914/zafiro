@@ -27,7 +27,11 @@ import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.shell.SessionRegistry
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.compaction.ContextPruner
+import com.niki914.zafiro.envcontext.DeviceStateProvider
+import com.niki914.zafiro.envcontext.DeviceStateSnapshot
+import com.niki914.zafiro.envcontext.EnvContextInjectionHook
 import com.niki914.zafiro.masking.MaskingHook
+import com.niki914.zafiro.service.findService
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.LlmProtocol
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
@@ -100,6 +104,21 @@ internal class OkiaSessionAssembler(
     var activeSession: Okia? = null
     var sessionProtocol: LlmProtocol? = null
         private set
+
+    var deviceStateProvider: DeviceStateProvider? = null
+
+    private val envContextInjectionHook = EnvContextInjectionHook(
+        getLlmConfig = {
+            runCatchingCancellable { RuntimeEnvironment.awaitSettingsGateway().readLlmConfig() }
+                .getOrDefault(RuntimeLlmConfig())
+        },
+        deviceStateProvider = {
+            deviceStateProvider?.getDeviceState()
+                ?: findService<DeviceStateProvider>()?.getDeviceState()
+                ?: DeviceStateSnapshot()
+        },
+        getConversation = { currentConversation.value }
+    )
 
     private val maskingHook = MaskingHook(
         listMaskingRules = {
@@ -197,6 +216,7 @@ internal class OkiaSessionAssembler(
             hooks += killToolResourcesHook
             hooks += fixIncompleteToolCallsHook
             hooks += compactPruningHook
+            hooks += envContextInjectionHook
             hooks += maskingHook
             idleTimeoutSeconds = config.idleTimeoutSeconds ?: AgentSessionEngine.NO_IDLE_TIMEOUT_SECONDS
             retryPolicy = RetryPolicy(maxAttempts = config.retryMaxAttempts)

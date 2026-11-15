@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_permission_dialog_title">هوش مصنوعی می‌خواهد عملی را اجرا کند</string>
+    <string name="tool_permission_request_intro">ابزار Zafiro «%1$s» می‌خواهد این فرمان را اجرا کند:</string>
+    <string name="tool_permission_matched_rule">قانون «%1$s» مطابقت کرد: %2$s</string>
+    <string name="tool_permission_allow">اجازه برای این بار</string>
+    <string name="tool_permission_deny">رد</string>
+    <string name="floating_ball_approval_pending">عملیات در انتظار تأیید شما (%1$s)</string>
+    <string name="floating_ball_approval_reason_unknown">در انتظار تأیید</string>
+    <string name="floating_ball_approval_view_details">برای دیدن جزئیات بزنید</string>
+    <string name="floating_ball_tool_running">%1$s در حال اجراست</string>
+    <string name="screen_control_consent_title">درخواست مجوز کنترل صفحه</string>
+    <string name="screen_control_consent_body">Zafiro برای کنترل صفحه به خدمت دسترس‌پذیری و مجوز نمایش روی برنامه‌ها نیاز دارد.</string>
+    <string name="screen_control_consent_agree">موافقم</string>
+</resources>

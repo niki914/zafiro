@@ -59,6 +59,9 @@ import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.infra.shape.G2FieldShape
 import java.util.concurrent.atomic.AtomicLong
 
+/** 选项列表过高时只滚正文，标题和按钮留在外面。 */
+private val DialogBodyMaxHeight = 288.dp
+
 internal class LiquidDialogHostEntry(
     val id: Long,
     initialVisible: Boolean,
@@ -257,7 +260,6 @@ private fun LiquidDialogSurface(
                     .padding(horizontal = horizontalMargin, vertical = verticalMargin)
                     .widthIn(min = minPanelWidth, max = maxPanelWidth)
                     .heightIn(max = maxPanelHeight)
-                    .verticalScroll(scrollState)
                     .drawBackdrop(
                         backdrop = resolvedBackdrop,
                         shape = { panelShape },
@@ -283,8 +285,19 @@ private fun LiquidDialogSurface(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 title?.invoke()
-                text?.invoke()
-                content?.invoke(this)
+                if (text != null || content != null) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .heightIn(max = DialogBodyMaxHeight)
+                            .verticalScroll(scrollState)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        text?.invoke()
+                        content?.invoke(this)
+                    }
+                }
                 if (actions != null) {
                     Row(
                         modifier = Modifier

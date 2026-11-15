@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -30,6 +30,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -130,6 +131,7 @@ fun FloatingBallDetailMorphCard(
 
     val cardShape = G2CardShape(currentRadius)
 
+    // 飞入坐标和屏外测绘都是屏幕像素。卡片里的文字仍按语言排。
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -138,11 +140,12 @@ fun FloatingBallDetailMorphCard(
                 indication = null,
                 onClick = { startClose() },
             ),
+        contentAlignment = AbsoluteAlignment.TopLeft,
     ) {
         // 隐式测绘区：获取详情内容的非受约束真实内在高度，杜绝动画中途在尺寸约束下测出压扁高度的恶性循环
         Box(
             modifier = Modifier
-                .offset(x = (-9999).dp, y = (-9999).dp)
+                .absoluteOffset(x = (-9999).dp, y = (-9999).dp)
                 .width(targetWidth)
                 .graphicsLayer { alpha = 0f }
                 .onSizeChanged { size ->
@@ -164,7 +167,7 @@ fun FloatingBallDetailMorphCard(
 
         Box(
             modifier = Modifier
-                .offset(x = currentLeft, y = currentTop)
+                .absoluteOffset(x = currentLeft, y = currentTop)
                 .size(width = currentWidth, height = currentHeight)
                 .shadow(elevation = currentElevation, shape = cardShape)
                 .clip(cardShape)
