@@ -24,6 +24,12 @@
 # FreeReflection
 -keep class me.weishu.reflection.** {*;}
 
+# Shizuku 按类名在另一个进程里 new 出虚拟屏服务，混淆会让绑定失败。
+-keep class com.niki914.zafiro.app.screen.ShizukuDisplayService { *; }
+-keep class com.niki914.zafiro.app.screen.IVirtualDisplayService { *; }
+-keep class com.niki914.zafiro.app.screen.IVirtualDisplayService$Stub { *; }
+-keep class com.niki914.zafiro.app.screen.IVirtualDisplayService$Default { *; }
+
 # Xposed 入口类名必须与 assets/xposed_init 保持一致，仅保护类名与无参构造。
 -keep class a0.a0.a0.a0.a0.a0.Entrance {
     <init>();

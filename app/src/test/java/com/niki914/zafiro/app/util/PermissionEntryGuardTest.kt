@@ -57,6 +57,13 @@ class PermissionEntryGuardTest {
         "Shizuku.requestPermission" to listOf(
             AllowRule("permission/ShizukuHandler.kt", ""),
         ),
+        // 虚拟屏的临时 Shizuku 绑定与 am start 兜底，整文件以后可搬进独立模块。
+        "rikka.shizuku" to listOf(
+            AllowRule("screen/ShizukuDisplay.kt", ""),
+        ),
+        "Runtime.getRuntime().exec(" to listOf(
+            AllowRule("screen/ShizukuDisplay.kt", ""),
+        ),
     )
 
     /** 允许名单之外的任何命中都算私调。扫描范围：全仓 main 源码（build/ 与测试除外）。 */

@@ -21,6 +21,7 @@ interface Screen {
 sealed interface OpenResult {
     data class Opened(val info: ScreenInfo) : OpenResult
     data class Unsupported(val kind: OpenKind) : OpenResult
+    data class Rejected(val code: String) : OpenResult
 }
 
 sealed interface CloseResult {
