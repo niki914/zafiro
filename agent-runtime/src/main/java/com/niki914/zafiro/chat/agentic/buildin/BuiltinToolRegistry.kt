@@ -6,6 +6,7 @@ import com.niki914.zafiro.chat.agentic.buildin.impl.EngageBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ExamplesBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ExecutePythonBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.FindInstalledAppsBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.LaunchAppBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.LoadSkillBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.MemoryBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.AgentBuiltin
@@ -57,6 +58,7 @@ class BuiltinToolRegistry(
                 LockScreenBuiltin(),
                 ComposeMessageBuiltin(),
                 OpenUriBuiltin(),
+                LaunchAppBuiltin(),
                 LoadSkillBuiltin(),
                 ShellBuiltin(),
                 SshBuiltin(),

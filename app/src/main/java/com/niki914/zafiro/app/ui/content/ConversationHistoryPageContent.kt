@@ -371,10 +371,10 @@ private fun ConversationHistoryListContent(
                 item(key = "tasks_entry", contentType = "tasks_entry") {
                     HistoryMenuEntry(Icons.Default.Add, stringResource(R.string.sidebar_new_chat), null, onNewChat)
                     HistoryMenuEntry(Icons.Default.Schedule, stringResource(R.string.tasks_entry_title), stringResource(R.string.tasks_entry_summary), onOpenTasks)
-                    HistoryMenuEntry(Icons.Default.Dashboard, stringResource(R.string.dashboard_entry_title), stringResource(R.string.dashboard_entry_summary)) { onOpenFeature("dashboard") }
-                    HistoryMenuEntry(Icons.Default.Groups, stringResource(R.string.workspaces_entry_title), stringResource(R.string.workspaces_entry_summary)) { onOpenFeature("workspaces") }
+                    HistoryMenuEntry(Icons.Default.Dashboard, stringResource(R.string.dashboard_entry_title), stringResource(R.string.dashboard_entry_summary), onClick = { onOpenFeature("dashboard") })
+                    HistoryMenuEntry(Icons.Default.Groups, stringResource(R.string.workspaces_entry_title), stringResource(R.string.workspaces_entry_summary), onClick = { onOpenFeature("workspaces") })
                     HistoryMenuEntry(Icons.Default.SmartToy, stringResource(R.string.agents_entry_title), stringResource(R.string.agents_entry_summary), onOpenAgents)
-                    HistoryMenuEntry(Icons.Default.Folder, stringResource(R.string.files_entry_title), stringResource(R.string.files_entry_summary)) { onOpenFeature("files") }
+                    HistoryMenuEntry(Icons.Default.Folder, stringResource(R.string.files_entry_title), stringResource(R.string.files_entry_summary), onClick = { onOpenFeature("files") })
                     HistoryMenuEntry(Icons.Default.Settings, stringResource(R.string.ui_settings_menu_entry), stringResource(R.string.sidebar_settings_summary), onOpenSettings)
                 }
             }

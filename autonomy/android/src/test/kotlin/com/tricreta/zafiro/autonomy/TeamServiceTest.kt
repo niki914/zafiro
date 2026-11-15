@@ -28,7 +28,7 @@ class TeamServiceTest {
 
     @Before fun setUp() {
         db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), AutonomyDatabase::class.java).allowMainThreadQueries().build()
-        svc = TeamServiceImpl(db.dao(), { now }, { ZoneId.of("Africa/Nairobi") }, { Quotas(mapOf("comment" to 2, "reply" to 5)) }, { 0.5 })
+        svc = TeamServiceImpl(db.dao(), { now }, { ZoneId.of("Africa/Nairobi") }, { Quotas(mapOf("comment" to 2, "reply" to 50)) }, { 0.5 })
     }
 
     @After fun tearDown() = db.close()

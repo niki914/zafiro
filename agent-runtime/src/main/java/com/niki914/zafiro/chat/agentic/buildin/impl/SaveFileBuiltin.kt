@@ -80,7 +80,7 @@ class SaveFileBuiltin(private val rootProvider: suspend () -> File = { File(Cont
         )
         val b64 = args.text("content_base64")
         val bytes = try {
-            if (b64 != null) Base64.getMimeDecoder().decode(b64) else (args["content"]?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+            if (b64 != null) Base64.getDecoder().decode(b64.filter { !it.isWhitespace() }) else (args["content"]?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
                 ?: return BuiltinToolResult.failure(code = "INVALID_ARGUMENTS", message = "Pass content or content_base64.")).toByteArray()
         } catch (e: IllegalArgumentException) {
             return BuiltinToolResult.failure(code = "INVALID_BASE64", message = "content_base64 is not valid base64.")

@@ -32,8 +32,9 @@ class SaveFileBuiltinTest {
 
     @Test fun rejectsPathEscapes() {
         val root = java.io.File(tmp.root, "outputs").also { it.mkdirs() }
-        listOf("../x.md", "/etc/passwd", "a/../../b", ".hidden", "a//b", "", "bad*name", "a/.b").forEach { assertNull(it, OutputPaths.resolve(root, it)) }
+        listOf("../x.md", "a/../../b", ".hidden", "a//b", "", "bad*name", "a/.b").forEach { assertNull(it, OutputPaths.resolve(root, it)) }
         assertNotNull(OutputPaths.resolve(root, "a/b-c_d 1.md"))
+        assertEquals("a leading slash is treated as relative, never as an absolute path", java.io.File(root, "etc/passwd").canonicalPath, OutputPaths.resolve(root, "/etc/passwd")!!.canonicalPath)
         assertFalse(call("""{"op":"save","path":"../evil","content":"x"}""").ok)
     }
 

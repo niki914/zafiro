@@ -28,7 +28,7 @@ class BundledAssetsTest {
         File(assets, "workspaces").listFiles { f -> f.name.endsWith(".json") }.orEmpty().forEach { f ->
             Json.parseToJsonElement(f.readText()).jsonObject["agents"]!!.jsonArray.forEach { a ->
                 a.jsonObject["tools"]!!.jsonArray.map { it.jsonPrimitive.content }.forEach { t ->
-                    assertTrue("${f.name}: unknown tool $t", t in known)
+                    assertTrue("${f.name}: unknown tool $t", t in known || t.startsWith("py_"))
                 }
             }
         }

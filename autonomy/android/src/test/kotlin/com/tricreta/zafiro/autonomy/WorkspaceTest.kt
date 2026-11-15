@@ -39,7 +39,7 @@ class WorkspaceTest {
           "tasks":[{"key":"morning","name":"Morning","prompt":"go","agent":"director","trigger":"DAILY","time":"07:15"},
                    {"key":"weekly","name":"Weekly","prompt":"plan","agent":"director","trigger":"WEEKLY","time":"18:00","days":["SUN"]},
                    {"key":"off","name":"Optional","prompt":"x","agent":"poster","trigger":"DAILY","time":"09:00","enabled":false}
-                   ${if (extraTask) ""","{"key":"new","name":"New","prompt":"n","agent":"poster","trigger":"INTERVAL","intervalMinutes":120}""" else ""}]}""",
+                   ${if (extraTask) """,{"key":"new","name":"New","prompt":"n","agent":"poster","trigger":"INTERVAL","intervalMinutes":120}""" else ""}]}""",
     )
 
     @Test fun installAddsEverythingSwitchedOffAndIsIdempotent() = runBlocking {

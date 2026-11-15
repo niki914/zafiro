@@ -17,6 +17,7 @@
 *.md
 !/.agents/skills/**/*.md
 !/docs/**/*.md
+!/app/src/main/assets/**/*.md
 
 ### Android / Gradle
 **/.gradle/
