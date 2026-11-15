@@ -48,7 +48,6 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.shape.G2CardShape
-import com.niki914.zafiro.accessibility.driver.SystemAccessibilityDriver
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
@@ -57,7 +56,7 @@ import kotlin.math.hypot
 
 /**
  * 只能拖的虚拟屏预览。触摸留在卡片上，不进虚拟屏。
- * 窗口挂在无障碍服务上。加不上去时返回 false，调用方释放刚建的屏。
+ * 使用全局应用悬浮窗（TYPE_APPLICATION_OVERLAY）。加不上去时返回 false，调用方释放刚建的屏。
  */
 internal object VirtualDisplayCard {
     private const val TAG = "niki914_zafiro_VirtualDisplayCard"
@@ -72,7 +71,7 @@ internal object VirtualDisplayCard {
 
     suspend fun show(frames: StateFlow<Bitmap?>): Boolean = withContext(Dispatchers.Main.immediate) {
         if (isShowing) hideOnMain()
-        val context = SystemAccessibilityDriver.serviceContext ?: return@withContext false
+        val context = applicationContext()
         val manager = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
             ?: return@withContext false
         val density = context.resources.displayMetrics.density
@@ -81,7 +80,7 @@ internal object VirtualDisplayCard {
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT,
