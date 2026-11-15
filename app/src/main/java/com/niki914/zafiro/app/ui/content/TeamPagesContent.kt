@@ -123,7 +123,10 @@ fun DashboardPageContent(onOpenFiles: () -> Unit) {
             val open = board.count { it.workspaceId == w.id && it.status in setOf("TODO", "DOING", "BLOCKED") }
             val done = actions.count { it.workspaceId == w.id && it.status == "DONE" }
             SettingsRowSpec.Value(title = names[w.id] ?: w.id, summary = "$open open on the board · $done actions done recently", currentState = "ON")
-        }.ifEmpty { listOf(SettingsRowSpec.Message("No workspace is on yet. Open Workspaces and switch one on.")) }),
+        }.ifEmpty { listOf(SettingsRowSpec.Message("No workspace is on yet. Open Workspaces and switch one on.")) } +
+            workspaces.filter { it.enabled && it.id != "toolsmith" && it.id != "health" }.map { w ->
+                SettingsRowSpec.Action(id = "run:${w.id}", title = "Run ${names[w.id] ?: w.id} now", summary = "Starts the Director. It keeps handing work down the team until the board is empty or today's caps are reached.")
+            }),
         section("Right now ($running running, $failed of the last 10 runs failed)", runs.take(12).map { r ->
             SettingsRowSpec.Value(title = r.taskName, summary = listOf(ago(r.createdAtMs), "${r.steps} steps", plainReason(r.state, r.reason, r.error)).filter { it.isNotBlank() }.joinToString(" · "), currentState = r.state)
         }),
@@ -140,6 +143,11 @@ fun DashboardPageContent(onOpenFiles: () -> Unit) {
             a is SettingsRowAction.Click && a.id.startsWith("ok:") -> decide(a.id.removePrefix("ok:").toLong(), true)
             a is SettingsRowAction.Click && a.id.startsWith("no:") -> decide(a.id.removePrefix("no:").toLong(), false)
             a is SettingsRowAction.Navigate && a.id == "files" -> onOpenFiles()
+            a is SettingsRowAction.Click && a.id.startsWith("run:") -> scope.launch {
+                val id = com.tricreta.zafiro.autonomy.workspace.WorkspaceInstaller.taskId(a.id.removePrefix("run:"), "heartbeat")
+                val ok = runCatching { graph.repo.enqueueManual(id); graph.scheduler.reconcile("run_now") }.isSuccess
+                Toast.makeText(context, if (ok) "Started. Watch the Dashboard." else "Could not start it.", Toast.LENGTH_SHORT).show()
+            }
         }
     })
 }

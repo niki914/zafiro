@@ -1,0 +1,46 @@
+{
+ "id": "health",
+ "version": 1,
+ "name": "Phone health",
+ "platform": "health",
+ "app": "",
+ "summary": "A watchdog that checks the phone every 30 minutes (awake, unlocked, battery, Shizuku, network) and tells you once if something blocks the team.",
+ "quotas": "",
+ "agents": [
+  {
+   "id": "phone_doctor",
+   "name": "Phone Doctor",
+   "tools": [
+    "device_info",
+    "execute_python",
+    "notify",
+    "board",
+    "save_file",
+    "load_skill"
+   ],
+   "skills": [
+    "phone-health"
+   ],
+   "usesScreen": false,
+   "instructions": "You are the Phone Doctor. Load skill phone-health and run its checks. Be quiet when all is well. Never change settings, never bypass a lock, never uninstall anything."
+  }
+ ],
+ "tasks": [
+  {
+   "key": "check",
+   "name": "Phone health check",
+   "prompt": "Run the phone-health checks now.",
+   "agent": "phone_doctor",
+   "trigger": "INTERVAL",
+   "intervalMinutes": 30,
+   "maxSteps": 25,
+   "maxMinutes": 10,
+   "criteria": "Checks ran; any problem was reported once to the owner."
+  }
+ ],
+ "skills": [
+  "phone-health"
+ ],
+ "mcps": [],
+ "memory": []
+}

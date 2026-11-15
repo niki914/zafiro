@@ -310,6 +310,23 @@ w(f"{A}/workspaces/toolsmith.json", json.dumps(dict(
                  instructions="You are the Skill Builder. The owner gives you a GitHub repo, a document, a web page or notes. Load skill skill-from-source and follow it. Install each resulting skill with create_skill. For a repo that already contains skills, install each one (check the license first). Reply with the installed skill ids and one line on what each does. Never install a skill you could not read in full."),],
     tasks=[], skills=["skill-from-source", "skill-creator"], mcps=[], memory=[]), indent=1) + "\n")
 DISABLED.append("skill-from-source")
+# Phone health: read-only checks, notifies the owner at most once a day per problem.
+skill("phone-health", "Checks that the phone can run the team: awake, unlocked, battery, Shizuku, network. Tells the owner once when something blocks work.", """
+# Phone health
+Run these checks with `device_info` and `execute_python` (rish helper in files/rish, RISH_APPLICATION_ID=com.niki914.zafiro.auto, stdin=DEVNULL):
+1. Battery and charging (device_info). Below 25% and not charging: problem.
+2. Screen state and lock: `dumpsys window | grep isKeyguardShowing` and wakefulness. Locked or asleep: try `input keyevent KEYCODE_WAKEUP` once. Still locked: problem (never try to bypass a lock).
+3. Shizuku/rish alive: run `id` through rish. 'Server is not running': problem. You cannot restart Shizuku yourself without a computer or wireless-debugging pairing, so tell the owner exactly what to tap.
+4. Network (device_info). Offline: problem.
+5. Recent runs: count FAILED/MISSED/INTERRUPTED in the last 3 hours from the Dashboard data you can read with `board op=list`.
+For each problem call `notify` ONCE per day per problem: remember it in files/outputs/health/alerts.json (date + problem) and skip if already sent today. If all is well, do nothing and say STATUS: DONE with 'all clear'.
+""")
+w(f"{A}/workspaces/health.json", json.dumps(dict(
+    id="health", version=1, name="Phone health", platform="health", app="", summary="A watchdog that checks the phone every 30 minutes (awake, unlocked, battery, Shizuku, network) and tells you once if something blocks the team.", quotas="",
+    agents=[dict(id="phone_doctor", name="Phone Doctor", tools=["device_info", "execute_python", "notify", "board", "save_file", "load_skill"], skills=["phone-health"], usesScreen=False,
+                 instructions="You are the Phone Doctor. Load skill phone-health and run its checks. Be quiet when all is well. Never change settings, never bypass a lock, never uninstall anything.")],
+    tasks=[dict(key="check", name="Phone health check", prompt="Run the phone-health checks now.", agent="phone_doctor", trigger="INTERVAL", intervalMinutes=30, maxSteps=25, maxMinutes=10, criteria="Checks ran; any problem was reported once to the owner.")],
+    skills=["phone-health"], mcps=[], memory=[]), indent=1) + "\n")
 dis = f"{A}/skills_disabled_by_default.txt"
 cur = [l.strip() for l in open(dis).read().splitlines() if l.strip()]
 open(dis, "w").write("\n".join(cur + [d for d in sorted(set(DISABLED)) if d not in cur]) + "\n")
