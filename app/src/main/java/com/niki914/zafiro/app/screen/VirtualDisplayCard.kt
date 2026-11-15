@@ -54,6 +54,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -97,9 +98,9 @@ import com.niki914.zafiro.remoteview.floatingball.DockSide
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.sin
 
 /**
  * 虚拟屏小窗与大窗展开层（双 Window / 零系统级 Resize 架构）。
@@ -581,20 +582,8 @@ private fun ExpandedCardOverlay(
     var viewWidthPx by remember { mutableIntStateOf(0) }
     var viewHeightPx by remember { mutableIntStateOf(0) }
 
-    // 抓取启动瞬间的低清 Bitmap 作为平滑形变基底，避免形变期间 live frame 缩放撕裂
-    val initialLowResBitmap = remember {
-        val currentFrame = frames.value
-        if (currentFrame != null && !currentFrame.isRecycled) {
-            runCatchingCancellable {
-                Bitmap.createScaledBitmap(
-                    currentFrame,
-                    (currentFrame.width / 4).coerceAtLeast(1),
-                    (currentFrame.height / 4).coerceAtLeast(1),
-                    true,
-                )
-            }.getOrNull()
-        } else null
-    }
+    // 抓住展开瞬间的那一帧。形变中段用它，避免实时画面跟着窗口缩放撕裂。
+    val initialStill = remember { copyStill(frames.value) }
 
     val animProgress = remember { Animatable(0f) }
     var isClosing by remember { mutableStateOf(false) }
@@ -611,23 +600,18 @@ private fun ExpandedCardOverlay(
     fun startCollapse() {
         if (!isClosing) {
             isClosing = true
-            val currentFrame = frames.value
-            if (currentFrame != null && !currentFrame.isRecycled) {
-                frozenFrameForCollapse = runCatchingCancellable {
-                    Bitmap.createScaledBitmap(
-                        currentFrame,
-                        (currentFrame.width / 4).coerceAtLeast(1),
-                        (currentFrame.height / 4).coerceAtLeast(1),
-                        true,
-                    )
-                }.getOrNull()
-            }
-            onRequestCollapse()
+            frozenFrameForCollapse = copyStill(frames.value)
             coroutineScope.launch {
+                // 模糊盖住大窗之后再降预览画质，避免收起开头闪一帧粗图。
+                val dropQuality = launch {
+                    snapshotFlow { animProgress.value }.first { it <= COLLAPSE_LIVE_UNTIL }
+                    onRequestCollapse()
+                }
                 animProgress.animateTo(
                     targetValue = 0f,
                     animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
                 )
+                dropQuality.join()
                 onCollapseFinished()
             }
         }
@@ -639,8 +623,22 @@ private fun ExpandedCardOverlay(
     val cardOffsetX = if (dockSide.isRight) targetWidth - currentWidth else 0.dp
     val cardOffsetY = (targetHeight - currentHeight) / 2
     val currentCornerRadius = lerp(8.dp, 16.dp, p)
-    val blurRadiusDp = if (p < 0.99f) ((sin(p * Math.PI.toFloat())) * 22f).dp else 0.dp
-    val activeMorphingBitmap = if (isClosing) (frozenFrameForCollapse ?: initialLowResBitmap) else initialLowResBitmap
+    val liveFrame = frame?.takeIf { !it.isRecycled }
+    val heldStill = (if (isClosing) frozenFrameForCollapse else initialStill)
+        ?.takeIf { !it.isRecycled }
+    val wantLive = morphShowsLive(p, isClosing)
+    val showingLive = wantLive && liveFrame != null
+    // 静图还在时模糊不退。实时画面接上之后，模糊才跟着退掉。
+    val blurRadiusDp = if (showingLive || !wantLive) {
+        morphBlurRadius(p, isClosing).dp
+    } else {
+        MORPH_BLUR_HOLD.dp
+    }
+    val morphSource = when {
+        showingLive -> liveFrame
+        heldStill != null -> heldStill
+        else -> liveFrame
+    }
 
     val topBarHeight = lerp(0.dp, 24.dp, p)
     val bottomBarHeight = lerp(0.dp, 40.dp, p)
@@ -722,21 +720,14 @@ private fun ExpandedCardOverlay(
                         },
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (activeMorphingBitmap != null && p < 0.99f && !activeMorphingBitmap.isRecycled) {
+                    val morphBitmap = remember(morphSource) { morphSource?.asImageBitmap() }
+                    if (morphBitmap != null) {
                         Image(
-                            bitmap = activeMorphingBitmap.asImageBitmap(),
-                            contentDescription = "Morphing preview",
+                            bitmap = morphBitmap,
+                            contentDescription = "Screen preview",
                             modifier = Modifier
                                 .fillMaxSize()
                                 .then(if (blurRadiusDp > 0.dp) Modifier.blur(blurRadiusDp) else Modifier),
-                            contentScale = ContentScale.FillBounds,
-                        )
-                    } else if (frame != null && !frame!!.isRecycled) {
-                        val bitmap = remember(frame) { frame!!.asImageBitmap() }
-                        Image(
-                            bitmap = bitmap,
-                            contentDescription = "Screen preview",
-                            modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.FillBounds,
                         )
                     } else if (currentStatus == VirtualDisplayStatus.Launching) {
@@ -800,6 +791,44 @@ private fun ExpandedCardOverlay(
             )
         }
     }
+}
+
+private const val MORPH_BLUR_HOLD = 20f
+private const val EXPAND_LIVE_FROM = 0.86f
+private const val COLLAPSE_LIVE_UNTIL = 0.88f
+
+/**
+ * 形变期间盖住画面的模糊。
+ * 展开：中段保持模糊，实时画面在模糊退尽前接上，最后一段才对焦。
+ * 收起：先在实时画面上模糊，再换成静图缩小。
+ */
+private fun morphBlurRadius(progress: Float, closing: Boolean): Float {
+    val p = progress.coerceIn(0f, 1f)
+    val radius = if (closing) {
+        when {
+            p > 0.90f -> MORPH_BLUR_HOLD * ((1f - p) / 0.10f)
+            p > 0.22f -> MORPH_BLUR_HOLD
+            else -> MORPH_BLUR_HOLD * (p / 0.22f)
+        }
+    } else {
+        when {
+            p < 0.16f -> MORPH_BLUR_HOLD * (p / 0.16f)
+            p < 0.92f -> MORPH_BLUR_HOLD
+            else -> MORPH_BLUR_HOLD * ((1f - p) / 0.08f)
+        }
+    }
+    return radius.coerceIn(0f, MORPH_BLUR_HOLD)
+}
+
+private fun morphShowsLive(progress: Float, closing: Boolean): Boolean {
+    return if (closing) progress > COLLAPSE_LIVE_UNTIL else progress >= EXPAND_LIVE_FROM
+}
+
+private fun copyStill(source: Bitmap?): Bitmap? {
+    if (source == null || source.isRecycled) return null
+    return runCatchingCancellable {
+        source.copy(source.config ?: Bitmap.Config.ARGB_8888, false)
+    }.getOrNull()
 }
 
 @Composable
