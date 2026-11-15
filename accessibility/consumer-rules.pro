@@ -1,1 +1,1 @@
-// consumer-rules.pro for :accessibility
+# consumer-rules.pro for :accessibility (no extra keep rules needed)
