@@ -1,6 +1,8 @@
 package com.niki914.zafiro.app.screen
 
 import com.niki914.logging.Logger
+import com.niki914.shizuku.display.VirtualDisplayController
+import com.niki914.shizuku.display.VirtualDisplayPrepareResult
 import com.niki914.zafiro.accessibility.driver.SystemAccessibilityDriver
 import com.niki914.zafiro.accessibility.port.A11yDisplayScreen
 import com.niki914.zafiro.accessibility.port.DefaultDisplayPort
@@ -143,6 +145,9 @@ object AppScreens : Screens {
 
     @Volatile
     private var virtual: VirtualDisplayScreen? = null
+    private val vdController: VirtualDisplayController by lazy {
+        VirtualDisplayController.create(applicationContext())
+    }
 
     override fun list(): List<ScreenInfo> {
         val extra = virtual?.info()
@@ -191,40 +196,40 @@ object AppScreens : Screens {
         if (!permissionGranted(Permission.OVERLAY)) {
             return OpenResult.Rejected("DISPLAY_FAILED")
         }
-        when (ShizukuDisplay.prepare(applicationContext())) {
-            PrepareResult.Ready -> Unit
-            PrepareResult.Denied,
-            PrepareResult.Unavailable,
-            PrepareResult.BindFailed -> return OpenResult.Rejected("SHIZUKU_UNAVAILABLE")
+        when (vdController.prepare()) {
+            VirtualDisplayPrepareResult.Ready -> Unit
+            VirtualDisplayPrepareResult.Denied,
+            VirtualDisplayPrepareResult.Unavailable,
+            VirtualDisplayPrepareResult.BindFailed -> return OpenResult.Rejected("SHIZUKU_UNAVAILABLE")
         }
         return runCatchingCancellable {
             val (width, height, dpi) = virtualDisplaySize(applicationContext())
-            val frames = VirtualDisplayFrames.open(width, height, dpi)
+            val frames = VirtualDisplayFrames.open(vdController, width, height, dpi)
             if (frames == null) {
-                ShizukuDisplay.close()
+                vdController.close()
                 return@runCatchingCancellable OpenResult.Rejected("DISPLAY_FAILED")
             }
-            val screen = VirtualDisplayScreen(frames)
+            val screen = VirtualDisplayScreen(frames, vdController)
             if (!VirtualDisplayCard.show(screen.preview())) {
-                ShizukuDisplay.release(frames.displayId)
+                vdController.release(frames.displayId)
                 screen.closeLocal()
-                ShizukuDisplay.close()
+                vdController.close()
                 return@runCatchingCancellable OpenResult.Rejected("DISPLAY_FAILED")
             }
             virtual = screen
             OpenResult.Opened(screen.info())
         }.getOrElse { error ->
             Logger.e(TAG, "openVirtual failed unexpectedly", error)
-            runCatchingCancellable { ShizukuDisplay.close() }
+            runCatchingCancellable { vdController.close() }
             OpenResult.Rejected("UNKNOWN_ERROR")
         }
     }
 
     private suspend fun dismiss(screen: VirtualDisplayScreen) {
         runCatchingCancellable { VirtualDisplayCard.hide() }
-        runCatchingCancellable { ShizukuDisplay.release(screen.port.displayId) }
+        runCatchingCancellable { vdController.release(screen.port.displayId) }
         runCatchingCancellable { screen.closeLocal() }
         virtual = null
-        runCatchingCancellable { ShizukuDisplay.close() }
+        runCatchingCancellable { vdController.close() }
     }
 }

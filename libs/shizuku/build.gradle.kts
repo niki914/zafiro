@@ -34,7 +34,7 @@ android {
 dependencies {
     implementation("androidx.annotation:annotation:1.10.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-    implementation("dev.rikka.shizuku:api:13.1.5")
+    api("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")
     implementation(project(":libs:logging"))
 

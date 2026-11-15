@@ -22,7 +22,7 @@ import kotlin.coroutines.resumeWithException
 import kotlin.time.Duration.Companion.milliseconds
 
 internal class RealShizukuClient(
-    private val context: Context,
+    private val context: Context? = null,
 ) : ShizukuClient {
 
     private val requestCodeGenerator = AtomicInteger(1000)
@@ -30,8 +30,22 @@ internal class RealShizukuClient(
     @Suppress("DEPRECATION")
     override val isInstalled: Boolean
         get() = runCatchingCancellable {
-            context.packageManager.getPackageInfo(ShizukuProvider.MANAGER_APPLICATION_ID, 0)
-        }.isSuccess
+            val ctx = context ?: findApplicationContext()
+            if (ctx != null) {
+                ctx.packageManager.getPackageInfo(ShizukuProvider.MANAGER_APPLICATION_ID, 0)
+                true
+            } else {
+                isBinderAlive
+            }
+        }.getOrDefault(false)
+
+    private fun findApplicationContext(): Context? {
+        return runCatchingCancellable {
+            val activityThreadClass = Class.forName("android.app.ActivityThread")
+            val currentApplicationMethod = activityThreadClass.getMethod("currentApplication")
+            currentApplicationMethod.invoke(null) as? Context
+        }.getOrNull()
+    }
 
     override val isBinderAlive: Boolean
         get() = runCatchingCancellable { Shizuku.pingBinder() }.getOrDefault(false)
