@@ -11,6 +11,8 @@ import com.niki914.okia.transport.HttpTimeouts
 import com.niki914.zafiro.api.text.SummaryBlock
 import com.niki914.zafiro.settings.model.RuntimeEnvContextConfig
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -34,11 +36,11 @@ class EnvContextInjectionHookTest {
 
     @Test
     fun beforeSerialization_preservesPrefixCacheForHistoricalTurns() = runTest {
-        val shanghaiZone = java.time.ZoneId.of("Asia/Shanghai")
-        val turn1Timestamp = java.time.ZonedDateTime.of(2026, 11, 15, 14, 0, 0, 0, shanghaiZone)
+        val shanghaiZone = ZoneId.of("Asia/Shanghai")
+        val turn1Timestamp = ZonedDateTime.of(2026, 11, 15, 14, 0, 0, 0, shanghaiZone)
             .toInstant()
             .toEpochMilli()
-        val turn2Timestamp = java.time.ZonedDateTime.of(2026, 11, 15, 15, 30, 0, 0, shanghaiZone)
+        val turn2Timestamp = ZonedDateTime.of(2026, 11, 15, 15, 30, 0, 0, shanghaiZone)
             .toInstant()
             .toEpochMilli()
 
@@ -61,7 +63,7 @@ class EnvContextInjectionHookTest {
         val hook = EnvContextInjectionHook(
             getLlmConfig = { RuntimeLlmConfig(envContext = config) },
             deviceStateProvider = {
-                DeviceStateSnapshot(model = "OnePlus 12", batteryLevel = 80, networkType = "Wi-Fi")
+                DeviceStateSnapshot(model = "OnePlus 12", battery = "Battery: 80%", networkType = "Wi-Fi")
             },
             getConversation = { committedConversation },
             clock = { turn2Timestamp },
@@ -93,19 +95,19 @@ class EnvContextInjectionHookTest {
         // Turn 2 uses fresh active timestamp (15:30) and full dynamic device state
         assertTrue(activeText.contains("Turn 2 Question"))
         assertTrue(activeText.contains("15:30"))
-        assertTrue(activeText.contains("OnePlus 12 · 80% · Wi-Fi"))
+        assertTrue(activeText.contains("OnePlus 12 · Battery: 80% · Wi-Fi"))
     }
 
     @Test
     fun beforeSerialization_skipsSummaryBlockAndAlignsPrunedHistory() = runTest {
-        val shanghaiZone = java.time.ZoneId.of("Asia/Shanghai")
-        val turn1Timestamp = java.time.ZonedDateTime.of(2026, 11, 15, 10, 0, 0, 0, shanghaiZone)
+        val shanghaiZone = ZoneId.of("Asia/Shanghai")
+        val turn1Timestamp = ZonedDateTime.of(2026, 11, 15, 10, 0, 0, 0, shanghaiZone)
             .toInstant()
             .toEpochMilli()
-        val turn2Timestamp = java.time.ZonedDateTime.of(2026, 11, 15, 12, 0, 0, 0, shanghaiZone)
+        val turn2Timestamp = ZonedDateTime.of(2026, 11, 15, 12, 0, 0, 0, shanghaiZone)
             .toInstant()
             .toEpochMilli()
-        val turn3Timestamp = java.time.ZonedDateTime.of(2026, 11, 15, 16, 0, 0, 0, shanghaiZone)
+        val turn3Timestamp = ZonedDateTime.of(2026, 11, 15, 16, 0, 0, 0, shanghaiZone)
             .toInstant()
             .toEpochMilli()
 

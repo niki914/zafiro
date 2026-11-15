@@ -7,19 +7,20 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.util.Locale
 
 class EnvContextFormatterTest {
 
     private val fixedZone = ZoneId.of("Asia/Shanghai")
     private val fixedLocale = Locale.CHINA
-    private val fixedTimestamp = java.time.ZonedDateTime.of(2026, 11, 15, 15, 30, 0, 0, fixedZone)
+    private val fixedTimestamp = ZonedDateTime.of(2026, 11, 15, 15, 30, 0, 0, fixedZone)
         .toInstant()
         .toEpochMilli()
 
     private val sampleDevice = DeviceStateSnapshot(
         model = "OnePlus 12",
-        batteryLevel = 85,
+        battery = "Battery: 85%",
         networkType = "Wi-Fi",
     )
 
@@ -67,7 +68,7 @@ class EnvContextFormatterTest {
         )
 
         val expected = "<zfr-context>\n" +
-            "    2026-11-15 星期日 | 15:30 | OnePlus 12 · 85% · Wi-Fi | role: Developer\n" +
+            "    2026-11-15 星期日 | 15:30 | OnePlus 12 · Battery: 85% · Wi-Fi | role: Developer\n" +
             "</zfr-context>"
         assertEquals(expected, block)
     }
@@ -91,7 +92,7 @@ class EnvContextFormatterTest {
         )
 
         assertEquals(
-            "Hello at 15:30 in Shenzhen, device is OnePlus 12 · 85% · Wi-Fi, keep {{unknown}}.",
+            "Hello at 15:30 in Shenzhen, device is OnePlus 12 · Battery: 85% · Wi-Fi, keep {{unknown}}.",
             output,
         )
     }
