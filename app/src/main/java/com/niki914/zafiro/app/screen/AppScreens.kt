@@ -174,7 +174,21 @@ object AppScreens : Screens {
         if (VirtualDisplayCard.isShowing) return
         cardScope.launch {
             if (virtual == null || VirtualDisplayCard.isShowing) return@launch
-            VirtualDisplayCard.show(screen.preview())
+            VirtualDisplayCard.show(
+                frames = screen.preview(),
+                status = screen.status,
+                onClose = {
+                    cardScope.launch {
+                        gate.withLock {
+                            val current = virtual ?: return@withLock
+                            dismiss(current)
+                        }
+                    }
+                },
+                onExpand = {
+                    Logger.i(TAG, "Virtual display expand requested")
+                },
+            )
         }
     }
 
@@ -203,7 +217,22 @@ object AppScreens : Screens {
                 return@runCatchingCancellable OpenResult.Rejected("DISPLAY_FAILED")
             }
             val screen = VirtualDisplayScreen(frames, vdController)
-            if (!VirtualDisplayCard.show(screen.preview())) {
+            val shown = VirtualDisplayCard.show(
+                frames = screen.preview(),
+                status = screen.status,
+                onClose = {
+                    cardScope.launch {
+                        gate.withLock {
+                            val current = virtual ?: return@withLock
+                            dismiss(current)
+                        }
+                    }
+                },
+                onExpand = {
+                    Logger.i(TAG, "Virtual display expand requested")
+                },
+            )
+            if (!shown) {
                 vdController.release(frames.displayId)
                 screen.closeLocal()
                 vdController.close()
