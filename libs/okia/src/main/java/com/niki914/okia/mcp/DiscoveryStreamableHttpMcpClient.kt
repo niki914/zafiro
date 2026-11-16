@@ -95,18 +95,21 @@ internal class DiscoveryStreamableHttpMcpClient(
     override suspend fun callTool(
         server: McpServer,
         toolName: String,
-        argumentsJson: String
+        argumentsJson: String,
+        inputSchemaJson: String?
     ): McpCallResult {
         val arguments = wire.parseArguments(toolName, argumentsJson)
+        val paramHeaders = wire.buildParamHeaders(inputSchemaJson, arguments)
         val result = wire.request(
-            server,
-            "tools/call",
-            buildJsonObject {
+            server = server,
+            method = "tools/call",
+            params = buildJsonObject {
                 put("_meta", modernMeta())
                 put("name", toolName)
                 put("arguments", arguments)
             },
-            wire.nextId()
+            id = wire.nextId(),
+            extraHeaders = paramHeaders
         )
         return wire.parseCallResult(result)
     }

@@ -299,4 +299,44 @@ class DiscoveryStreamableHttpMcpClientTest {
         val result = client.callTool(mcpServer(), "t", "{}")
         assertTrue(result.isError)
     }
+
+    @Test
+    fun `call tool projects x-mcp-header parameters into Mcp-Param headers`() = runBlocking {
+        server.dispatcher = discoverServer(call = { b ->
+            rpcResult(b, """{"content":[{"type":"text","text":"ok"}]}""")
+        })
+        val schema = """
+            {
+              "type": "object",
+              "properties": {
+                "owner": { "type": "string", "x-mcp-header": "owner" },
+                "repo": { "type": "string", "x-mcp-header": true },
+                "count": { "type": "integer", "x-mcp-header": "Count" },
+                "message": { "type": "string", "x-mcp-header": "Msg" },
+                "plain": { "type": "string" }
+              }
+            }
+        """.trimIndent()
+        val args = """
+            {
+              "owner": "octocat",
+              "repo": "hello-world",
+              "count": 42,
+              "message": "hello 世界 ",
+              "plain": "no-header"
+            }
+        """.trimIndent()
+        client.callTool(mcpServer(), "get_repo", args, schema)
+        val req = awaitRequests(1)[0]
+        assertEquals("octocat", req.getHeader("Mcp-Param-owner"))
+        assertEquals("hello-world", req.getHeader("Mcp-Param-repo"))
+        assertEquals("42", req.getHeader("Mcp-Param-Count"))
+        // 非 ASCII 及带末尾空格的字符串经由 =?base64?...?= sentinel 包装
+        val msgHeader = req.getHeader("Mcp-Param-Msg")
+        assertNotNull(msgHeader)
+        assertTrue(msgHeader!!.startsWith("=?base64?"))
+        assertTrue(msgHeader.endsWith("?="))
+        // 未注解 x-mcp-header 的参数不生成对应请求头
+        assertNull(req.getHeader("Mcp-Param-plain"))
+    }
 }

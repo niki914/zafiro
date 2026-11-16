@@ -41,7 +41,8 @@ class McpDiscoveryTest {
         override suspend fun callTool(
             server: McpServer,
             toolName: String,
-            argumentsJson: String
+            argumentsJson: String,
+            inputSchemaJson: String?
         ): McpCallResult = McpCallResult(false, emptyList())
     }
 
