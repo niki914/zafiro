@@ -120,6 +120,11 @@ class AppInfoCache(
         }
     }
 
+    /** 补上第一次扫描。已经加载过则返回。 */
+    internal suspend fun warmUp() {
+        ensureInitialized()
+    }
+
     private suspend fun ensureInitialized() {
         if (initialized) {
             return
