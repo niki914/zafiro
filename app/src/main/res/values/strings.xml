@@ -347,9 +347,9 @@
     <string name="tool_group_dev_tools">开发工具</string>
     <string name="tool_group_dev_tools_summary">在设备上执行 Shell 命令与 Python 代码</string>
     <string name="tool_group_android_native">Android 原生</string>
-    <string name="tool_group_android_native_summary">打开链接、搜索与启动应用、发送通知等系统原生操作</string>
+    <string name="tool_group_android_native_summary">查找应用、发送通知、查看图片等系统原生操作</string>
     <string name="tool_group_screen_operation">屏幕操作</string>
-    <string name="tool_group_screen_operation_summary">通过无障碍服务或 Shell 两种方式读取、操作屏幕</string>
+    <string name="tool_group_screen_operation_summary">完成屏幕操作所需的技能组</string>
     <string name="tool_custom_py_tools_entry">自定义 Python 工具</string>
     <string name="tool_custom_py_tools_entry_summary">Agent 可创建、修改与试运行的可传参 自定义 Python 工具</string>
 

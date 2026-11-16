@@ -349,9 +349,9 @@
     <string name="tool_group_dev_tools">Dev Tools</string>
     <string name="tool_group_dev_tools_summary">Execute shell commands and Python code on your device</string>
     <string name="tool_group_android_native">Android Native</string>
-    <string name="tool_group_android_native_summary">System-native actions: open links, search and launch apps, send notifications</string>
+    <string name="tool_group_android_native_summary">System-native actions: find apps, post notifications, view images</string>
     <string name="tool_group_screen_operation">Screen Operation</string>
-    <string name="tool_group_screen_operation_summary">Read and operate the screen via accessibility service or shell</string>
+    <string name="tool_group_screen_operation_summary">Skill group required for screen operations</string>
     <string name="tool_custom_py_tools_entry">Custom Python Tools</string>
     <string name="tool_custom_py_tools_entry_summary">Parameterized custom Python tools the agent can create, modify, and test-run</string>
 

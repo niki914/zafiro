@@ -20,8 +20,23 @@ class SkillFrontmatterParser {
 
         val frontmatterLines = lines.subList(1, closingIndex + 1)
         val values = mutableMapOf<String, String>()
+        var currentKey: String? = null
+
         frontmatterLines.forEach { line ->
-            if (line.isBlank()) {
+            if (line.isBlank() || line.trimStart().startsWith("#")) {
+                return@forEach
+            }
+            if (line.first().isWhitespace() && currentKey != null) {
+                if (currentKey == "name" || currentKey == "description") {
+                    val continuation = line.trim()
+                    if (continuation.isNotEmpty()) {
+                        val existing = values[currentKey].orEmpty()
+                        values[currentKey] = when {
+                            existing.isEmpty() || existing == ">" || existing == "|" -> continuation
+                            else -> "$existing $continuation"
+                        }
+                    }
+                }
                 return@forEach
             }
             val separator = line.indexOf(':')
@@ -30,6 +45,7 @@ class SkillFrontmatterParser {
             }
             val key = line.substring(0, separator).trim()
             val value = line.substring(separator + 1).trim()
+            currentKey = key
             if (key == "name" || key == "description") {
                 values[key] = value
             }

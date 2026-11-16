@@ -13,7 +13,7 @@ import com.niki914.zafiro.chat.agentic.toToolError
 /**
  * 按 screen 取这一块屏自己的帧，并统一 ingest 写入沙箱图片缓存。
  */
-class ScreenshotBuiltin__V2 : BuiltinTool() {
+class ScreenshotBuiltin : BuiltinTool() {
     override val name: String = "screenshot"
     override val defaultEnabled: Boolean = true
     override val description: String =
