@@ -46,6 +46,7 @@ object ToolPresentation {
     private val OpenInNew = Icons.AutoMirrored.Filled.OpenInNew
     private val ImageTool = Icons.Filled.Image
 
+    // 兼容存量：保留历史工具标识映射，用于正确渲染存量聊天记录中的工具卡片与图标。
     val PHONE_USE_TOOLS = setOf(
         "screen_operation",
         "screens",
@@ -53,6 +54,7 @@ object ToolPresentation {
         "screen_operation_shell",
     )
 
+    // 兼容存量：保留 launch_app 与 open_uri，用于回显历史聊天记录中的打开动作。
     val OPEN_TOOLS = setOf(
         "open",
         "launch_app",
@@ -82,6 +84,7 @@ object ToolPresentation {
         "ssh" -> R.string.ui_tool_display_ssh
         "load_skill" -> R.string.ui_tool_display_load_skill
         "execute_python" -> R.string.ui_tool_display_execute_python
+        // 兼容存量：已下线工具的名称映射，用于历史消息展示
         "create_custom_tool" -> R.string.ui_tool_display_create_custom_tool
         in PHONE_USE_TOOLS -> R.string.ui_tool_display_phone_use
         in OPEN_TOOLS -> R.string.ui_tool_display_open
@@ -134,6 +137,7 @@ object ToolPresentation {
             return previewOf(explicitIntent)
         }
 
+        // 兼容存量：包含 open_uri, launch_app, find_installed_apps 等旧工具的参数降级提取
         val fallback = when (name) {
             "load_skill" -> args["id"]
             "open" -> args["app_name"] ?: args["package_name"] ?: args["name"] ?: args["uri"] ?: args["url"] ?: args["app"]

@@ -349,9 +349,9 @@
     <string name="tool_group_dev_tools">Herramientas de desarrollo</string>
     <string name="tool_group_dev_tools_summary">Ejecutar comandos Shell y código Python en el dispositivo</string>
     <string name="tool_group_android_native">Nativo de Android</string>
-    <string name="tool_group_android_native_summary">Operaciones nativas del sistema como abrir enlaces, buscar/abrir apps y enviar notificaciones</string>
+    <string name="tool_group_android_native_summary">Operaciones nativas del sistema como buscar apps, enviar notificaciones y ver imágenes</string>
     <string name="tool_group_screen_operation">Operaciones de pantalla</string>
-    <string name="tool_group_screen_operation_summary">Leer y controlar la pantalla mediante Servicios de accesibilidad o Shell</string>
+    <string name="tool_group_screen_operation_summary">Conjunto de habilidades requeridas para operaciones en pantalla</string>
     <string name="tool_custom_py_tools_entry">Herramientas personalizadas de Python</string>
     <string name="tool_custom_py_tools_entry_summary">Herramientas personalizadas de Python parametrizadas que el agente puede crear, modificar y probar</string>
 
