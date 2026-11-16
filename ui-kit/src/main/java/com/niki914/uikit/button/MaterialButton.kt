@@ -272,13 +272,6 @@ fun MaterialScrollToBottomButton(
                 .shadow(elevation = 4.dp, shape = CircleShape)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
-                .border(
-                    BorderStroke(
-                        1.dp,
-                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                    ),
-                    CircleShape,
-                )
                 .clickable(
                     interactionSource = interactionSource,
                     indication = ripple(bounded = true),
