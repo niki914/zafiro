@@ -48,9 +48,11 @@ class BackupSettingsViewModel internal constructor(
             }
             BackupSettingsIntent.Confirm -> confirm()
             BackupSettingsIntent.CancelRestore -> cancelRestore()
+            BackupSettingsIntent.BeginImportInspection -> beginImportInspection()
             is BackupSettingsIntent.ImportStaged -> stageImport(intent.path)
             BackupSettingsIntent.ImportUnreadable -> {
                 if (busy()) return
+                updateState { copy(sheet = null) }
                 sendEffect(BackupSettingsEffect.ShowToast(R.string.ui_backup_import_invalid))
             }
             BackupSettingsIntent.SaveCancelled -> saveCancelled()
@@ -66,7 +68,7 @@ class BackupSettingsViewModel internal constructor(
     }
 
     private fun openExport() {
-        if (busy()) return
+        if (busy() || currentState.sheet?.phase == BackupSheetPhase.Inspecting) return
         discardImport()
         discardExport()
         stageToken++
@@ -79,13 +81,30 @@ class BackupSettingsViewModel internal constructor(
     }
 
     private fun openImport() {
-        if (busy()) return
+        if (busy() || currentState.sheet?.phase == BackupSheetPhase.Inspecting) return
         sendEffect(BackupSettingsEffect.PickImport)
+    }
+
+    private fun beginImportInspection() {
+        if (busy()) return
+        discardImport()
+        discardExport()
+        stageToken++
+        updateState {
+            copy(
+                sheet = BackupSheetState(
+                    kind = BackupSheetKind.Import,
+                    phase = BackupSheetPhase.Inspecting,
+                ),
+                failure = null,
+            )
+        }
     }
 
     private fun dismiss() {
         val sheet = currentState.sheet ?: return
-        if (sheet.phase != BackupSheetPhase.Choosing) return
+        if (sheet.phase != BackupSheetPhase.Choosing && sheet.phase != BackupSheetPhase.Inspecting) return
+        stageToken++
         discardImport()
         discardExport()
         updateState { copy(sheet = null) }
@@ -181,16 +200,18 @@ class BackupSettingsViewModel internal constructor(
             when (look) {
                 InspectLook.Bad -> {
                     File(path).delete()
+                    updateState { copy(sheet = null) }
                     sendEffect(BackupSettingsEffect.ShowToast(R.string.ui_backup_import_invalid))
                 }
                 is InspectLook.Ok -> {
                     discardImport()
                     discardExport()
                     importPath = path
+                    val current = currentState.sheet
                     updateState {
                         copy(
-                            sheet = BackupSheetState(
-                                kind = BackupSheetKind.Import,
+                            sheet = (current ?: BackupSheetState(kind = BackupSheetKind.Import)).copy(
+                                phase = BackupSheetPhase.Choosing,
                                 options = look.groups,
                                 selected = look.groups.toSet(),
                             ),
@@ -256,7 +277,7 @@ class BackupSettingsViewModel internal constructor(
 
     private fun busy(): Boolean {
         val phase = currentState.sheet?.phase ?: return false
-        return phase != BackupSheetPhase.Choosing
+        return phase == BackupSheetPhase.Restoring || phase == BackupSheetPhase.RestartRequired
     }
 
     private fun discardExport() {
