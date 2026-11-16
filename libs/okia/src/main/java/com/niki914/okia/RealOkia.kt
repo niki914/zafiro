@@ -21,6 +21,7 @@ import com.niki914.okia.tooling.DefaultToolRegistry
 import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.okia.transport.HttpTimeouts
 import com.niki914.okia.transport.OkHttpEngine
+import com.niki914.okia.util.runCatchingCancellable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -336,11 +337,9 @@ internal class RealOkia(
             is TurnEvent.TurnIdleTimeout -> live = null
         }
         publish()
-        try {
+        runCatchingCancellable {
             onEvent(event)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             // 业务回调失败：包装后传播（loop 分类为不可重试的 callback failure），
             // 不伪装成网络错误、不触发请求重发（问题 1）
             throw CallbackException(e)
@@ -361,7 +360,7 @@ internal class RealOkia(
         for (hook in config.hooks) {
             try {
                 hook.beforeStop(calls)
-            } catch (e: Exception) {
+            } catch (e: Exception) { // githooks:ignore bare-catch
                 // 捕获：kill 步骤不因 hook 失败而中断
             }
         }

@@ -1,6 +1,7 @@
 package com.niki914.okia.transport
 
 import kotlinx.coroutines.CancellationException
+import com.niki914.okia.util.runCatchingCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flow
@@ -178,7 +179,7 @@ class SseLineParserTest {
             emit("a\n")
             throw boom
         }
-        val caught = runCatching { parser.parse(upstream).toList() }.exceptionOrNull()
+        val caught = runCatchingCancellable { parser.parse(upstream).toList() }.exceptionOrNull()
         assertTrue(caught === boom)
     }
 

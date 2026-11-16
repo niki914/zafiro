@@ -6,6 +6,8 @@ import com.niki914.okia.transport.HttpResponse
 import com.niki914.okia.transport.HttpTimeouts
 import com.niki914.okia.transport.SseEventParser
 import com.niki914.okia.transport.SseLineParser
+import com.niki914.okia.util.tryOrDefault
+import com.niki914.okia.util.tryOrNull
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.sync.Mutex
@@ -163,7 +165,7 @@ internal class McpWire(
     /** tools/call 的参数 JSON 解析；非法输入 → 明确失败（不静默修正）。 */
     fun parseArguments(toolName: String, raw: String): JsonElement = try {
         json.parseToJsonElement(raw)
-    } catch (e: Exception) {
+    } catch (e: Exception) { // githooks:ignore bare-catch
         throw McpProtocolException(
             "invalid JSON in tools/call arguments for '$toolName': ${e.message}", cause = e
         )
@@ -322,7 +324,7 @@ internal class McpWire(
             ?: throw McpProtocolException("MCP response is not a JSON object: ${text.take(200)}")
     } catch (e: McpProtocolException) {
         throw e
-    } catch (e: Exception) {
+    } catch (e: Exception) { // githooks:ignore bare-catch
         throw McpProtocolException("MCP response is not valid JSON: ${text.take(200)}", cause = e)
     }
 
@@ -350,7 +352,7 @@ internal class McpWire(
                         )
                 } catch (e: McpProtocolException) {
                     throw e
-                } catch (e: Exception) {
+                } catch (e: Exception) { // githooks:ignore bare-catch
                     throw McpProtocolException(
                         "MCP SSE event data is not valid JSON: ${
                             ev.data.take(
@@ -383,7 +385,7 @@ internal class McpWire(
         val status = response.statusCode ?: return false
         if (status in 200..299) return false
         val detail = response.body?.decodeToString() ?: return false
-        return try {
+        return tryOrDefault(false) {
             val error =
                 (json.parseToJsonElement(detail) as? JsonObject)?.get("error") as? JsonObject
                     ?: return false
@@ -393,8 +395,6 @@ internal class McpWire(
                         message.contains("session", ignoreCase = true) ||
                                 message.contains("not initialized", ignoreCase = true)
                     }
-        } catch (e: Exception) {
-            false
         }
     }
 
@@ -407,11 +407,9 @@ internal class McpWire(
         )
         if (status !in 200..299) {
             val detail = response.body?.decodeToString()?.take(300) ?: ""
-            val rpcCode = try {
+            val rpcCode = tryOrNull {
                 (json.parseToJsonElement(detail).jsonObject["error"] as? JsonObject)
                     ?.get("code")?.let { (it as? JsonPrimitive)?.content?.toIntOrNull() }
-            } catch (e: Exception) {
-                null
             }
             throw McpProtocolException(
                 "MCP request failed with HTTP $status${if (detail.isNotEmpty()) ": $detail" else ""}",
@@ -436,11 +434,9 @@ internal class McpWire(
         arguments: JsonElement
     ): Map<String, String> {
         if (inputSchemaJson.isNullOrEmpty() || arguments !is JsonObject) return emptyMap()
-        val schema = try {
+        val schema = tryOrNull {
             json.parseToJsonElement(inputSchemaJson).jsonObject
-        } catch (e: Exception) {
-            return emptyMap()
-        }
+        } ?: return emptyMap()
         val properties = schema["properties"] as? JsonObject ?: return emptyMap()
         val headers = mutableMapOf<String, String>()
         for ((propName, propSchemaElement) in properties) {

@@ -18,10 +18,12 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okio.BufferedSink
+import com.niki914.okia.util.tryOrNull
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.ProxySelector
+import java.net.SocketAddress
 import java.net.URI
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -63,7 +65,7 @@ class OkHttpEngine(
     private fun parseProxy(url: String): Proxy? {
         val trimmed = url.trim()
         if (trimmed.isEmpty()) return null
-        return runCatching {
+        return tryOrNull {
             val uri = URI(trimmed)
             val host = uri.host ?: return null
             val port = if (uri.port > 0) uri.port else 80
@@ -72,14 +74,14 @@ class OkHttpEngine(
                 "socks", "socks5" -> Proxy(Proxy.Type.SOCKS, InetSocketAddress(host, port))
                 else -> null
             }
-        }.getOrNull()
+        }
     }
 
     private fun proxySelector() = object : ProxySelector() {
         override fun select(uri: URI?): List<Proxy> =
             proxy.get()?.let { listOf(it) } ?: listOf(Proxy.NO_PROXY)
 
-        override fun connectFailed(uri: URI?, sa: java.net.SocketAddress?, ioe: IOException?) = Unit
+        override fun connectFailed(uri: URI?, sa: SocketAddress?, ioe: IOException?) = Unit
     }
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
@@ -118,7 +120,7 @@ class OkHttpEngine(
                             response.close()
                             cont.resume(StreamResponse.Error(response.code, headers, body))
                         }
-                    } catch (e: Exception) {
+                    } catch (e: Exception) { // githooks:ignore bare-catch
                         response.close()
                         cont.resumeWithException(e)
                     }

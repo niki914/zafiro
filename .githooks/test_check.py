@@ -277,6 +277,7 @@ class BareCatchTest(unittest.TestCase):
 class ScopeTest(unittest.TestCase):
     def test_libs_is_excluded(self):
         self.assertTrue(excluded("libs/libterm/Foo.kt"))
+        self.assertFalse(excluded("libs/okia/Foo.kt"))
         self.assertFalse(excluded("app/Foo.kt"))
 
     def test_severity_policy(self):

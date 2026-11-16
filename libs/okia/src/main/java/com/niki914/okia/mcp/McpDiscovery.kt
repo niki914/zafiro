@@ -5,6 +5,7 @@ import com.niki914.okia.tooling.ToolDescriptor
 import com.niki914.okia.tooling.ToolKind
 import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.okia.tooling.ToolWireName
+import com.niki914.okia.util.runCatchingCancellable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -112,12 +113,10 @@ internal class McpDiscovery(
             val outcomes = coroutineScope {
                 enabledServers.map { server ->
                     async {
-                        try {
+                        runCatchingCancellable {
                             RefreshOutcome.Ok(server, client.discoverTools(server))
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            RefreshOutcome.Err(server, e)
+                        }.getOrElse { e ->
+                            RefreshOutcome.Err(server, e as? Exception ?: Exception(e))
                         }
                     }
                 }.awaitAll()

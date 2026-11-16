@@ -12,7 +12,11 @@ from pathlib import Path
 from core.ignore import extract_file_ignores, extract_line_ignores, is_rule_ignored
 from core.models import Category, CheckResult, Finding, Rule, Severity
 
-EXCLUDE_PREFIXES = ("libs/",)
+EXCLUDE_PREFIXES = (
+    "libs/libterm/",
+    "libs/logging/",
+    "libs/shizuku/",
+)
 TARGET_SUFFIX = ".kt"
 
 LOG_TAG_PREFIX = "niki914_zafiro_"
