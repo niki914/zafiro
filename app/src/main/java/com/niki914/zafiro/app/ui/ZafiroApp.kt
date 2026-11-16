@@ -337,7 +337,7 @@ fun ZafiroApp(
                     onRightClick = onRightClick,
                     onRightButtonBoundsChanged = { rightButtonBounds = it },
                     recordContentBackdrop = recordContentBackdrop,
-                    topBarProgress = currentChrome.topBarProgress,
+                    topBarLoad = currentChrome.topBarLoad,
                     leftButton = currentLeftAction?.let { action ->
                         {
                             TopBarActionIcon(

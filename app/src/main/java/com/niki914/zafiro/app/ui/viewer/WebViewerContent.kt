@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.webkit.WebViewAssetLoader
 import com.niki914.uikit.screen.ReportTitleBarCollapsed
+import com.niki914.uikit.screen.TopBarLoad
 import com.niki914.uikit.screen.zafiroScreenBottomPadding
 import com.niki914.uikit.screen.zafiroScreenTopPadding
 import com.niki914.zafiro.api.util.runCatchingCancellable
@@ -186,8 +187,12 @@ internal fun WebViewerContent(
                 menuItems = menuItems,
             )
     }
-    val topBarProgress = if (loadProgress in 0.01f..0.99f) loadProgress else null
-    RegisterPageChrome(chrome.copy(topBarProgress = topBarProgress))
+    val topBarLoad = if (loadProgress in 0.01f..0.99f) {
+        TopBarLoad.determinate(loadProgress)
+    } else {
+        TopBarLoad.None
+    }
+    RegisterPageChrome(chrome.copy(topBarLoad = topBarLoad))
 
     ReportTitleBarCollapsed { false }
 
