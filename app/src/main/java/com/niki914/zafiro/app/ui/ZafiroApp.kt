@@ -80,6 +80,7 @@ import com.niki914.zafiro.app.ui.nav.TitleBarMode
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 import com.niki914.zafiro.app.ui.nav.ViewerPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
+import com.niki914.zafiro.app.ui.viewer.InAppPreviewBridge
 import com.niki914.zafiro.app.ui.viewer.LocalViewerOpener
 import com.niki914.zafiro.app.ui.viewer.LocalWebBackdropGate
 import com.niki914.zafiro.app.ui.viewer.ViewerContent
@@ -203,6 +204,12 @@ fun ZafiroApp(
         { content ->
             closeChromeMenu()
             navigator.push(ViewerPage(content))
+        }
+    }
+
+    LaunchedEffect(openViewer) {
+        InAppPreviewBridge.requests.collect { webContent ->
+            openViewer(webContent)
         }
     }
 
