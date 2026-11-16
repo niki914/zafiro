@@ -135,6 +135,7 @@ fun BackupSettingsContent(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
+        viewModel.sendIntent(BackupSettingsIntent.BeginImportInspection)
         scope.launch {
             val staged = stageImportUri(context, uri)
             if (staged == null) {
@@ -244,12 +245,14 @@ private fun BackupOptionSheet(
     sheet: BackupSheetState?,
     onIntent: (BackupSettingsIntent) -> Unit,
 ) {
+    val inspecting = sheet?.phase == BackupSheetPhase.Inspecting
     val choosing = sheet?.phase == BackupSheetPhase.Choosing
+    val dismissible = choosing || inspecting
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     OptionSheet(
         visible = sheet != null,
         onDismissRequest = { onIntent(BackupSettingsIntent.Dismiss) },
-        dismissible = sheet?.phase == BackupSheetPhase.Choosing,
+        dismissible = dismissible,
         title = sheet?.let { stringResource(it.kind.titleRes()) },
         bodyModifier = Modifier.heightIn(max = screenHeight * 0.85f),
         header = {
@@ -301,7 +304,9 @@ private fun BackupSheetSlot(
     onIntent: (BackupSettingsIntent) -> Unit,
 ) {
     val choosing = sheet.phase == BackupSheetPhase.Choosing
+    val inspecting = sheet.phase == BackupSheetPhase.Inspecting
     val actionText = when (sheet.phase) {
+        BackupSheetPhase.Inspecting -> stringResource(R.string.ui_backup_inspecting)
         BackupSheetPhase.Choosing -> stringResource(sheet.kind.titleRes())
         BackupSheetPhase.Restoring -> stringResource(R.string.dialog_cancel)
         BackupSheetPhase.RestartRequired -> stringResource(R.string.ui_backup_restart)
@@ -330,13 +335,18 @@ private fun BackupSheetSlot(
             text = actionText,
             onClick = {
                 when (sheet.phase) {
+                    BackupSheetPhase.Inspecting -> Unit
                     BackupSheetPhase.Choosing -> onIntent(BackupSettingsIntent.Confirm)
                     BackupSheetPhase.Restoring -> onIntent(BackupSettingsIntent.CancelRestore)
                     BackupSheetPhase.RestartRequired -> onIntent(BackupSettingsIntent.Restart)
                 }
             },
-            enabled = !choosing || sheet.selected.isNotEmpty(),
-            leadingIcon = if (sheet.phase == BackupSheetPhase.Restoring) {
+            enabled = when (sheet.phase) {
+                BackupSheetPhase.Inspecting -> false
+                BackupSheetPhase.Choosing -> sheet.selected.isNotEmpty()
+                BackupSheetPhase.Restoring, BackupSheetPhase.RestartRequired -> true
+            },
+            leadingIcon = if (sheet.phase == BackupSheetPhase.Restoring || sheet.phase == BackupSheetPhase.Inspecting) {
                 { ChatRunningIndicator() }
             } else {
                 null

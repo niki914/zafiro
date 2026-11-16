@@ -508,6 +508,7 @@
     <string name="ui_backup_select_all">Select all</string>
     <string name="ui_backup_select_none">Select none</string>
     <string name="ui_backup_restoring">Restoring</string>
+    <string name="ui_backup_inspecting">Validating…</string>
     <string name="ui_settings_general_group_appearance">Appearance &amp; Language</string>
     <string name="ui_settings_general_group_floating_notification">Floating &amp; Notifications</string>
     <string name="ui_settings_general_group_conversation">Conversation &amp; Interaction</string>

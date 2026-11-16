@@ -514,6 +514,7 @@
     <string name="ui_backup_select_all">انتخاب همه</string>
     <string name="ui_backup_select_none">انتخاب هیچ‌کدام</string>
     <string name="ui_backup_restoring">در حال بازیابی</string>
+    <string name="ui_backup_inspecting">در حال اعتبارسنجی…</string>
     <string name="ui_settings_general_group_appearance">ظاهر و زبان</string>
     <string name="ui_settings_general_group_floating_notification">شناور و اعلان</string>
     <string name="ui_settings_general_group_conversation">گفتگو و تعامل</string>

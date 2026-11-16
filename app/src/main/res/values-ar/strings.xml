@@ -522,6 +522,7 @@
     <string name="ui_backup_select_all">تحديد الكل</string>
     <string name="ui_backup_select_none">إلغاء التحديد</string>
     <string name="ui_backup_restoring">جارٍ الاستعادة</string>
+    <string name="ui_backup_inspecting">جارٍ التحقق…</string>
     <string name="ui_settings_general_group_appearance">المظهر واللغة</string>
     <string name="ui_settings_general_group_floating_notification">العائم والإشعارات</string>
     <string name="ui_settings_general_group_conversation">المحادثة والتفاعل</string>
