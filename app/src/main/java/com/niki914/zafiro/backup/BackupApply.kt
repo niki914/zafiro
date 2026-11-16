@@ -130,7 +130,8 @@ internal object BackupImporter {
     ): BackupApplyResult {
         if (isCancelled()) return BackupApplyResult.Cancelled
         if (selectedGroups.isEmpty()) return BackupApplyResult.Report(emptyReport())
-        val opened = openArchive(source)
+        val includeBlobs = BackupGroup.Conversations in selectedGroups
+        val opened = openArchive(source, includeBlobs = includeBlobs)
         if (opened is OpenArchive.Bad) return BackupApplyResult.Rejected(opened.reason)
         val ready = opened as OpenArchive.Ready
         val present = ready.summary.partitions.values.mapNotNull { BackupGroup.fromId(it.groupId) }.toSet()
@@ -258,9 +259,10 @@ internal object BackupImporter {
         snapshot: File,
         store: BackupStore,
     ): Throwable? {
-        val opened = openArchive(snapshot)
-        val ready = opened as? OpenArchive.Ready ?: return IllegalStateException("snapshot unreadable")
         val rollbackGroups = applied.map { it.group }.toSet()
+        val includeBlobs = BackupGroup.Conversations in rollbackGroups
+        val opened = openArchive(snapshot, includeBlobs = includeBlobs)
+        val ready = opened as? OpenArchive.Ready ?: return IllegalStateException("snapshot unreadable")
         return runCatchingCancellable {
             var currentLocal = store.read(rollbackGroups)
             for (partition in applied.asReversed()) {
@@ -386,8 +388,11 @@ private sealed interface OpenArchive {
     data class Bad(val reason: ApplyRejectReason) : OpenArchive
 }
 
-private fun openArchive(file: File): OpenArchive {
-    return when (val zip = readZip(file)) {
+private fun openArchive(
+    file: File,
+    includeBlobs: Boolean = true,
+): OpenArchive {
+    return when (val zip = readZip(file, shouldReadBytes = { includeBlobs || !it.startsWith("blobs/") })) {
         null -> OpenArchive.Bad(ApplyRejectReason.NotAnArchive)
         ZipRead.Unsafe -> OpenArchive.Bad(ApplyRejectReason.UnsafePath)
         is ZipRead.Ok -> when (val inspected = inspectEntries(zip.entries)) {

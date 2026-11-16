@@ -20,7 +20,12 @@ internal fun writeZip(file: File, entries: List<ArchiveEntry>) {
     }
 }
 
-internal fun readZip(file: File): ZipRead? {
+private val EMPTY_BYTES = ByteArray(0)
+
+internal fun readZip(
+    file: File,
+    shouldReadBytes: (String) -> Boolean = { true },
+): ZipRead? {
     val zip = tryOrNull { ZipFile(file) } ?: return null
     return zip.use { opened ->
         val names = mutableListOf<String>()
@@ -34,7 +39,11 @@ internal fun readZip(file: File): ZipRead? {
         val bytes = LinkedHashMap<String, ByteArray>()
         names.forEach { name ->
             val entry = opened.getEntry(name) ?: return@forEach
-            bytes[name] = opened.getInputStream(entry).use { it.readBytes() }
+            bytes[name] = if (shouldReadBytes(name)) {
+                opened.getInputStream(entry).use { it.readBytes() }
+            } else {
+                EMPTY_BYTES
+            }
         }
         ZipRead.Ok(bytes)
     }
