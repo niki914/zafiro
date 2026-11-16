@@ -149,6 +149,64 @@ class BackupSettingsViewModelTest {
     }
 
     @Test
+    fun beginImportInspectionEntersInspectingAndDismissClosesIt() = runTest {
+        val work = HoldingBackupWork()
+        val viewModel = BackupSettingsViewModel(work)
+
+        viewModel.sendIntent(BackupSettingsIntent.BeginImportInspection)
+        advanceUntilIdle()
+
+        assertEquals(BackupSheetKind.Import, viewModel.uiStateFlow.value.sheet?.kind)
+        assertEquals(BackupSheetPhase.Inspecting, viewModel.uiStateFlow.value.sheet?.phase)
+        assertEquals(backupSheetOptions, viewModel.uiStateFlow.value.sheet?.options)
+        assertEquals(backupSheetOptions.toSet(), viewModel.uiStateFlow.value.sheet?.selected)
+
+        viewModel.sendIntent(BackupSettingsIntent.Dismiss)
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiStateFlow.value.sheet)
+    }
+
+    @Test
+    fun inspectingFileFailureClosesTheSheetAndShowsToast() = runTest {
+        val work = HoldingBackupWork()
+        work.inspect = InspectLook.Bad
+        val viewModel = BackupSettingsViewModel(work)
+        val effects = mutableListOf<BackupSettingsEffect>()
+        val collect = launch { viewModel.uiEffect.collect { effects += it } }
+
+        viewModel.sendIntent(BackupSettingsIntent.BeginImportInspection)
+        advanceUntilIdle()
+        assertEquals(BackupSheetPhase.Inspecting, viewModel.uiStateFlow.value.sheet?.phase)
+
+        viewModel.sendIntent(BackupSettingsIntent.ImportStaged(scratch()))
+        advanceUntilIdle()
+        collect.cancel()
+
+        assertNull(viewModel.uiStateFlow.value.sheet)
+        assertTrue(effects.any { it is BackupSettingsEffect.ShowToast })
+    }
+
+    @Test
+    fun inspectingFileSuccessTransitionsToChoosing() = runTest {
+        val work = HoldingBackupWork()
+        work.inspect = InspectLook.Ok(listOf(BackupGroup.Skills, BackupGroup.Conversations))
+        val viewModel = BackupSettingsViewModel(work)
+
+        viewModel.sendIntent(BackupSettingsIntent.BeginImportInspection)
+        advanceUntilIdle()
+        assertEquals(BackupSheetPhase.Inspecting, viewModel.uiStateFlow.value.sheet?.phase)
+
+        viewModel.sendIntent(BackupSettingsIntent.ImportStaged(scratch()))
+        advanceUntilIdle()
+
+        val sheet = viewModel.uiStateFlow.value.sheet
+        assertEquals(BackupSheetPhase.Choosing, sheet?.phase)
+        assertEquals(listOf(BackupGroup.Skills, BackupGroup.Conversations), sheet?.options)
+        assertEquals(setOf(BackupGroup.Skills, BackupGroup.Conversations), sheet?.selected)
+    }
+
+    @Test
     fun invalidFileDoesNotOpenTheSheet() = runTest {
         val work = HoldingBackupWork()
         work.inspect = InspectLook.Bad
