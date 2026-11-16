@@ -47,6 +47,7 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.infra.internal.LiquidTopBarBackground
+import com.niki914.uikit.screen.TopBarLoad
 import com.niki914.uikit.screen.ZafiroTopBar
 import com.niki914.uikit.screen.ZafiroTopBarDefaults
 import com.niki914.uikit.screen.internal.MaterialTopBarBackground
@@ -93,7 +94,7 @@ fun LiquidScreen(
     rightButton: (@Composable () -> Unit)? = null,
     overlayContent: (@Composable () -> Unit)? = null,
     recordContentBackdrop: Boolean = true,
-    topBarProgress: Float? = null,
+    topBarLoad: TopBarLoad = TopBarLoad.None,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -256,15 +257,21 @@ fun LiquidScreen(
                         rightButton = rightButton,
                         overlayContent = overlayContent,
                     )
-                    // 顶栏底边的加载线。页面经 topBarProgress 上报，null 不画。
-                    if (topBarProgress != null) {
-                        val progress = topBarProgress.coerceIn(0f, 1f)
-                        LinearProgressIndicator(
-                            progress = { progress },
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .fillMaxWidth(),
-                        )
+                    // 顶栏底边的加载线。玻璃主题不画。
+                    if (!isLiquid && topBarLoad != TopBarLoad.None) {
+                        val progressLineModifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                        when (topBarLoad) {
+                            TopBarLoad.None -> Unit
+                            TopBarLoad.Indeterminate -> LinearProgressIndicator(
+                                modifier = progressLineModifier,
+                            )
+                            is TopBarLoad.Determinate -> LinearProgressIndicator(
+                                progress = { topBarLoad.fraction },
+                                modifier = progressLineModifier,
+                            )
+                        }
                     }
                 }
             }

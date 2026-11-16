@@ -328,6 +328,7 @@ fun HomePageContent(
             latestViewModel.sendIntent(HomeChatIntent.NewConversation)
         },
         onOpenSettings = latestOnOpenSettings,
+        isGenerating = uiState.isGenerating,
         titleContent = titleContent,
     )
 

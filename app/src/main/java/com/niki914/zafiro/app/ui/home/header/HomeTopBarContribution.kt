@@ -5,6 +5,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
+import com.niki914.uikit.screen.TopBarLoad
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.PageChromeMenuItem
@@ -18,6 +19,7 @@ internal fun HomeTopBarContribution(
     onOpenHistory: () -> Unit,
     onNewConversation: () -> Unit,
     onOpenSettings: () -> Unit,
+    isGenerating: Boolean,
     titleContent: @Composable () -> Unit,
 ) {
     val newConversationMenuLabel = stringResource(R.string.ui_home_menu_new_conversation)
@@ -28,11 +30,13 @@ internal fun HomeTopBarContribution(
         settingsMenuLabel,
         titleContent,
         isConfigMenuVisible,
+        isGenerating,
     ) {
         PageChromeContribution(
             titleContent = titleContent,
             isTitleOccluded = isConfigMenuVisible,
             actionsVisible = true,
+            topBarLoad = if (isGenerating) TopBarLoad.Indeterminate else TopBarLoad.None,
             leftAction = TopBarActionSpec(
                 icon = Icons.Default.History,
                 onClick = {
