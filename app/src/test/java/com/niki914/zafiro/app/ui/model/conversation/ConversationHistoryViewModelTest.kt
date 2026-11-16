@@ -1,4 +1,5 @@
 // 保护：历史页 ViewModel 的状态计算——加载成败落点、删除的活动/普通分流与收尾、批量置顶/删除状态保持与分流、重命名重载、分叉导航及搜索防抖编排。
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.app.ui.model.conversation
 
 import com.niki914.zafiro.api.model.AgentState
@@ -176,6 +177,49 @@ class ConversationHistoryViewModelTest {
         assertEquals(listOf("a"), deps.deletedIds)
         assertEquals(listOf("a" to false), deps.pinCalls)
         assertEquals(listOf("b"), viewModel.uiStateFlow.value.conversations.map { it.id })
+    }
+
+    @Test
+    fun deleteBranchConversation_unpinsRootAndBranchIds() = runTest {
+        val deps = FakeDeps()
+        deps.conversations = listOf(summary("branch-1").copy(rootId = "root-1"))
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConversationHistoryIntent.Load)
+        advanceUntilIdle()
+
+        viewModel.sendIntent(ConversationHistoryIntent.Delete("branch-1"))
+        advanceUntilIdle()
+
+        assertEquals(listOf("branch-1"), deps.deletedIds)
+        assertEquals(listOf("root-1" to false, "branch-1" to false), deps.pinCalls)
+    }
+
+    @Test
+    fun setPinned_onBranchConversation_pinsRootIdAndCleansBranchId() = runTest {
+        val deps = FakeDeps()
+        deps.conversations = listOf(summary("branch-1").copy(rootId = "root-1"))
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConversationHistoryIntent.Load)
+        advanceUntilIdle()
+
+        viewModel.sendIntent(ConversationHistoryIntent.SetPinned("branch-1", pinned = true))
+        advanceUntilIdle()
+
+        assertEquals(listOf("root-1" to true, "branch-1" to false), deps.pinCalls)
+    }
+
+    @Test
+    fun setPinned_false_onBranchConversation_unpinsBothRootAndBranch() = runTest {
+        val deps = FakeDeps()
+        deps.conversations = listOf(summary("branch-1").copy(rootId = "root-1"))
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConversationHistoryIntent.Load)
+        advanceUntilIdle()
+
+        viewModel.sendIntent(ConversationHistoryIntent.SetPinned("branch-1", pinned = false))
+        advanceUntilIdle()
+
+        assertEquals(listOf("root-1" to false, "branch-1" to false), deps.pinCalls)
     }
 
     @Test

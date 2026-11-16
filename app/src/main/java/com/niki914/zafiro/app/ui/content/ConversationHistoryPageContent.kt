@@ -185,8 +185,8 @@ internal fun ConversationHistoryPageContent(
             )
         }
         if (onConversationPin != null) {
-            val sheetId = sheetConversation?.id
-            val isPinned = sheetId != null && sheetId in pinnedIdSet
+            val target = sheetConversation
+            val isPinned = target?.let { it.rootId in pinnedIdSet || it.id in pinnedIdSet } == true
             OptionRow(
                 title = stringResource(
                     if (isPinned) {
@@ -199,10 +199,9 @@ internal fun ConversationHistoryPageContent(
                     Icon(Icons.Default.PushPin, contentDescription = null)
                 },
                 onClick = {
-                    val target = sheetConversation
                     dismissThen {
                         sheetConversation = null
-                        target?.let { onConversationPin(it.id, !isPinned) }
+                        target?.let { onConversationPin(it.rootId, !isPinned) }
                     }
                 },
             )
@@ -402,7 +401,7 @@ private fun ConversationHistoryListContent(
                                             val matchedSnippet = searchResultById[conversation.id]?.matchedSnippet
                                             ConversationHistoryItem(
                                                 conversation = conversation,
-                                                isPinned = conversation.id in pinnedIds,
+                                                isPinned = conversation.rootId in pinnedIds || conversation.id in pinnedIds,
                                                 inPinnedSection = section.bucket == TimelineBucket.Pinned,
                                                 initialPulsed = !isSearchingActive && conversation.id == initialPulsedId,
                                                 currentTimeMillis = currentTimeMillis,
@@ -816,8 +815,9 @@ private fun groupByTimeline(
     val pinnedAtById = pinnedConversations.associate { it.id to it.pinnedAt }
     val pinned = conversations
         .mapNotNull { conversation ->
-            pinnedAtById[conversation.id]?.let { pinnedAt ->
-                conversation to maxOf(pinnedAt, conversation.updatedAt)
+            val pinnedAt = pinnedAtById[conversation.rootId] ?: pinnedAtById[conversation.id]
+            pinnedAt?.let {
+                conversation to maxOf(it, conversation.updatedAt)
             }
         }
         .sortedByDescending { it.second }
