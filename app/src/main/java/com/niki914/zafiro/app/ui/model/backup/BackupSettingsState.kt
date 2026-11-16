@@ -21,6 +21,7 @@ enum class BackupSheetKind {
 }
 
 enum class BackupSheetPhase {
+    Inspecting,
     Choosing,
     Restoring,
     RestartRequired,
@@ -57,6 +58,7 @@ sealed interface BackupSettingsIntent {
     data class SetStrategy(val strategy: BackupStrategy) : BackupSettingsIntent
     data object Confirm : BackupSettingsIntent
     data object CancelRestore : BackupSettingsIntent
+    data object BeginImportInspection : BackupSettingsIntent
     data class ImportStaged(val path: String) : BackupSettingsIntent
     data object ImportUnreadable : BackupSettingsIntent
     data object SaveCancelled : BackupSettingsIntent

@@ -7,6 +7,7 @@ import com.google.android.material.color.DynamicColors
 import com.niki914.logging.Logger
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.api.McpService
+import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.crash.CrashRecorder
 import com.niki914.zafiro.app.debug.DebugLogFile
@@ -27,6 +28,7 @@ import com.niki914.zafiro.settings.RuntimeEnvironment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import java.io.File
@@ -68,6 +70,12 @@ class App : Application() {
         }
         applicationScope.launch {
             PyRuntime.warmUp()
+        }
+        applicationScope.launch {
+            delay(3_000L)
+            runCatchingCancellable {
+                ConversationRepo.cleanAllOrphanImages()
+            }
         }
 
         observeFloatingBall()
