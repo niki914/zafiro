@@ -17,7 +17,7 @@ import java.nio.file.Files
  * 读数和导出共用 [BackupSnapshot]，这样快照和应用前看到的是同一份数据。
  */
 internal interface BackupStore {
-    suspend fun read(): BackupSnapshot
+    suspend fun read(groups: Set<BackupGroup> = BackupGroup.entries.toSet()): BackupSnapshot
     fun imageDir(): File
     fun scratchDir(): File
     suspend fun writeDocument(partition: BackupPartition, json: String)
@@ -93,7 +93,7 @@ internal fun writeSkillTree(
 internal class LiveBackupStore(
     private val context: Context,
 ) : BackupStore {
-    override suspend fun read(): BackupSnapshot = BackupLiveSource.read()
+    override suspend fun read(groups: Set<BackupGroup>): BackupSnapshot = BackupLiveSource.read(groups)
 
     override fun imageDir(): File = File(context.filesDir, IMAGE_CACHE_DIR)
 

@@ -468,6 +468,7 @@
     <string name="ui_backup_select_all">Выбрать все</string>
     <string name="ui_backup_select_none">Снять выбор</string>
     <string name="ui_backup_restoring">Восстановление</string>
+    <string name="ui_backup_inspecting">Проверка…</string>
     <string name="ui_settings_general_group_appearance">Оформление и язык</string>
     <string name="ui_settings_general_group_floating_notification">Плавающий шар и уведомления</string>
     <string name="ui_settings_general_group_conversation">Диалог и взаимодействие</string>
