@@ -347,9 +347,9 @@
     <string name="tool_group_dev_tools">開発ツール</string>
     <string name="tool_group_dev_tools_summary">デバイス上で Shell コマンドおよび Python コードを実行</string>
     <string name="tool_group_android_native">Android ネイティブ</string>
-    <string name="tool_group_android_native_summary">リンクを開く、アプリの検索と起動、通知の送信などのシステム操作</string>
+    <string name="tool_group_android_native_summary">アプリ検索、通知の送信、画像の表示などのシステム操作</string>
     <string name="tool_group_screen_operation">画面操作</string>
-    <string name="tool_group_screen_operation_summary">アクセシビリティサービスまたは Shell を使用した画面情報の読み取りと操作</string>
+    <string name="tool_group_screen_operation_summary">画面操作に必要なスキルセット</string>
     <string name="tool_custom_py_tools_entry">カスタム Python ツール</string>
     <string name="tool_custom_py_tools_entry_summary">Agent が作成・変更・テスト実行できる引数付き カスタム Python ツール</string>
 

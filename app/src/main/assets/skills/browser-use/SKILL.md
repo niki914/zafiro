@@ -1,5 +1,5 @@
 ---
-name: Browser Use
+name: browser-use
 description: Load this skill for tasks that require using a browser or interacting with websites.
 ---
 

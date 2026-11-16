@@ -357,9 +357,9 @@
     <string name="tool_group_dev_tools">أدوات التطوير</string>
     <string name="tool_group_dev_tools_summary">تنفيذ أوامر Shell وشيفرة Python على الجهاز</string>
     <string name="tool_group_android_native">Android الأصلي</string>
-    <string name="tool_group_android_native_summary">فتح الروابط والبحث عن التطبيقات وتشغيلها وإرسال الإشعارات وغيرها من عمليات النظام</string>
+    <string name="tool_group_android_native_summary">البحث عن التطبيقات، وإرسال الإشعارات، وعرض الصور وغيرها من عمليات النظام</string>
     <string name="tool_group_screen_operation">تشغيل الشاشة</string>
-    <string name="tool_group_screen_operation_summary">قراءة الشاشة وتشغيلها عبر إمكانية الوصول أو Shell</string>
+    <string name="tool_group_screen_operation_summary">مجموعة المهارات المطلوبة لعمليات الشاشة</string>
     <string name="tool_custom_py_tools_entry">أدوات Python المخصصة</string>
     <string name="tool_custom_py_tools_entry_summary">أدوات Python مخصصة ذات معاملات، يستطيع Agent إنشاءها وتعديلها وتجربتها</string>
 
