@@ -29,6 +29,7 @@ import com.niki914.zafiro.api.screen.ShowResult
 import com.niki914.zafiro.api.screen.ShowTarget
 import com.niki914.zafiro.api.screen.Target
 import com.niki914.zafiro.api.util.runCatchingCancellable
+import com.niki914.zafiro.app.ui.viewer.InAppPreviewBridge
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.chat.agentic.device.AppLauncher
 import com.niki914.zafiro.chat.agentic.device.UriOpener
@@ -122,10 +123,19 @@ class PhoneDisplayScreen(
             return ShowResult.Failed(denied.code)
         }
         return when (target) {
-            is ShowTarget.AppName -> AppLauncher.launch(packageName = null, appName = target.name)
             is ShowTarget.PackageName -> AppLauncher.launch(packageName = target.packageName, appName = null)
             is ShowTarget.Uri -> UriOpener.open(target.uri)
+            is ShowTarget.InAppPreview -> showInAppPreview(target.url)
         }
+    }
+
+    private fun showInAppPreview(url: String): ShowResult {
+        val trimmed = url.trim()
+        if (trimmed.isBlank()) {
+            return ShowResult.Failed("MISSING_REQUIRED_FIELD")
+        }
+        InAppPreviewBridge.open(trimmed)
+        return ShowResult.Shown("Preview opened.")
     }
 }
 

@@ -155,7 +155,7 @@ class PhoneScreenAccessTest {
             val acted = screen.act(ScreenAction.Key(4))
             assertEquals(ActResult.Failed("CONSENT_DENIED", null), acted)
 
-            val showed = screen.show(ShowTarget.AppName("test-app"))
+            val showed = screen.show(ShowTarget.PackageName("com.test.app"))
             assertEquals(ShowResult.Failed("CONSENT_DENIED"), showed)
 
             assertEquals(

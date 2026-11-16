@@ -71,6 +71,10 @@
     <string name="ui_home_file_category_file">Файл</string>
     <string name="ui_action_view">Просмотр</string>
     <string name="ui_viewer_copy_all">Скопировать все</string>
+    <string name="ui_viewer_refresh">Обновить</string>
+    <string name="ui_viewer_open_in_browser">Открыть в браузере</string>
+    <string name="ui_viewer_copy_link">Скопировать ссылку</string>
+    <string name="ui_viewer_copy_path">Скопировать путь к файлу</string>
     <string name="ui_image_unavailable">Недоступно</string>
     <string name="ui_viewer_image_unavailable">Не удалось загрузить изображение</string>
     <string name="ui_viewer_image_unavailable_desc">Файл изображения не существует или кеш был очищен</string>

@@ -102,6 +102,14 @@ fun ViewerPageContent(
                 modifier = modifier,
             )
         }
+
+        is ViewerContent.Web -> {
+            WebViewerContent(
+                content = content,
+                onBack = handleBack,
+                modifier = modifier,
+            )
+        }
     }
 }
 

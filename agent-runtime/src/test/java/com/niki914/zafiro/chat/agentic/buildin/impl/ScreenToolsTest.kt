@@ -1,7 +1,6 @@
 package com.niki914.zafiro.chat.agentic.buildin.impl
 
 import com.niki914.zafiro.api.screen.ActResult
-import com.niki914.zafiro.api.screen.AppHit
 import com.niki914.zafiro.api.screen.CloseResult
 import com.niki914.zafiro.api.screen.ImageFrame
 import com.niki914.zafiro.api.screen.NodeInfo
@@ -112,18 +111,43 @@ class ScreenToolsTest {
     }
 
     @Test
-    fun openUriIsPassedThrough() = runTest {
-        val result = invokeText("open", """{"screen":"phone","uri":"https://example.com"}""")
+    fun openGlobalUriIsPassedThrough() = runTest {
+        val result = invokeText(
+            "open",
+            """{"kind":"global","screen":"phone","uri":"https://example.com"}""",
+        )
 
         assertEquals(TextToolResult.Status.Success, result.status)
         assertEquals(ShowTarget.Uri("https://example.com"), screen.shown)
     }
 
     @Test
-    fun twoOpenIdentifiersAreRejectedBeforeOpen() = runTest {
+    fun openGlobalPackageNameIsPassedThrough() = runTest {
         val result = invokeText(
             "open",
-            """{"screen":"phone","app_name":"微信","uri":"https://example.com"}""",
+            """{"kind":"global","screen":"phone","package_name":"com.tencent.mm"}""",
+        )
+
+        assertEquals(TextToolResult.Status.Success, result.status)
+        assertEquals(ShowTarget.PackageName("com.tencent.mm"), screen.shown)
+    }
+
+    @Test
+    fun openInAppPreviewIsPassedThroughWithoutScreen() = runTest {
+        val result = invokeText(
+            "open",
+            """{"kind":"in_app_preview","url":"/data/user/0/app/files/report.html"}""",
+        )
+
+        assertEquals(TextToolResult.Status.Success, result.status)
+        assertEquals(ShowTarget.InAppPreview("/data/user/0/app/files/report.html"), screen.shown)
+    }
+
+    @Test
+    fun openGlobalRequiresScreen() = runTest {
+        val result = invokeText(
+            "open",
+            """{"kind":"global","package_name":"com.tencent.mm"}""",
         )
 
         assertEquals(SCREEN_INVALID_ARGUMENTS, result.code)
@@ -131,13 +155,14 @@ class ScreenToolsTest {
     }
 
     @Test
-    fun ambiguousAppNameReturnsCandidates() = runTest {
-        val result = invokeText("open", """{"screen":"phone","app_name":"微信"}""")
+    fun twoOpenGlobalIdentifiersAreRejected() = runTest {
+        val result = invokeText(
+            "open",
+            """{"kind":"global","screen":"phone","package_name":"com.tencent.mm","uri":"https://example.com"}""",
+        )
 
-        assertEquals(SCREEN_AMBIGUOUS_APP, result.code)
-        assertTrue(result.payload.contains("com.tencent.mm\t微信"))
-        assertTrue(result.payload.contains("com.tencent.mm.clone\t微信"))
-        assertEquals(ShowTarget.AppName("微信"), screen.shown)
+        assertEquals(SCREEN_INVALID_ARGUMENTS, result.code)
+        assertNull(screen.shown)
     }
 
     @Test
@@ -237,15 +262,6 @@ class ScreenToolsTest {
 
         override suspend fun show(target: ShowTarget): ShowResult {
             shown = target
-            if (target is ShowTarget.AppName) {
-                return ShowResult.Ambiguous(
-                    target.name,
-                    listOf(
-                        AppHit("com.tencent.mm", target.name),
-                        AppHit("com.tencent.mm.clone", target.name),
-                    ),
-                )
-            }
             return ShowResult.Shown("opened")
         }
     }

@@ -80,6 +80,10 @@
     <string name="ui_home_file_category_file">ملف</string>
     <string name="ui_action_view">عرض</string>
     <string name="ui_viewer_copy_all">نسخ الكل</string>
+    <string name="ui_viewer_refresh">تحديث</string>
+    <string name="ui_viewer_open_in_browser">فتح في المتصفح</string>
+    <string name="ui_viewer_copy_link">نسخ الرابط</string>
+    <string name="ui_viewer_copy_path">نسخ مسار الملف</string>
     <string name="ui_image_unavailable">لم تعد متاحة</string>
     <string name="ui_viewer_image_unavailable">تعذّر تحميل الصورة</string>
     <string name="ui_viewer_image_unavailable_desc">ملف الصورة غير موجود، أو مُسحت ذاكرة التخزين المؤقت</string>
