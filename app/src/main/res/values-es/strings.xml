@@ -72,6 +72,10 @@
     <string name="ui_home_file_category_file">Archivo</string>
     <string name="ui_action_view">Ver</string>
     <string name="ui_viewer_copy_all">Copiar todo</string>
+    <string name="ui_viewer_refresh">Actualizar</string>
+    <string name="ui_viewer_open_in_browser">Abrir en el navegador</string>
+    <string name="ui_viewer_copy_link">Copiar enlace</string>
+    <string name="ui_viewer_copy_path">Copiar ruta del archivo</string>
     <string name="ui_image_unavailable">No disponible</string>
     <string name="ui_viewer_image_unavailable">No se puede cargar la imagen</string>
     <string name="ui_viewer_image_unavailable_desc">El archivo de imagen no existe o se ha borrado la caché</string>
