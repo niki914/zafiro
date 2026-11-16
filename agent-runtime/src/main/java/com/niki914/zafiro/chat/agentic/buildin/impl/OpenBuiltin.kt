@@ -10,7 +10,7 @@ import kotlinx.serialization.json.JsonObject
  * 往一块屏上放应用或链接。
  * `app_name`、`package_name`、`uri` 恰好填一个，原样交给 [ShowTarget]。
  */
-class OpenBuiltin__V2 : TextResultBuiltinTool() {
+class OpenBuiltin : TextResultBuiltinTool() {
     override val name: String = "open"
     override val defaultEnabled: Boolean = true
     override val description: String =

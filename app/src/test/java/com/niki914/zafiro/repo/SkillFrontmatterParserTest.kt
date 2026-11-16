@@ -87,6 +87,30 @@ class SkillFrontmatterParserTest {
         assertEquals("Shared Name", second.name)
     }
 
+    @Test
+    fun parse_readsMultilineIndentedDescription() {
+        val metadata = parser.parse(
+            id = "phone-use",
+            content = """
+                ---
+                name: phone-use
+                description: MUST Load this skill for ANY task that involves Android screen interaction or device control —
+                  operating the virtual background display ('vd-*') or physical screen ('phone'), opening apps, tapping,
+                  typing, scrolling, swiping, Back/Home navigation.
+                ---
+                # Body
+            """.trimIndent(),
+        )
+
+        assertEquals("phone-use", metadata.name)
+        assertEquals(
+            "MUST Load this skill for ANY task that involves Android screen interaction or device control — " +
+                "operating the virtual background display ('vd-*') or physical screen ('phone'), opening apps, tapping, " +
+                "typing, scrolling, swiping, Back/Home navigation.",
+            metadata.description,
+        )
+    }
+
     private fun frontmatter(name: String): String {
         return """
             ---

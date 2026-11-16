@@ -329,9 +329,9 @@
     <string name="tool_group_dev_tools">Инструменты разработчика</string>
     <string name="tool_group_dev_tools_summary">Выполнение команд Shell и кода Python на устройстве</string>
     <string name="tool_group_android_native">Системные возможности Android</string>
-    <string name="tool_group_android_native_summary">Системные действия: открытие ссылок, поиск и запуск приложений, отправка уведомлений</string>
+    <string name="tool_group_android_native_summary">Системные действия: поиск приложений, отправка уведомлений, просмотр изображений</string>
     <string name="tool_group_screen_operation">Управление экраном</string>
-    <string name="tool_group_screen_operation_summary">Чтение экрана и действия на нём через службу специальных возможностей или shell</string>
+    <string name="tool_group_screen_operation_summary">Набор навыков для работы с экраном</string>
     <string name="tool_custom_py_tools_entry">Свои инструменты на Python</string>
     <string name="tool_custom_py_tools_entry_summary">Ваши python-инструменты с параметрами: агент может создавать, изменять и запускать их для проверки</string>
     <string name="custom_py_tool_page_title">Свои инструменты на Python</string>

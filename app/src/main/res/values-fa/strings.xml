@@ -349,9 +349,9 @@
     <string name="tool_group_dev_tools">ابزارهای توسعه</string>
     <string name="tool_group_dev_tools_summary">اجرای فرمان Shell و کد Python روی دستگاه</string>
     <string name="tool_group_android_native">Android بومی</string>
-    <string name="tool_group_android_native_summary">باز کردن پیوند، جستجو و اجرای برنامه، فرستادن اعلان و دیگر کارهای بومی سیستم</string>
+    <string name="tool_group_android_native_summary">یافتن برنامه‌ها، ارسال اعلان، مشاهده تصویر و دیگر کارهای بومی سیستم</string>
     <string name="tool_group_screen_operation">کار با صفحه</string>
-    <string name="tool_group_screen_operation_summary">خواندن و کار با صفحه از راه دسترس‌پذیری یا Shell</string>
+    <string name="tool_group_screen_operation_summary">مجموعه مهارت‌های لازم برای کار با صفحه</string>
     <string name="tool_custom_py_tools_entry">ابزارهای پایتون سفارشی</string>
     <string name="tool_custom_py_tools_entry_summary">ابزارهای پایتون سفارشی با پارامتر که Agent می‌تواند بسازد، تغییر دهد و آزمایشی اجرا کند</string>
 
