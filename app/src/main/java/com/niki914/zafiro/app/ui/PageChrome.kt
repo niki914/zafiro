@@ -5,6 +5,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.niki914.uikit.screen.TopBarLoad
 import com.niki914.zafiro.app.ui.nav.PageTitleSpec
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 
@@ -26,6 +27,7 @@ data class PageChromeContribution(
     val overlay: (@Composable () -> Unit)? = null,
     val isTitleOccluded: Boolean = false,
     val actionsVisible: Boolean = true,
+    val topBarLoad: TopBarLoad = TopBarLoad.None,
 ) {
     companion object {
         val Empty = PageChromeContribution()

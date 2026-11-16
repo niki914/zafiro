@@ -17,14 +17,10 @@ Always prioritize non-intrusive execution:
 
 1. **Default to virtual display (`vd-*`)**:
    - Create a virtual screen using `screens`. It runs the app in the background and displays a floating preview card so the user can observe without interruption.
-   - Launch the target app onto the virtual display using `open`.
+   - Launch the target app onto the virtual display with `open` after `find_installed_apps` returns its package name.
    - **Always teardown**: Release the screen via `screens` when the task finishes or aborts to dismiss the floating card.
 2. **Fallback to physical screen (`phone`)**:
    - Use the main screen only when the user explicitly requests it or when virtual display creation fails.
-
-### Launching vs. Finding Apps
-- **Launch app**: Use `open` directly (supports fuzzy `app_name`, e.g. `'微信'`, or exact `package_name`).
-- **Inspect installed apps**: Use `find_installed_apps` to query installed packages and display names without launching or switching screens.
 
 ## Interaction Strategy
 

@@ -37,6 +37,16 @@ sealed interface ViewerContent {
             }
         }
     }
+
+    /**
+     * 网页或本地 HTML 文件查看。
+     */
+    data class Web(
+        val url: String,
+        val initialTitle: String? = null,
+    ) : ViewerContent {
+        override val routeKey: String get() = "web:${url.hashCode()}"
+    }
 }
 
 /**

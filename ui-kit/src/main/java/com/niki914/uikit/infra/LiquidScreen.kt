@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -46,6 +47,7 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.infra.internal.LiquidTopBarBackground
+import com.niki914.uikit.screen.TopBarLoad
 import com.niki914.uikit.screen.ZafiroTopBar
 import com.niki914.uikit.screen.ZafiroTopBarDefaults
 import com.niki914.uikit.screen.internal.MaterialTopBarBackground
@@ -91,6 +93,8 @@ fun LiquidScreen(
     leftButton: (@Composable () -> Unit)? = null,
     rightButton: (@Composable () -> Unit)? = null,
     overlayContent: (@Composable () -> Unit)? = null,
+    recordContentBackdrop: Boolean = true,
+    topBarLoad: TopBarLoad = TopBarLoad.None,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -155,7 +159,7 @@ fun LiquidScreen(
     ) {
         val themeStyle = LocalThemeStyle.current
         val isLiquid = themeStyle == ThemeStyle.LiquidGlass
-        val backdropCaptureModifier = if (isLiquid) {
+        val backdropCaptureModifier = if (isLiquid && recordContentBackdrop) {
             Modifier.layerBackdrop(contentBackdrop)
         } else {
             Modifier
@@ -253,6 +257,22 @@ fun LiquidScreen(
                         rightButton = rightButton,
                         overlayContent = overlayContent,
                     )
+                    // 顶栏底边的加载线。玻璃主题不画。
+                    if (!isLiquid && topBarLoad != TopBarLoad.None) {
+                        val progressLineModifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                        when (topBarLoad) {
+                            TopBarLoad.None -> Unit
+                            TopBarLoad.Indeterminate -> LinearProgressIndicator(
+                                modifier = progressLineModifier,
+                            )
+                            is TopBarLoad.Determinate -> LinearProgressIndicator(
+                                progress = { topBarLoad.fraction },
+                                modifier = progressLineModifier,
+                            )
+                        }
+                    }
                 }
             }
 

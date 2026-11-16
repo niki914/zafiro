@@ -80,8 +80,11 @@ import com.niki914.zafiro.app.ui.nav.TitleBarMode
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 import com.niki914.zafiro.app.ui.nav.ViewerPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
+import com.niki914.zafiro.app.ui.viewer.InAppPreviewBridge
 import com.niki914.zafiro.app.ui.viewer.LocalViewerOpener
+import com.niki914.zafiro.app.ui.viewer.LocalWebBackdropGate
 import com.niki914.zafiro.app.ui.viewer.ViewerContent
+import com.niki914.zafiro.app.ui.viewer.WebBackdropGate
 import com.niki914.zafiro.business.application.ApplicationService
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.findService
@@ -134,6 +137,9 @@ fun ZafiroApp(
 
     val currentEntry = controller.currentEntry
     val currentPage = currentEntry.page
+    val webBackdropGate = remember { WebBackdropGate() }
+    val showingWeb = (currentPage as? ViewerPage)?.content is ViewerContent.Web
+    val recordContentBackdrop = !showingWeb && webBackdropGate.activeCount == 0
     val currentChrome = pageChromeHost.stateFor(currentEntry.id)
     val isChromeMenuOpen = chromeMenuExpanded && currentChrome.menuItems.isNotEmpty()
     val shouldFadeRightButton = themePrefs.themeStyle == ThemeStyle.LiquidGlass && isChromeMenuOpen
@@ -198,6 +204,12 @@ fun ZafiroApp(
         { content ->
             closeChromeMenu()
             navigator.push(ViewerPage(content))
+        }
+    }
+
+    LaunchedEffect(openViewer) {
+        InAppPreviewBridge.requests.collect { webContent ->
+            openViewer(webContent)
         }
     }
 
@@ -316,6 +328,7 @@ fun ZafiroApp(
         ) {
             CompositionLocalProvider(
                 LocalMarkdownScale provides markdownScale,
+                LocalWebBackdropGate provides webBackdropGate,
             ) {
                 ZafiroScreen(
                     state = screenState,
@@ -330,6 +343,8 @@ fun ZafiroApp(
                     onLeftClick = onLeftClick,
                     onRightClick = onRightClick,
                     onRightButtonBoundsChanged = { rightButtonBounds = it },
+                    recordContentBackdrop = recordContentBackdrop,
+                    topBarLoad = currentChrome.topBarLoad,
                     leftButton = currentLeftAction?.let { action ->
                         {
                             TopBarActionIcon(
