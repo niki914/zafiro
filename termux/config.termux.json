@@ -1,0 +1,11 @@
+{
+  "data_dir": "/data/data/com.termux/files/home/.oc-ferry",
+  "port": 41980,
+  "host": "127.0.0.1",
+  "upstream_base_url": "",
+  "upstream_api_key": "",
+  "catalog_url": "https://models.dev/api.json",
+  "probe_concurrency": 2,
+  "success_ttl_minutes": 360,
+  "load_ttl_minutes": 10
+}

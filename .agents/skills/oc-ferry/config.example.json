@@ -1,0 +1,23 @@
+{
+  "data_dir": "/sdcard/Documents/oc-ferry",
+  "port": 41980,
+  "host": "127.0.0.1",
+  "upstream_base_url": "https://openrouter.ai/api/v1",
+  "upstream_api_key": "",
+  "catalog_url": "https://models.dev/api.json",
+  "catalog_file": "",
+  "probe_concurrency": 2,
+  "success_ttl_minutes": 360,
+  "load_ttl_minutes": 10,
+  "models_file": "",
+  "api_key_file": "",
+  "api_key": "",
+  "request_timeout": 60,
+  "max_body_bytes": 8388608,
+  "max_inflight": 4,
+  "embed_api_key": true,
+  "upstream_model_map": {},
+  "cache_file": "",
+  "state_file": "",
+  "selection_file": ""
+}
