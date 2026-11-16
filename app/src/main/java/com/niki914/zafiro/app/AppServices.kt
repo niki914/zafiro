@@ -43,7 +43,7 @@ import com.niki914.zafiro.service.installService
  * 不认识实现类——**这个文件里不出现服务查找调用**（单测守卫）。
  *
  * 进程级初始化（`XRepo.init` / `ContextProvider` / `RuntimeEnvironment` 等）
- * 不是依赖装配，留在 [App.onCreate]。
+ * 不是依赖装配，留在 [App.onCreate]。后台预热和开关监听在 [AppStartup]。
  */
 object AppServices {
 
