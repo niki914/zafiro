@@ -72,6 +72,10 @@
     <string name="ui_home_file_category_file">File</string>
     <string name="ui_action_view">View</string>
     <string name="ui_viewer_copy_all">Copy all</string>
+    <string name="ui_viewer_refresh">Refresh</string>
+    <string name="ui_viewer_open_in_browser">Open in browser</string>
+    <string name="ui_viewer_copy_link">Copy link</string>
+    <string name="ui_viewer_copy_path">Copy file path</string>
     <string name="ui_image_unavailable">Unavailable</string>
     <string name="ui_viewer_image_unavailable">Cannot load image</string>
     <string name="ui_viewer_image_unavailable_desc">The image file does not exist or cache has been cleared</string>

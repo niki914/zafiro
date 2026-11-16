@@ -91,6 +91,7 @@ fun LiquidScreen(
     leftButton: (@Composable () -> Unit)? = null,
     rightButton: (@Composable () -> Unit)? = null,
     overlayContent: (@Composable () -> Unit)? = null,
+    recordContentBackdrop: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -155,7 +156,7 @@ fun LiquidScreen(
     ) {
         val themeStyle = LocalThemeStyle.current
         val isLiquid = themeStyle == ThemeStyle.LiquidGlass
-        val backdropCaptureModifier = if (isLiquid) {
+        val backdropCaptureModifier = if (isLiquid && recordContentBackdrop) {
             Modifier.layerBackdrop(contentBackdrop)
         } else {
             Modifier

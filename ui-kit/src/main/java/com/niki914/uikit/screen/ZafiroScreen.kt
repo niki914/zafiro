@@ -25,6 +25,7 @@ fun ZafiroScreen(
     leftButton: (@Composable () -> Unit)? = null,
     rightButton: (@Composable () -> Unit)? = null,
     overlayContent: (@Composable () -> Unit)? = null,
+    recordContentBackdrop: Boolean = true,
     content: @Composable () -> Unit,
 ) = LiquidScreen(
     state = state,
@@ -43,5 +44,6 @@ fun ZafiroScreen(
     leftButton = leftButton,
     rightButton = rightButton,
     overlayContent = overlayContent,
+    recordContentBackdrop = recordContentBackdrop,
     content = content,
 )
