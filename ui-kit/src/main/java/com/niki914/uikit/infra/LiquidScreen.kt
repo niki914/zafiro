@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -92,6 +93,7 @@ fun LiquidScreen(
     rightButton: (@Composable () -> Unit)? = null,
     overlayContent: (@Composable () -> Unit)? = null,
     recordContentBackdrop: Boolean = true,
+    topBarProgress: Float? = null,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -254,6 +256,16 @@ fun LiquidScreen(
                         rightButton = rightButton,
                         overlayContent = overlayContent,
                     )
+                    // 顶栏底边的加载线。页面经 topBarProgress 上报，null 不画。
+                    if (topBarProgress != null) {
+                        val progress = topBarProgress.coerceIn(0f, 1f)
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth(),
+                        )
+                    }
                 }
             }
 

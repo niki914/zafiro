@@ -26,6 +26,7 @@ fun ZafiroScreen(
     rightButton: (@Composable () -> Unit)? = null,
     overlayContent: (@Composable () -> Unit)? = null,
     recordContentBackdrop: Boolean = true,
+    topBarProgress: Float? = null,
     content: @Composable () -> Unit,
 ) = LiquidScreen(
     state = state,
@@ -45,5 +46,6 @@ fun ZafiroScreen(
     rightButton = rightButton,
     overlayContent = overlayContent,
     recordContentBackdrop = recordContentBackdrop,
+    topBarProgress = topBarProgress,
     content = content,
 )
