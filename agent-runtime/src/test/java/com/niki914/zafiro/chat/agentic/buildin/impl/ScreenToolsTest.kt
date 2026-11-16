@@ -36,8 +36,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-// 保护：V2 工具把 screen / token / 坐标 / uri / kind 交到 Screens，漏传时模型会打到错误的屏。
-class ScreenToolsV2Test {
+// 保护：屏幕工具把 screen / token / 坐标 / uri / kind 交到 Screens，漏传时模型会打到错误的屏。
+class ScreenToolsTest {
     private val phone = ScreenId("phone")
     private lateinit var screen: RecordingScreen
     private lateinit var screens: RecordingScreens

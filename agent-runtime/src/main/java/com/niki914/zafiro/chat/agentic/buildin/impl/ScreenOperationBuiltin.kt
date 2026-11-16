@@ -18,7 +18,7 @@ import kotlinx.serialization.json.JsonObject
  * 参数原样交给 [com.niki914.zafiro.api.screen.Screen.snapshot] 或 `act`。
  * `search` 只在当次快照的节点上过滤。
  */
-class ScreenOperationBuiltin__V2 : TextResultBuiltinTool() {
+class ScreenOperationBuiltin : TextResultBuiltinTool() {
     override val name: String = "screen_operation"
     override val defaultEnabled: Boolean = true
     override val description: String =
