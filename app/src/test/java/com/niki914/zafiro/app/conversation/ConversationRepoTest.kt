@@ -20,6 +20,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.io.File
 
 private const val DB_NAME = "test-conversation.db"
 
@@ -406,6 +407,91 @@ class ConversationRepoTest {
         ConversationRepo.deleteConversation("session-1")
         val list3 = ConversationRepo.observeConversations().first()
         assertTrue(list3.isEmpty())
+    }
+
+    @Test
+    fun deleteConversation_deletesOrphanUserImage() = runTest {
+        val imageDir = File(context.filesDir, "image_cache").apply { mkdirs() }
+        val orphanFile = File(imageDir, "orphan01.jpg").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+        val orphanPath = orphanFile.absolutePath
+
+        val id = ConversationRepo.createConversation("session-image-1", "image chat")
+        val entries = linearEntries(Message.User(listOf(ContentBlock.Image(orphanPath, "image/jpeg"))))
+        ConversationRepo.insertEntries(id, entries)
+
+        assertTrue(orphanFile.exists())
+        ConversationRepo.deleteConversation(id)
+        ConversationRepo.lastCleanupJob?.join()
+
+        assertFalse(orphanFile.exists())
+    }
+
+    @Test
+    fun deleteConversation_preservesSharedImageUntilAllReferencingConversationsDeleted() = runTest {
+        val imageDir = File(context.filesDir, "image_cache").apply { mkdirs() }
+        val sharedFile = File(imageDir, "shared01.jpg").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+        val sharedPath = sharedFile.absolutePath
+
+        val id1 = ConversationRepo.createConversation("session-shared-1", "chat 1")
+        val id2 = ConversationRepo.createConversation("session-shared-2", "chat 2")
+        ConversationRepo.insertEntries(
+            id1,
+            linearEntries(Message.User(listOf(ContentBlock.Image(sharedPath, "image/jpeg")))),
+        )
+        ConversationRepo.insertEntries(
+            id2,
+            linearEntries(Message.User(listOf(ContentBlock.Image(sharedPath, "image/jpeg")))),
+        )
+
+        ConversationRepo.deleteConversation(id1)
+        ConversationRepo.lastCleanupJob?.join()
+        assertTrue(sharedFile.exists())
+
+        ConversationRepo.deleteConversation(id2)
+        ConversationRepo.lastCleanupJob?.join()
+        assertFalse(sharedFile.exists())
+    }
+
+    @Test
+    fun deleteConversation_deletesOrphanScreenshotImage() = runTest {
+        val imageDir = File(context.filesDir, "image_cache").apply { mkdirs() }
+        val screenshotFile = File(imageDir, "screen01.jpg").apply { writeBytes(byteArrayOf(4, 5, 6)) }
+        val screenshotPath = screenshotFile.absolutePath
+
+        val id = ConversationRepo.createConversation("session-screenshot", "screenshot chat")
+        val toolMsg = Message.ToolResult(
+            callId = "call-1",
+            toolName = "screenshot",
+            outcome = ToolCallOutcome.Success(
+                content = "Screenshot captured: $screenshotPath",
+                images = listOf(ContentBlock.Image(screenshotPath, "image/jpeg")),
+            ),
+        )
+        ConversationRepo.insertEntries(id, linearEntries(toolMsg))
+
+        assertTrue(screenshotFile.exists())
+        ConversationRepo.deleteConversation(id)
+        ConversationRepo.lastCleanupJob?.join()
+
+        assertFalse(screenshotFile.exists())
+    }
+
+    @Test
+    fun cleanAllOrphanImages_respectsGracePeriodAndCleansLegacyOrphan() = runTest {
+        val imageDir = File(context.filesDir, "image_cache").apply { mkdirs() }
+        val legacyOrphan = File(imageDir, "legacy01.jpg").apply {
+            writeBytes(byteArrayOf(1, 1, 1))
+            setLastModified(System.currentTimeMillis() - 10 * 60 * 1000L)
+        }
+        val recentDraftImage = File(imageDir, "recent01.jpg").apply {
+            writeBytes(byteArrayOf(2, 2, 2))
+            setLastModified(System.currentTimeMillis() - 10 * 1000L)
+        }
+
+        ConversationRepo.cleanAllOrphanImages(gracePeriodMs = 5 * 60 * 1000L)
+
+        assertFalse(legacyOrphan.exists())
+        assertTrue(recentDraftImage.exists())
     }
 
     private fun linearEntries(vararg messages: Message): List<ConversationEntry> {

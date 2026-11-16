@@ -6,14 +6,24 @@ import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
+import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.api.model.Attachment
+import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.api.text.FilesBlock
+import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.conversation.ConversationRepo.getConversation
+import com.niki914.zafiro.service.findService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import java.io.File
 import java.util.UUID
 
 /** fork / regenerate 派生会话的命名前缀（D3-11）。 */
@@ -41,6 +51,10 @@ data class ForkResult(
 object ConversationRepo {
     private const val LOG_TAG = "niki914_zafiro_ConversationRepo"
     private const val SNAPSHOT_VERSION = 1
+    private const val IMAGE_CACHE_DIR_NAME = "image_cache"
+    private const val DEFAULT_ORPHAN_GRACE_PERIOD_MS = 5 * 60 * 1000L
+    private val IMAGE_CACHE_REGEX = Regex("""image_cache[/\\]+([a-zA-Z0-9_.-]+)""")
+    private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp")
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -51,12 +65,19 @@ object ConversationRepo {
     private var database: ConversationDatabase? = null
 
     @Volatile
+    private var imageCacheDir: File? = null
+
+    internal var cleanupScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    internal var lastCleanupJob: Job? = null
+
+    @Volatile
     private var forkTitleFormat = "Fork · %1\$s"
 
     @Volatile
     private var rewindTitleFormat = "Rewind · %1\$s"
 
     fun init(context: Context) {
+        imageCacheDir = File(context.applicationContext.filesDir, IMAGE_CACHE_DIR_NAME)
         if (database != null) return
         synchronized(this) {
             if (database == null) {
@@ -380,11 +401,95 @@ object ConversationRepo {
         dao().updateConfigId(conversationId = conversationId, configId = configId)
     }
 
-    /** 删除会话及其整个重新生成分支组（组内所有版本一起消失）。 */
+    /** 删除会话及其整个重新生成分支组（组内所有版本一起消失），并异步清理孤儿图片。 */
     suspend fun deleteConversation(id: String) {
         val row = dao().getConversation(id)
         val rootId = row?.rootId?.takeIf { it.isNotBlank() } ?: id
+        val candidateJsons = dao().listBranchGroupImageEntries(rootId)
+        val candidates = candidateJsons.flatMap { extractImageFileNames(it) }.toSet()
+
         dao().deleteBranchGroup(rootId)
+
+        if (candidates.isNotEmpty()) {
+            launchOrphanImageCleanup(candidates)
+        }
+    }
+
+    private fun launchOrphanImageCleanup(candidates: Set<String>): Job {
+        val job = cleanupScope.launch {
+            runCatchingCancellable {
+                cleanOrphanImages(candidates)
+            }.onFailure { throwable ->
+                Logger.w(LOG_TAG, "clean orphan images failed: ${throwable.message}", throwable)
+            }
+        }
+        lastCleanupJob = job
+        return job
+    }
+
+    internal suspend fun cleanOrphanImages(candidates: Set<String>): Int {
+        if (candidates.isEmpty()) return 0
+        val imagesDir = imageCacheDir ?: return 0
+        if (!imagesDir.exists() || !imagesDir.isDirectory) return 0
+
+        val remainingJsons = dao().listAllImageMessageJsons()
+        val referencedImages = remainingJsons.flatMap { extractImageFileNames(it) }.toSet()
+        val draftImages = findService<AgentManager>()?.mainFlow?.value?.draft?.value?.images
+            ?.filterIsInstance<DraftImage.Ready>()
+            ?.map { File(it.attachment.path).name }
+            ?.toSet()
+            ?: emptySet()
+
+        val orphans = candidates.filterNot { it in referencedImages || it in draftImages }
+        if (orphans.isEmpty()) return 0
+
+        var deletedCount = 0
+        orphans.forEach { fileName ->
+            if (isValidImageFileName(fileName)) {
+                val file = File(imagesDir, fileName)
+                if (file.exists() && file.isFile) {
+                    if (file.delete()) {
+                        deletedCount++
+                        Logger.d(LOG_TAG, "deleted orphan image: $fileName")
+                    } else {
+                        Logger.w(LOG_TAG, "failed to delete orphan image: $fileName")
+                    }
+                }
+            }
+        }
+        Logger.i(LOG_TAG, "cleanOrphanImages completed: candidates=${candidates.size}, deleted=$deletedCount")
+        return deletedCount
+    }
+
+    /**
+     * 全盘存量孤儿清理（供 App 启动后后台运行）。
+     * 宽限期内（默认 5 分钟）新写入的文件不参与清理，避免误删刚刚选择但尚未发送的草稿图片。
+     */
+    suspend fun cleanAllOrphanImages(gracePeriodMs: Long = DEFAULT_ORPHAN_GRACE_PERIOD_MS): Int {
+        val imagesDir = imageCacheDir ?: return 0
+        if (!imagesDir.exists() || !imagesDir.isDirectory) return 0
+        val now = System.currentTimeMillis()
+        val candidateFiles = imagesDir.listFiles()?.filter { file ->
+            file.isFile && isValidImageFileName(file.name) && (now - file.lastModified() > gracePeriodMs)
+        } ?: return 0
+        if (candidateFiles.isEmpty()) return 0
+        val candidates = candidateFiles.map { it.name }.toSet()
+        return cleanOrphanImages(candidates)
+    }
+
+    internal fun extractImageFileNames(messageJson: String): Set<String> {
+        if (!messageJson.contains(IMAGE_CACHE_DIR_NAME)) return emptySet()
+        return IMAGE_CACHE_REGEX.findAll(messageJson)
+            .map { it.groupValues[1] }
+            .filter { isValidImageFileName(it) }
+            .toSet()
+    }
+
+    internal fun isValidImageFileName(name: String): Boolean {
+        if (name.isEmpty() || name.length > 80) return false
+        val ext = name.substringAfterLast('.', "").lowercase()
+        if (ext !in IMAGE_EXTENSIONS) return false
+        return name.all { char -> char.isLetterOrDigit() || char == '.' || char == '_' || char == '-' }
     }
 
     /** 分支组内全部会话 id（删除前需逐个销毁运行中的 Agent）。 */
@@ -420,6 +525,8 @@ object ConversationRepo {
         synchronized(this) {
             database?.close()
             database = null
+            imageCacheDir = null
+            lastCleanupJob = null
         }
     }
 
