@@ -38,7 +38,7 @@ object BuiltinToolGroups {
             titleRes = R.string.tool_group_android_native,
             summaryRes = R.string.tool_group_android_native_summary,
             mode = BuiltinToolGroupMode.PER_TOOL,
-            members = listOf("find_installed_apps", "notify"),
+            members = listOf("find_installed_apps", "notify", "view_image"),
         ),
         BuiltinToolGroup(
             id = "screen_operation",

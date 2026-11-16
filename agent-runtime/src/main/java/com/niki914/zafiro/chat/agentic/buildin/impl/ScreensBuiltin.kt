@@ -14,7 +14,7 @@ import kotlinx.serialization.json.JsonObject
  * 列出、打开、关闭屏。
  * `open` 的 kind 原样交给 [com.niki914.zafiro.api.screen.Screens.open]。
  */
-class ScreensBuiltin__V2 : TextResultBuiltinTool() {
+class ScreensBuiltin : TextResultBuiltinTool() {
     override val name: String = "screens"
     override val defaultEnabled: Boolean = true
     override val description: String =
