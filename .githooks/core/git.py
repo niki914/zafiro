@@ -35,10 +35,17 @@ def get_repo_root(cwd: str | Path | None = None) -> str:
     return proc.stdout.strip()
 
 
+DEFAULT_EXCLUDE_PREFIXES = (
+    "libs/libterm/",
+    "libs/logging/",
+    "libs/shizuku/",
+)
+
+
 def parse_diff_added_lines(
     diff_text: str,
     target_suffix: str = ".kt",
-    exclude_prefixes: tuple[str, ...] = ("libs/",),
+    exclude_prefixes: tuple[str, ...] = DEFAULT_EXCLUDE_PREFIXES,
 ) -> dict[str, list[int]]:
     """解析 git diff -U0 的输出，提取新增行号映射 {path: [lineno, ...]}。"""
     candidates: dict[str, list[int]] = defaultdict(list)
@@ -64,7 +71,7 @@ def parse_diff_added_lines(
 def get_staged_line_candidates(
     root: str,
     target_suffix: str = ".kt",
-    exclude_prefixes: tuple[str, ...] = ("libs/",),
+    exclude_prefixes: tuple[str, ...] = DEFAULT_EXCLUDE_PREFIXES,
 ) -> dict[str, list[int]]:
     """获取暂存区新增/修改文件中新增的行号。"""
     res = git_exec(
@@ -86,7 +93,7 @@ def get_staged_line_candidates(
 def get_worktree_line_candidates(
     root: str,
     target_suffix: str = ".kt",
-    exclude_prefixes: tuple[str, ...] = ("libs/",),
+    exclude_prefixes: tuple[str, ...] = DEFAULT_EXCLUDE_PREFIXES,
 ) -> dict[str, list[int]]:
     """获取工作区（含暂存与未暂存）新增/修改文件中新增的行号。"""
     res = git_exec(
@@ -134,7 +141,7 @@ def get_staged_size(root: str, path: str) -> int:
 def get_all_tracked_files(
     root: str,
     target_suffix: str = ".kt",
-    exclude_prefixes: tuple[str, ...] = ("libs/",),
+    exclude_prefixes: tuple[str, ...] = DEFAULT_EXCLUDE_PREFIXES,
     scope: list[str] | None = None,
 ) -> list[str]:
     """获取工作区所有已跟踪的匹配后缀文件。"""

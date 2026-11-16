@@ -101,7 +101,7 @@ class McpExecutor(
         } catch (e: McpProtocolException) {
             val errorMsg = e.message ?: "MCP tool call failed"
             ToolCallOutcome.Failure(message = errorMsg, content = errorMsg)
-        } catch (e: Exception) {
+        } catch (e: Exception) { // githooks:ignore bare-catch
             // 兜底：client 实现违反契约抛非协议异常也转 outcome（永不抛异常）
             val errorMsg = "MCP tool call failed: ${e.message}"
             ToolCallOutcome.Failure(message = errorMsg, content = errorMsg)

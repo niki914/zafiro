@@ -6,6 +6,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import com.niki914.okia.util.tryOrDefault
 
 /**
  * 工具 JSON Schema 清洗器：在将 Schema 传递给模型提供商（如 OpenAI / Anthropic）前，
@@ -64,11 +65,9 @@ internal object ToolSchemaSanitizer {
     private fun isSafePattern(pattern: String): Boolean {
         // 包含 NUL 字节或被转义的 NUL (\0) 会被多数模型端（如 OpenAI）拒绝
         if (pattern.contains("\u0000") || pattern.contains("\\0")) return false
-        return try {
+        return tryOrDefault(false) {
             Regex(pattern)
             true
-        } catch (_: Exception) {
-            false
         }
     }
 }

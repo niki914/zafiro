@@ -22,6 +22,7 @@ import com.niki914.okia.tooling.ToolExecutor
 import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.SseLine
 import com.niki914.okia.transport.StreamResponse
+import com.niki914.okia.util.runCatchingCancellable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
@@ -194,7 +195,7 @@ internal class RealAgentLoop : AgentLoop {
             val segmentStartedAtMs = System.currentTimeMillis()
 
             // 1. Serialization 时机 + buildRequest（每段尝试 fresh request，对齐 pi）
-            val httpRequest = try {
+            val httpRequest = runCatchingCancellable {
                 // G5 快照整改（§8.18）：工具描述每段尝试现取——快照表达「每段
                 // 发送时的工具集」而非 send 时固定值；合法变更（MCP 刷新 /
                 // Okia.update）走回合外，段间可见。
@@ -216,9 +217,7 @@ internal class RealAgentLoop : AgentLoop {
                     it.afterSerialization(serializationHolder, built)
                 }?.let { return SegmentOutcome.Finished(it) }
                 built
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
+            }.getOrElse { e ->
                 return SegmentOutcome.Finished(
                     fail(
                         request,
@@ -341,7 +340,7 @@ internal class RealAgentLoop : AgentLoop {
                     stopReason, failed
                 )
             }
-            val failure = try {
+            val failure = runCatchingCancellable {
                 val requestHolder = HttpRequestHolder(httpRequest)
                 hookStep(
                     request,
@@ -387,9 +386,7 @@ internal class RealAgentLoop : AgentLoop {
                         }
                     }
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
+            }.getOrElse { e ->
                 // 网络错误（连接/超时/流中断前）：可重试
                 LLMError(LLMErrorCode.Transport, "stream failed", e)
             }
@@ -451,7 +448,7 @@ internal class RealAgentLoop : AgentLoop {
             )
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Exception) { // githooks:ignore bare-catch
             // 流中断（传输层断连：socket / keep-alive 超时等）：转 Transport，
             // 段首重试判断由 runSegment 处理（可重试 → 丢弃 partial 重发）
             throw StreamTerminated(
@@ -697,17 +694,15 @@ internal class RealAgentLoop : AgentLoop {
             }
             val holder =
                 ToolCallHolder(call.id, call.name, call.argumentsJson, registered.descriptor)
-            var hookFailed: ToolCallOutcome? = null
-            try {
+            val hookFailed = runCatchingCancellable {
                 for (hook in request.hooks) {
                     hook.beforeToolCall(holder)
                     if (holder.outcome != null) break // 阻断：后续 hook 不执行
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
+                null
+            }.getOrElse { e ->
                 // 工具段 hook 异常 → Failure outcome（§8.4 #13），回合继续
-                hookFailed = ToolCallOutcome.Failure("beforeToolCall hook failed: ${e.message}")
+                ToolCallOutcome.Failure("beforeToolCall hook failed: ${e.message}")
             }
             when {
                 hookFailed != null -> plans += Plan(call, holder, null, null, hookFailed)
@@ -747,11 +742,9 @@ internal class RealAgentLoop : AgentLoop {
                 coroutineScope {
                     executable.map { (index, plan) ->
                         async {
-                            index to try {
+                            index to runCatchingCancellable {
                                 plan.executor!!.execute(plan.context!!)
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
+                            }.getOrElse { e ->
                                 throw ToolExecutionException(plan.toolCall, e)
                             }
                         }
@@ -814,11 +807,9 @@ internal class RealAgentLoop : AgentLoop {
                 // （unknown tool 的 plan 带已定 outcome，不进入本分支）
                 val holder = requireNotNull(plan.holder)
                 val resultHolder = ToolResultHolder(outcome)
-                try {
+                runCatchingCancellable {
                     for (hook in request.hooks) hook.afterToolCall(holder, resultHolder)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
+                }.onFailure { e ->
                     resultHolder.write(
                         ToolCallOutcome.Failure("afterToolCall hook failed: ${e.message}"), "okia"
                     )
@@ -911,22 +902,18 @@ internal class RealAgentLoop : AgentLoop {
         onEvent: suspend (TurnEvent) -> Unit,
         phase: String,
         block: suspend (Hooks) -> Unit
-    ): TurnResult? {
-        try {
-            for (hook in request.hooks) {
-                block(hook)
-            }
-            return null
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            return fail(
-                request,
-                onEvent,
-                StreamState(),
-                LLMError(LLMErrorCode.HookFailed, "$phase hook failed", e)
-            )
+    ): TurnResult? = runCatchingCancellable {
+        for (hook in request.hooks) {
+            block(hook)
         }
+        null
+    }.getOrElse { e ->
+        fail(
+            request,
+            onEvent,
+            StreamState(),
+            LLMError(LLMErrorCode.HookFailed, "$phase hook failed", e)
+        )
     }
 
     // 改写投影：history 末尾 User 消息的文本块替换为改写文本（树不变，§5.8）。
