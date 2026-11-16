@@ -13,7 +13,7 @@ internal object BackupExporter {
     }
 
     fun inspect(file: File): InspectResult {
-        return when (val zip = readZip(file)) {
+        return when (val zip = readZip(file, shouldReadBytes = { !it.startsWith("blobs/") })) {
             null -> InspectResult.Rejected(RejectReason.NotAnArchive)
             ZipRead.Unsafe -> InspectResult.Rejected(RejectReason.UnsafePath)
             is ZipRead.Ok -> inspectEntries(zip.entries)
