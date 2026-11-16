@@ -58,7 +58,7 @@ internal object LiveBackupSettingsWork : BackupSettingsWork {
         isCancelled: () -> Boolean,
     ): ExportPrep = withContext(Dispatchers.IO) {
         if (isCancelled()) return@withContext ExportPrep.Cancelled
-        val snapshot = BackupLiveSource.read()
+        val snapshot = BackupLiveSource.read(groups)
         if (isCancelled()) return@withContext ExportPrep.Cancelled
         val context = XRepo.context()
         val file = File(context.cacheDir, "backup-export-${System.nanoTime()}.zafiro")

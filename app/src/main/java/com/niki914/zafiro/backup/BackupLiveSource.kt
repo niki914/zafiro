@@ -19,27 +19,84 @@ import java.io.File
  */
 internal object BackupLiveSource {
 
-    suspend fun read(): BackupSnapshot = withContext(Dispatchers.IO) {
+    suspend fun read(groups: Set<BackupGroup> = BackupGroup.entries.toSet()): BackupSnapshot = withContext(Dispatchers.IO) {
         val context = XRepo.context()
-        val table = ConversationRepo.readConsistentForBackup()
+        val includeConversations = BackupGroup.Conversations in groups
+        val includeConfig = BackupGroup.Config in groups
+        val includeTools = BackupGroup.Tools in groups
+        val includeSkills = BackupGroup.Skills in groups
+        val includeExecutionRules = BackupGroup.ExecutionRules in groups
+        val includeTakeoverRules = BackupGroup.TakeoverRules in groups
+        val includeMaskingRules = BackupGroup.MaskingRules in groups
+
+        val (conversations, entries) = if (includeConversations) {
+            val table = ConversationRepo.readConsistentForBackup()
+            table.conversations.map { it.toBackup() } to table.entries.map { it.toBackup() }
+        } else {
+            emptyList<ConversationBackup>() to emptyList<EntryBackup>()
+        }
         val skillsRoot = File(context.filesDir, SkillApi.SKILLS_DIR_NAME)
         val imageRoot = File(context.filesDir, IMAGE_CACHE_DIR)
         BackupSnapshot(
-            appStateJson = XRepo.readJson(StoreDescriptorRegistry.APP_STATE_ID),
-            modelsJson = XRepo.readJson(StoreDescriptorRegistry.LLM_CONFIGS_ID),
-            memoryJson = XRepo.readJson(StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID),
-            mcpServersJson = XRepo.readJson(StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID),
-            mcpServiceJson = XRepo.readJson(StoreDescriptorRegistry.TOOLS_MCP_SERVICE_ID),
-            builtinToolsJson = XRepo.readJson(StoreDescriptorRegistry.TOOLS_BUILTIN_ID),
-            pyToolsJson = XRepo.readJson(StoreDescriptorRegistry.TOOLS_PY_ID),
-            textActionsJson = XRepo.readJson(StoreDescriptorRegistry.TOOLS_TEXT_ACTIONS_ID),
-            executionRulesJson = XRepo.readJson(StoreDescriptorRegistry.RULES_EXECUTION_ID),
-            takeoverRulesJson = XRepo.readJson(StoreDescriptorRegistry.RULES_TAKEOVER_ID),
-            maskingRulesJson = XRepo.readJson(StoreDescriptorRegistry.RULES_MASKING_ID),
-            skillsStatusJson = readStatus(skillsRoot),
-            skills = readSkills(context, skillsRoot),
-            conversations = table.conversations.map { it.toBackup() },
-            entries = table.entries.map { it.toBackup() },
+            appStateJson = if (includeConfig || includeConversations) {
+                XRepo.readJson(StoreDescriptorRegistry.APP_STATE_ID)
+            } else {
+                "{}"
+            },
+            modelsJson = if (includeConfig) {
+                XRepo.readJson(StoreDescriptorRegistry.LLM_CONFIGS_ID)
+            } else {
+                "{}"
+            },
+            memoryJson = if (includeConversations) {
+                XRepo.readJson(StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID)
+            } else {
+                "{}"
+            },
+            mcpServersJson = if (includeTools) {
+                XRepo.readJson(StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID)
+            } else {
+                "{}"
+            },
+            mcpServiceJson = if (includeTools) {
+                XRepo.readJson(StoreDescriptorRegistry.TOOLS_MCP_SERVICE_ID)
+            } else {
+                "{}"
+            },
+            builtinToolsJson = if (includeTools) {
+                XRepo.readJson(StoreDescriptorRegistry.TOOLS_BUILTIN_ID)
+            } else {
+                "{}"
+            },
+            pyToolsJson = if (includeTools) {
+                XRepo.readJson(StoreDescriptorRegistry.TOOLS_PY_ID)
+            } else {
+                "{}"
+            },
+            textActionsJson = if (includeTools) {
+                XRepo.readJson(StoreDescriptorRegistry.TOOLS_TEXT_ACTIONS_ID)
+            } else {
+                "{}"
+            },
+            executionRulesJson = if (includeExecutionRules) {
+                XRepo.readJson(StoreDescriptorRegistry.RULES_EXECUTION_ID)
+            } else {
+                "{}"
+            },
+            takeoverRulesJson = if (includeTakeoverRules) {
+                XRepo.readJson(StoreDescriptorRegistry.RULES_TAKEOVER_ID)
+            } else {
+                "{}"
+            },
+            maskingRulesJson = if (includeMaskingRules) {
+                XRepo.readJson(StoreDescriptorRegistry.RULES_MASKING_ID)
+            } else {
+                "{}"
+            },
+            skillsStatusJson = if (includeSkills) readStatus(skillsRoot) else EMPTY_STATUS,
+            skills = if (includeSkills) readSkills(context, skillsRoot) else emptyList(),
+            conversations = conversations,
+            entries = entries,
             readImage = { path -> readCachedImage(imageRoot, path) },
             pyInstallApkDir = File(context.filesDir, "downloads/py_install_apk").absolutePath,
             pyDownloadFileDir = File(context.filesDir, "downloads/py_download_file").absolutePath,
