@@ -13,11 +13,9 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -29,7 +27,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -104,19 +101,18 @@ internal fun WebViewerContent(
     var canGoBack by remember { mutableStateOf(false) }
     var loadProgress by remember { mutableFloatStateOf(0f) }
 
-    RegisterPageChrome(
-        remember(
-            refreshLabel,
-            openInBrowserLabel,
-            copyLinkLabel,
-            copyPathLabel,
-            pageTitle,
-            canGoBack,
-            onBack,
-            isRemoteWeb,
-            rawTarget,
-            webViewRef,
-        ) {
+    val chrome = remember(
+        refreshLabel,
+        openInBrowserLabel,
+        copyLinkLabel,
+        copyPathLabel,
+        pageTitle,
+        canGoBack,
+        onBack,
+        isRemoteWeb,
+        rawTarget,
+        webViewRef,
+    ) {
             val titleSpec = if (pageTitle.isNotBlank()) TextTitle(pageTitle) else NoTitle
             val menuItems = buildList {
                 add(
@@ -189,8 +185,9 @@ internal fun WebViewerContent(
                 ),
                 menuItems = menuItems,
             )
-        }
-    )
+    }
+    val topBarProgress = if (loadProgress in 0.01f..0.99f) loadProgress else null
+    RegisterPageChrome(chrome.copy(topBarProgress = topBarProgress))
 
     ReportTitleBarCollapsed { false }
 
@@ -296,15 +293,6 @@ internal fun WebViewerContent(
             },
             modifier = Modifier.fillMaxSize(),
         )
-
-        if (loadProgress in 0.01f..0.99f) {
-            LinearProgressIndicator( // TODO 希望重构成一个 Zafiro 基础组件。尽管三种 UI 都用分流到一样的 UI，但是代码质量会好点
-                progress = { loadProgress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopCenter),
-            )
-        }
     }
 }
 

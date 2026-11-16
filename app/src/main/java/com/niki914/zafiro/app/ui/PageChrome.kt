@@ -26,6 +26,7 @@ data class PageChromeContribution(
     val overlay: (@Composable () -> Unit)? = null,
     val isTitleOccluded: Boolean = false,
     val actionsVisible: Boolean = true,
+    val topBarProgress: Float? = null,
 ) {
     companion object {
         val Empty = PageChromeContribution()
