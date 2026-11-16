@@ -702,6 +702,7 @@ class AgentSessionEngineOkiaTest {
             server: McpServer,
             toolName: String,
             argumentsJson: String,
+            inputSchemaJson: String?
         ): McpCallResult = McpCallResult(isError = false, content = emptyList())
     }
 }

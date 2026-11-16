@@ -52,7 +52,12 @@ class McpExecutor(
             val toolName = call.descriptor.name // 原始 MCP 工具名，直接调用
             val server = servers(serverName)
                 ?: return ToolCallOutcome.Failure("MCP server not found: $serverName", content = "MCP server not found: $serverName")
-            val result = client.callTool(server, toolName, call.argumentsJson)
+            val result = client.callTool(
+                server = server,
+                toolName = toolName,
+                argumentsJson = call.argumentsJson,
+                inputSchemaJson = call.descriptor.inputSchemaJson
+            )
             val textContent = StringBuilder()
             val images = mutableListOf<ContentBlock.Image>()
             val saveFailures = mutableListOf<String>()

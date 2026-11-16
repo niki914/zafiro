@@ -23,7 +23,12 @@ class McpExecutorTest {
     // ── fixtures ───────────────────────────────────────────────────────────
 
     private class FakeClient : McpClient {
-        data class Call(val server: McpServer, val toolName: String, val argumentsJson: String)
+        data class Call(
+            val server: McpServer,
+            val toolName: String,
+            val argumentsJson: String,
+            val inputSchemaJson: String?
+        )
 
         val calls = mutableListOf<Call>()
         var result: McpCallResult = McpCallResult(isError = false, content = emptyList())
@@ -34,9 +39,10 @@ class McpExecutorTest {
         override suspend fun callTool(
             server: McpServer,
             toolName: String,
-            argumentsJson: String
+            argumentsJson: String,
+            inputSchemaJson: String?
         ): McpCallResult {
-            calls += Call(server, toolName, argumentsJson)
+            calls += Call(server, toolName, argumentsJson, inputSchemaJson)
             error?.let { throw it }
             return result
         }
