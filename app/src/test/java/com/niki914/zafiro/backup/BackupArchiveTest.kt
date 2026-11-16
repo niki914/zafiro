@@ -343,6 +343,22 @@ class BackupArchiveTest {
         assertTrue(result.texts.getValue("conversations").contains(path))
     }
 
+    @Test
+    fun readZipSelectivelySkipsBytes() {
+        val file = folder.newFile()
+        writeZip(
+            file,
+            listOf(
+                ArchiveEntry("manifest.json", "{}".toByteArray()),
+                ArchiveEntry("blobs/huge.jpg", byteArrayOf(1, 2, 3, 4)),
+            ),
+        )
+        val read = readZip(file) { !it.startsWith("blobs/") } as ZipRead.Ok
+        assertEquals(2, read.entries.size)
+        assertEquals("{}", read.entries.getValue("manifest.json").toString(Charsets.UTF_8))
+        assertEquals(0, read.entries.getValue("blobs/huge.jpg").size)
+    }
+
     private fun allGroups(includeSecrets: Boolean = false): BackupRequest {
         return BackupRequest(
             groups = BackupGroup.entries.toSet(),

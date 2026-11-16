@@ -298,7 +298,7 @@ internal class MemoryBackupStore(
     var failPartition: BackupPartition? = null
     var imagesWritten = 0
 
-    override suspend fun read(): BackupSnapshot {
+    override suspend fun read(groups: Set<BackupGroup>): BackupSnapshot {
         return BackupSnapshot(
             appStateJson = appStateJson,
             modelsJson = modelsJson,
