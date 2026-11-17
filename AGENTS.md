@@ -13,6 +13,7 @@
 ├── .agents/skills/      # SKILLs 真实目录
 ├── .claude/skills/      # .agents/skills 的软链，不用修改这里的文件
 ├── .githooks/           # 提交前坏味道检查；规则、放行、清理方式见其 README.md
+├── accessibility/       # 无障碍屏幕驱动：节点树提取、手势派发、虚拟屏幕
 ├── app/                 # 主应用：Compose UI、AgentRuntimeService、Xposed 钩子
 ├── business/            # 业务核心层（契约与实现分离）
 │   ├── api/             # 业务对外公共契约接口
@@ -20,7 +21,9 @@
 │   ├── files/           # 文件附件与路径解析
 │   ├── notification/    # 常驻通知、前台服务与通知渠道管理
 │   ├── permission/      # 权限管理中心（Root / Shizuku 自动授权、统一审批）
-│   └── application/     # 应用管理与生命周期
+│   ├── application/     # 应用管理与生命周期
+│   ├── screen/          # 屏幕交互契约与 DisplayPort 抽象
+│   └── remote/          # 遥测上报与设备画像
 ├── agent-runtime/       # Agent 运行时：LLM 调用、工具/Skill/MCP 执行、Python 运行时
 ├── xsettings/           # 轻量配置模块（业务按需依赖）
 ├── store/               # Store 持久化、IPC 桥（XIpcBridge）
@@ -31,6 +34,7 @@
 └── libs/
     ├── logging/         # 日志库
     ├── okia/            # Okia Agent 运行时基础库
+    ├── shizuku/         # Shizuku 提权绑定与特权服务封装
     └── libterm/         # 终端库（含多个后端：libsu, shizuku, ssh 等）
 ```
 
