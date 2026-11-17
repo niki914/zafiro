@@ -21,11 +21,73 @@ class SkillFileRepository(
     private val parser = SkillFrontmatterParser()
     private val stateStore = SkillEnabledStateStore(File(skillsRoot, STATUS_FILE_NAME))
 
+    private data class CachedSkillsSnapshot(
+        val signature: Long,
+        val skills: List<RuntimeSkillMetadata>,
+    )
+
+    @Volatile
+    private var cache: CachedSkillsSnapshot? = null
+
+    fun invalidateCache() {
+        cache = null
+    }
+
+    /**
+     * 计算 skills 目录树的轻量时间戳签名。
+     * 仅做 stat 系统调用，不读文件内容与解析 frontmatter。
+     */
+    fun calculateMtimeSignature(): Long {
+        var sig = tryOrDefault(0L) { skillsRoot.lastModified() }
+        val statusFile = File(skillsRoot, STATUS_FILE_NAME)
+        if (tryOrDefault(false) { statusFile.isFile }) {
+            sig = 31 * sig + statusFile.lastModified()
+        }
+        val firstLevel = tryOrNull { skillsRoot.listFiles() } ?: return sig
+        for (first in firstLevel) {
+            if (tryOrDefault(false) { first.isDirectory }) {
+                sig = 31 * sig + first.lastModified()
+                val skillFile = File(first, SkillPathResolver.SKILL_FILE_NAME)
+                if (tryOrDefault(false) { skillFile.isFile }) {
+                    sig = 31 * sig + skillFile.lastModified()
+                }
+                val secondLevel = tryOrNull { first.listFiles() } ?: continue
+                for (second in secondLevel) {
+                    if (tryOrDefault(false) { second.isDirectory }) {
+                        sig = 31 * sig + second.lastModified()
+                        val nestedSkillFile = File(second, SkillPathResolver.SKILL_FILE_NAME)
+                        if (tryOrDefault(false) { nestedSkillFile.isFile }) {
+                            sig = 31 * sig + nestedSkillFile.lastModified()
+                        }
+                    }
+                }
+            }
+        }
+        return sig
+    }
+
+    fun invalidateCacheIfModified(): Boolean {
+        val currentSig = calculateMtimeSignature()
+        val currentCache = cache
+        if (currentCache == null || currentCache.signature != currentSig) {
+            cache = null
+            return true
+        }
+        return false
+    }
+
     fun listAll(): List<RuntimeSkillMetadata> {
+        val currentSig = calculateMtimeSignature()
+        val currentCache = cache
+        if (currentCache != null && currentCache.signature == currentSig) {
+            return currentCache.skills
+        }
         val resolvedList = tryOrNull { resolver.scanSkillFiles() }.orEmpty()
-        return resolvedList.mapNotNull { resolved ->
+        val fresh = resolvedList.mapNotNull { resolved ->
             tryOrNull { metadataFor(resolved) }
         }
+        cache = CachedSkillsSnapshot(currentSig, fresh)
+        return fresh
     }
 
     fun listEnabled(): List<RuntimeSkillMetadata> {
@@ -54,12 +116,14 @@ class SkillFileRepository(
     fun saveContent(id: String, content: String): RuntimeSkillValidation? {
         val resolved = resolveExisting(id) ?: return validationForMissingOrInvalid(id)
         resolved.skillFile.writeText(content, Charsets.UTF_8)
+        invalidateCache()
         return null
     }
 
     fun setEnabled(id: String, enabled: Boolean): RuntimeSkillValidation? {
         val resolved = resolveExisting(id) ?: return validationForMissingOrInvalid(id)
         stateStore.setEnabled(resolved.id, enabled)
+        invalidateCache()
         return null
     }
 
@@ -70,6 +134,7 @@ class SkillFileRepository(
         }
         stateStore.remove(resolved.id)
         cleanEmptySkillDirs(resolved.skillDir)
+        invalidateCache()
         return null
     }
 
@@ -96,6 +161,7 @@ class SkillFileRepository(
                 targetDir.deleteRecursively()
                 SkillImportResult.Error("Copy failed: unable to read source directory")
             } else {
+                invalidateCache()
                 SkillImportResult.Success
             }
         } catch (e: Exception) {

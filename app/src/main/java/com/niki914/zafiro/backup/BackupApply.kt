@@ -292,6 +292,7 @@ private fun updateLocalSnapshot(local: BackupSnapshot, write: PartitionWrite): B
             BackupPartition.BuiltinTools -> local.copy(builtinToolsJson = write.json)
             BackupPartition.PyTools -> local.copy(pyToolsJson = write.json)
             BackupPartition.TextActions -> local.copy(textActionsJson = write.json)
+            BackupPartition.QuickPrompts -> local.copy(quickPromptsJson = write.json)
             BackupPartition.ExecutionRules -> local.copy(executionRulesJson = write.json)
             BackupPartition.TakeoverRules -> local.copy(takeoverRulesJson = write.json)
             BackupPartition.MaskingRules -> local.copy(maskingRulesJson = write.json)

@@ -280,8 +280,10 @@ fun HomePageContent(
         }
     }
 
-    LaunchedEffect(Unit) {
-        latestViewModel.sendIntent(HomeChatIntent.RefreshConfigs)
+    LaunchedEffect(isCurrentPage) {
+        if (isCurrentPage) {
+            latestViewModel.sendIntent(HomeChatIntent.RefreshConfigs)
+        }
     }
 
     DisposableEffect(Unit) {

@@ -17,13 +17,21 @@ import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.app.conversation.ConversationBranchTree
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ForkKind
+import com.niki914.zafiro.app.ui.home.composer.suggestion.BuiltinSlashCommand
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashCategory
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashSuggestion
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SuggestionAction
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SuggestionScope
+import com.niki914.zafiro.app.ui.home.composer.suggestion.isCjkOrPunctuation
 import com.niki914.zafiro.app.ui.model.TextPacer
 import com.niki914.zafiro.app.ui.model.summariesOf
 import com.niki914.zafiro.business.files.FileAttachResult
 import com.niki914.zafiro.business.files.FilesService
 import com.niki914.zafiro.repo.LlmConfigsDocument
+import com.niki914.zafiro.repo.RuntimeQuickPrompt
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.requireService
+import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
 import kotlinx.coroutines.CancellableContinuation
 import com.niki914.zafiro.api.util.Debouncer
 import com.niki914.zafiro.api.util.debouncer
@@ -31,7 +39,9 @@ import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.api.util.tryOrDefault
 import com.niki914.zafiro.api.util.tryIgnore
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -40,10 +50,18 @@ import kotlin.coroutines.resume
 
 internal data class HomeChatConfigDependencies(
     val loadConfigs: suspend () -> LlmConfigsDocument,
+    val loadSkills: suspend () -> List<RuntimeSkillMetadata> = { emptyList() },
+    val skillsRevisions: Flow<Long> = emptyFlow(),
+    val loadQuickPrompts: suspend () -> List<RuntimeQuickPrompt> = { emptyList() },
+    val quickPromptsRevisions: Flow<Long> = emptyFlow(),
 ) {
     companion object {
         val Default = HomeChatConfigDependencies(
             loadConfigs = { XRepo.llmConfigs.document() },
+            loadSkills = { XRepo.skills.listEnabled() },
+            skillsRevisions = XRepo.skills.revision,
+            loadQuickPrompts = { XRepo.quickPrompts.list() },
+            quickPromptsRevisions = XRepo.quickPrompts.revision,
         )
     }
 }
@@ -98,6 +116,16 @@ class HomeChatViewModel internal constructor(
         restoreStartupState()
         viewModelScope.launch {
             refreshSavedConfigs()
+        }
+        viewModelScope.launch {
+            configDependencies.skillsRevisions.collect {
+                refreshSlashSuggestions()
+            }
+        }
+        viewModelScope.launch {
+            configDependencies.quickPromptsRevisions.collect {
+                refreshSlashSuggestions()
+            }
         }
     }
 
@@ -167,7 +195,42 @@ class HomeChatViewModel internal constructor(
 
             HomeChatIntent.RefreshConfigs -> {
                 refreshSavedConfigs()
+                refreshSlashSuggestions()
             }
+        }
+    }
+
+    private suspend fun refreshSlashSuggestions() {
+        runCatchingCancellable {
+            val builtinSuggestions = BuiltinSlashCommand.ALL.map { it.toSuggestion() }
+            val skills = configDependencies.loadSkills()
+            val skillSuggestions = skills.map { skill ->
+                SlashSuggestion(
+                    id = skill.id,
+                    category = SlashCategory.SKILL,
+                    displayText = "/skill:${skill.id}",
+                    replaceToken = "/skill:${skill.id} ",
+                    scope = SuggestionScope.ANYWHERE,
+                    searchKeys = listOf(skill.name, skill.id),
+                )
+            }
+            val quickPrompts = configDependencies.loadQuickPrompts().filter { it.enabled }
+            val quickPromptSuggestions = quickPrompts.map { prompt ->
+                SlashSuggestion(
+                    id = prompt.name,
+                    category = SlashCategory.PROMPT,
+                    displayText = "/${prompt.name}",
+                    replaceToken = "${prompt.prompt} ",
+                    scope = SuggestionScope.ANYWHERE,
+                    action = SuggestionAction.Insert("${prompt.prompt} "),
+                    searchKeys = listOf(prompt.name, prompt.prompt),
+                )
+            }
+            updateState {
+                copy(slashSuggestions = builtinSuggestions + skillSuggestions + quickPromptSuggestions)
+            }
+        }.onFailure { throwable ->
+            Logger.w(LOG_TAG, "refreshSlashSuggestions failed: ${throwable.message}")
         }
     }
 
@@ -524,7 +587,23 @@ class HomeChatViewModel internal constructor(
             sendEffect(HomeChatEffect.EmptyInputAttempted)
             return
         }
-        agent.updateDraft { it.copy(text = trimmedInput) }
+
+        if (!hasAttachments) {
+            when (BuiltinSlashCommand.find(trimmedInput)) {
+                BuiltinSlashCommand.NewSession -> {
+                    updateState { copy(input = "") }
+                    startNewConversation()
+                    return
+                }
+                BuiltinSlashCommand.Compact -> {
+                    // 透传给 agent.stream()，由 AgentImpl 拦截执行强制压缩
+                }
+                null -> { /* 普通消息，继续正常发送 */ }
+            }
+        }
+
+        val expandedInput = expandQuickPrompts(trimmedInput, configDependencies.loadQuickPrompts())
+        agent.updateDraft { it.copy(text = expandedInput) }
         // stream() is synchronous; don't let it consume Pending images before AgentImpl finishes ingest.
         agent.draft.first { draft -> draft.images.none { it is DraftImage.Pending } }
         updateState { copy(isGenerating = true, unreadTurnId = null) }
@@ -932,4 +1011,50 @@ private class ForegroundDialogApprover(
         onPendingChanged(null)
         current?.cancel()
     }
+}
+
+internal fun isQuickPromptBoundary(char: Char): Boolean {
+    return char.isWhitespace() ||
+            char in "!\"#\$%&'()*+,-./:;<=>?@[\\]^_`{|}~" ||
+            isCjkOrPunctuation(char)
+}
+
+internal fun expandQuickPrompts(
+    input: String,
+    prompts: List<RuntimeQuickPrompt>,
+): String {
+    if (prompts.isEmpty() || !input.contains('/')) return input
+    val enabledPrompts = prompts.filter { it.enabled && it.name.isNotBlank() }
+    if (enabledPrompts.isEmpty()) return input
+
+    val sortedPrompts = enabledPrompts.sortedByDescending { it.name.length }
+    val sb = StringBuilder(input.length)
+    var i = 0
+    while (i < input.length) {
+        if (input[i] == '/') {
+            val isStartBoundary = (i == 0 || isQuickPromptBoundary(input[i - 1]))
+            if (isStartBoundary) {
+                var matchedPrompt: RuntimeQuickPrompt? = null
+                for (prompt in sortedPrompts) {
+                    val nameLen = prompt.name.length
+                    if (input.regionMatches(i + 1, prompt.name, 0, nameLen, ignoreCase = true)) {
+                        val endIdx = i + 1 + nameLen
+                        val isEndBoundary = (endIdx == input.length || isQuickPromptBoundary(input[endIdx]))
+                        if (isEndBoundary) {
+                            matchedPrompt = prompt
+                            break
+                        }
+                    }
+                }
+                if (matchedPrompt != null) {
+                    sb.append(matchedPrompt.prompt)
+                    i += 1 + matchedPrompt.name.length
+                    continue
+                }
+            }
+        }
+        sb.append(input[i])
+        i++
+    }
+    return sb.toString()
 }

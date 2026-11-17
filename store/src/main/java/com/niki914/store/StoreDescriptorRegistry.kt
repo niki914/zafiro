@@ -17,6 +17,7 @@ object StoreDescriptorRegistry {
     const val RULES_EXECUTION_ID = "rules.execution"
     const val RULES_TAKEOVER_ID = "rules.takeover"
     const val RULES_MASKING_ID = "rules.masking"
+    const val PROMPTS_QUICK_ID = "prompts.quick"
     const val APP_STATE_ID = "app.state"
     const val AGENT_CONFIG_PREFIX = "agent.config."
     const val MAIN_AGENT_ID = "main"
@@ -80,6 +81,11 @@ object StoreDescriptorRegistry {
             RULES_MASKING_ID,
             "settings/rules/masking_rules.json",
             """{"rules":[]}"""
+        ),
+        StoreDescriptor(
+            PROMPTS_QUICK_ID,
+            "settings/prompts/quick_prompts.json",
+            """{"prompts":[]}"""
         ),
         StoreDescriptor(APP_STATE_ID, "settings/app_state.json")
     )
