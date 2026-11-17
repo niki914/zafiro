@@ -589,6 +589,43 @@
     <string name="ui_theme_style_liquid">Glass</string>
     <string name="ui_theme_style_md3">MD3</string>
     <string name="ui_theme_style_md3e">MD3E</string>
+    <string name="ui_theme_style_custom">カスタム</string>
+    <string name="ui_theme_style_unified">統一スタイル</string>
+
+    <string name="ui_theme_group_controls">基本コントロール</string>
+    <string name="ui_theme_group_layout">レイアウトとナビゲーション</string>
+    <string name="ui_theme_group_system">アニメーションとシステム</string>
+
+    <string name="ui_theme_part_button">ボタン</string>
+
+    <string name="ui_theme_part_switch">スイッチ</string>
+
+    <string name="ui_theme_part_slider">スライダー</string>
+
+    <string name="ui_theme_part_text_field">テキストフィールド</string>
+
+    <string name="ui_theme_part_loading">読み込みアニメーション</string>
+
+    <string name="ui_theme_part_top_bar_buttons">トップバーボタン</string>
+
+    <string name="ui_theme_part_top_bar_plate">トップバープレート</string>
+
+    <string name="ui_theme_part_composer">チャット入力バー</string>
+
+    <string name="ui_theme_part_search">検索バー</string>
+
+    <string name="ui_theme_part_page_scroll">ページスクロール</string>
+
+    <string name="ui_theme_part_dialog">ダイアログ</string>
+
+    <string name="ui_theme_part_menu">ドロップダウンメニュー</string>
+
+    <string name="ui_theme_part_settings">設定カード</string>
+
+    <string name="ui_theme_preview_primary_btn">主ボタン</string>
+    <string name="ui_theme_preview_tonal_btn">副ボタン</string>
+    <string name="ui_theme_preview_loading_hint">処理中...</string>
+    <string name="ui_theme_preview_input_hint">テキストを入力...</string>
 
     <string name="ui_theme_mode_system">システムに従う</string>
     <string name="ui_theme_mode_light">ライト</string>

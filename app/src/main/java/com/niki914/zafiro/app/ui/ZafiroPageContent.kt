@@ -17,6 +17,7 @@ import com.niki914.zafiro.app.ui.nav.FloatingBallSettingsPage
 import com.niki914.zafiro.app.ui.nav.MaskingRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.HomePage
 import com.niki914.zafiro.app.ui.nav.MarkdownScalePage
+import com.niki914.zafiro.app.ui.nav.ThemeStylesPage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
 import com.niki914.zafiro.app.ui.nav.OnboardingPreferencesPage
 import com.niki914.zafiro.app.ui.nav.OnboardingThemePage
@@ -43,6 +44,7 @@ import com.niki914.zafiro.app.ui.route.FloatingBallSettingsPageRoute
 import com.niki914.zafiro.app.ui.route.MaskingRuleDetailRoute
 import com.niki914.zafiro.app.ui.route.HomePageRoute
 import com.niki914.zafiro.app.ui.route.MarkdownScalePageRoute
+import com.niki914.zafiro.app.ui.route.ThemeStylesPageRoute
 import com.niki914.zafiro.app.ui.route.McpServerDetailRoute
 import com.niki914.zafiro.app.ui.route.OnboardingPreferencesRoute
 import com.niki914.zafiro.app.ui.route.OnboardingThemeRoute
@@ -207,6 +209,8 @@ fun ZafiroPageContent(
         )
 
         MarkdownScalePage -> MarkdownScalePageRoute()
+
+        ThemeStylesPage -> ThemeStylesPageRoute()
 
         FloatingBallSettingsPage -> FloatingBallSettingsPageRoute()
 

@@ -550,6 +550,43 @@
     <string name="ui_theme_style_liquid">Glass</string>
     <string name="ui_theme_style_md3">MD3</string>
     <string name="ui_theme_style_md3e">MD3E</string>
+    <string name="ui_theme_style_custom">Пользовательский</string>
+    <string name="ui_theme_style_unified">Единый стиль</string>
+
+    <string name="ui_theme_group_controls">Элементы управления</string>
+    <string name="ui_theme_group_layout">Макет и навигация</string>
+    <string name="ui_theme_group_system">Анимации и система</string>
+
+    <string name="ui_theme_part_button">Кнопки</string>
+
+    <string name="ui_theme_part_switch">Переключатель</string>
+
+    <string name="ui_theme_part_slider">Ползунок</string>
+
+    <string name="ui_theme_part_text_field">Текстовое поле</string>
+
+    <string name="ui_theme_part_loading">Индикатор загрузки</string>
+
+    <string name="ui_theme_part_top_bar_buttons">Кнопки панели навигации</string>
+
+    <string name="ui_theme_part_top_bar_plate">Фон панели навигации</string>
+
+    <string name="ui_theme_part_composer">Поле ввода чата</string>
+
+    <string name="ui_theme_part_search">Панель поиска</string>
+
+    <string name="ui_theme_part_page_scroll">Прокрутка страницы</string>
+
+    <string name="ui_theme_part_dialog">Диалоги</string>
+
+    <string name="ui_theme_part_menu">Выпадающее меню</string>
+
+    <string name="ui_theme_part_settings">Карточки настроек</string>
+
+    <string name="ui_theme_preview_primary_btn">Основная</string>
+    <string name="ui_theme_preview_tonal_btn">Тональная</string>
+    <string name="ui_theme_preview_loading_hint">Обработка...</string>
+    <string name="ui_theme_preview_input_hint">Введите текст...</string>
 
     <string name="ui_theme_mode_system">Как в системе</string>
     <string name="ui_theme_mode_light">Светлая</string>

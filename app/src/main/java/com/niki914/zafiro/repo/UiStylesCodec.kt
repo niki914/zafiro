@@ -6,7 +6,10 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 
 /**
  * `settings/ui_styles.json`。
@@ -33,6 +36,17 @@ internal object UiStylesCodec {
             kept[key] = text
         }
         return kept
+    }
+
+    fun encode(overrides: Map<String, String>): String {
+        val root = buildJsonObject {
+            putJsonObject("overrides") {
+                for ((key, value) in overrides) {
+                    put(key, value)
+                }
+            }
+        }
+        return json.encodeToString(JsonObject.serializer(), root)
     }
 
     fun overrideOrNull(overrides: Map<String, String>, part: UiStylePart): ThemeStyle? {

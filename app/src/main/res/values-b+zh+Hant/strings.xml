@@ -574,6 +574,43 @@
     <string name="ui_theme_style_liquid">Glass</string>
     <string name="ui_theme_style_md3">MD3</string>
     <string name="ui_theme_style_md3e">MD3E</string>
+    <string name="ui_theme_style_custom">自訂</string>
+    <string name="ui_theme_style_unified">統一風格</string>
+
+    <string name="ui_theme_group_controls">基礎控制項</string>
+    <string name="ui_theme_group_layout">版面配置與導覽</string>
+    <string name="ui_theme_group_system">動效與系統</string>
+
+    <string name="ui_theme_part_button">按鈕</string>
+
+    <string name="ui_theme_part_switch">開關</string>
+
+    <string name="ui_theme_part_slider">滑桿</string>
+
+    <string name="ui_theme_part_text_field">輸入框</string>
+
+    <string name="ui_theme_part_loading">載入動畫</string>
+
+    <string name="ui_theme_part_top_bar_buttons">頂欄按鈕</string>
+
+    <string name="ui_theme_part_top_bar_plate">頂欄背板</string>
+
+    <string name="ui_theme_part_composer">聊天輸入欄</string>
+
+    <string name="ui_theme_part_search">搜尋列</string>
+
+    <string name="ui_theme_part_page_scroll">頁面捲動</string>
+
+    <string name="ui_theme_part_dialog">彈窗與對話框</string>
+
+    <string name="ui_theme_part_menu">下拉選單</string>
+
+    <string name="ui_theme_part_settings">設定卡片</string>
+
+    <string name="ui_theme_preview_primary_btn">主按鈕</string>
+    <string name="ui_theme_preview_tonal_btn">次按鈕</string>
+    <string name="ui_theme_preview_loading_hint">載入處理中...</string>
+    <string name="ui_theme_preview_input_hint">輸入內容...</string>
 
     <string name="ui_theme_mode_system">跟隨系統</string>
     <string name="ui_theme_mode_light">淺色</string>
