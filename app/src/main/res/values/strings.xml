@@ -584,8 +584,10 @@
     <string name="ui_settings_configure_protocol_hint">切换协议后，请确认端点与协议匹配。</string>
     <string name="ui_settings_configure_thinking_label">思考强度</string>
     <string name="ui_settings_configure_thinking_hint">默认遵循模型配置。若服务商报错请调低强度。</string>
-    <string name="ui_settings_configure_thinking_start_label">Default</string>
-    <string name="ui_settings_configure_thinking_end_label">Max</string>
+    <string name="ui_home_model_sheet_title">当前配置</string>
+    <string name="ui_home_model_sheet_section_config">配置</string>
+    <string name="ui_home_model_sheet_section_thinking">思考强度</string>
+    <string name="ui_home_model_sheet_section_model">模型</string>
     <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
     <string name="ui_settings_configure_max_tokens_placeholder">例如：200000 或 200k</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">请填写不小于 256 的有效数值，支持 k/m/b</string>

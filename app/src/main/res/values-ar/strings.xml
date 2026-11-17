@@ -594,8 +594,10 @@
     <string name="ui_settings_configure_protocol_hint">بعد تبديل البروتوكول، تأكد أن نقطة النهاية تطابقه.</string>
     <string name="ui_settings_configure_thinking_label">جهد التفكير</string>
     <string name="ui_settings_configure_thinking_hint">يتبع إعداد النموذج افتراضيًا. خفّض الجهد إذا رفضه مزود الخدمة.</string>
-    <string name="ui_settings_configure_thinking_start_label">Default</string>
-    <string name="ui_settings_configure_thinking_end_label">Max</string>
+    <string name="ui_home_model_sheet_title">التكوين الحالي</string>
+    <string name="ui_home_model_sheet_section_config">التكوين</string>
+    <string name="ui_home_model_sheet_section_thinking">قوة التفكير</string>
+    <string name="ui_home_model_sheet_section_model">النموذج</string>
     <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
     <string name="ui_settings_configure_max_tokens_placeholder">مثال: 200000 أو 200k</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">أدخل عددًا صالحًا لا يقل عن 256، مع دعم k/m/b</string>

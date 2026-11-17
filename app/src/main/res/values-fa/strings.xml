@@ -586,8 +586,10 @@
     <string name="ui_settings_configure_protocol_hint">پس از تعویض پروتکل، مطمئن شوید نقطه پایانی با آن می‌خواند.</string>
     <string name="ui_settings_configure_thinking_label">میزان تفکر</string>
     <string name="ui_settings_configure_thinking_hint">به‌طور پیش‌فرض از تنظیم مدل پیروی می‌کند. اگر سرویس‌دهنده خطا داد، میزان را کم کنید.</string>
-    <string name="ui_settings_configure_thinking_start_label">Default</string>
-    <string name="ui_settings_configure_thinking_end_label">Max</string>
+    <string name="ui_home_model_sheet_title">پیکربندی فعلی</string>
+    <string name="ui_home_model_sheet_section_config">پیکربندی</string>
+    <string name="ui_home_model_sheet_section_thinking">شدت تفکر</string>
+    <string name="ui_home_model_sheet_section_model">مدل</string>
     <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
     <string name="ui_settings_configure_max_tokens_placeholder">نمونه: 200000 یا 200k</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">عددی معتبر و دست‌کم 256 وارد کنید. k/m/b پشتیبانی می‌شود</string>
