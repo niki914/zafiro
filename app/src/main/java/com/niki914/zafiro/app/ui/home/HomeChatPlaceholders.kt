@@ -11,11 +11,7 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imeAnimationTarget
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -26,11 +22,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.base.LocalThemeStyle
-import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.control.ZafiroLoadingIndicator
 import com.niki914.zafiro.app.R
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun HomeChatLoadingState(
     topPadding: Dp,
@@ -39,9 +33,6 @@ internal fun HomeChatLoadingState(
     onContentTap: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val themeStyle = LocalThemeStyle.current
-    val isExpressive = themeStyle == ThemeStyle.Material3Expressive
-
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -58,18 +49,12 @@ internal fun HomeChatLoadingState(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        if (isExpressive) {
-            LoadingIndicator(
-                modifier = Modifier.size(48.dp),
-                color = MaterialTheme.colorScheme.primary,
-            )
-        } else {
-            CircularProgressIndicator(
-                modifier = Modifier.size(36.dp),
-                color = MaterialTheme.colorScheme.primary,
-                strokeWidth = 3.dp,
-            )
-        }
+        ZafiroLoadingIndicator(
+            color = MaterialTheme.colorScheme.primary,
+            size = 36.dp,
+            petalSize = 48.dp,
+            strokeWidth = 3.dp,
+        )
     }
 }
 

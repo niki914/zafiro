@@ -14,21 +14,26 @@ if str(HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(HOOKS_DIR))
 
 from checks.strings_rules import (
+    APP_MAIN_RES_DIR,
     KNOWN_LOCALES,
+    LANGUAGE_UI_RULE,
+    THEME_SETTINGS_PATH,
     ModuleReport,
     ParsedStrings,
     STRINGS_PATTERN,
     TargetLanguageReport,
     VerboseUiWarning,
     check_res_dir,
+    check_ui_language_registration,
     check_verbose_ui,
     discover_locale_files,
+    get_effective_locales,
     parse_strings_xml,
 )
 from core.git import parse_name_status
 
 
-STRING_RULE_NAMES = ("strings-alignment", "verbose-ui")
+STRING_RULE_NAMES = ("strings-alignment", "verbose-ui", "language-ui-registration")
 
 
 def check_single_res_dir(

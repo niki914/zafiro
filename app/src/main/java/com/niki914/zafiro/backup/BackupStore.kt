@@ -40,6 +40,7 @@ internal fun BackupPartition.storeId(): String? {
         BackupPartition.Memory -> StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID
         BackupPartition.Models -> StoreDescriptorRegistry.LLM_CONFIGS_ID
         BackupPartition.Preferences -> StoreDescriptorRegistry.APP_STATE_ID
+        BackupPartition.UiStyles -> StoreDescriptorRegistry.UI_STYLES_ID
         BackupPartition.McpServers -> StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID
         BackupPartition.McpService -> StoreDescriptorRegistry.TOOLS_MCP_SERVICE_ID
         BackupPartition.BuiltinTools -> StoreDescriptorRegistry.TOOLS_BUILTIN_ID

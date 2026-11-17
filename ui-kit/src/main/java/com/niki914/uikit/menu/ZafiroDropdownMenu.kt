@@ -6,8 +6,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import com.kyant.backdrop.Backdrop
-import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.infra.LiquidPopover
 import com.niki914.uikit.infra.LocalScreenBackdrop
 import com.niki914.uikit.infra.PopoverAlignment
@@ -27,7 +28,7 @@ fun ZafiroDropdownMenu(
     backdrop: Backdrop? = LocalScreenBackdrop.current,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    when (LocalThemeStyle.current) {
+    when (resolvedUiStyle(UiStylePart.Menu)) {
         ThemeStyle.LiquidGlass -> {
             LiquidPopover(
                 expanded = expanded,

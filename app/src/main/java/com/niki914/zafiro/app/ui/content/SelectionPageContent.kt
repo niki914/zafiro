@@ -1,27 +1,42 @@
 package com.niki914.zafiro.app.ui.content
 
+import android.content.Intent
+import android.net.Uri
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsListItem
@@ -29,11 +44,16 @@ import com.niki914.uikit.infra.component.SettingsListPageContent
 import com.niki914.uikit.infra.component.settings.item.SettingsTokens
 import com.niki914.uikit.infra.component.settings.resolveSettingIconColors
 import com.niki914.uikit.infra.shape.G2CardShape
+import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.app.R
+import androidx.core.net.toUri
+
+private const val BYOK_URL = "https://www.ibm.com/think/topics/byok"
 
 data class SelectionOption(
     val id: String,
     val title: String,
+    val summary: String? = null,
     @DrawableRes val leadingIconRes: Int? = null,
     val tintLeadingIcon: Boolean = true,
     /** 非空时 leading 渲染为该颜色的圆形色板（优先于 leadingIconRes）。 */
@@ -69,6 +89,7 @@ internal fun SelectionOptionRow(
 
     SettingsListItem(
         title = option.title,
+        summary = option.summary,
         showChevron = !option.selected,
         enabled = true,
         shape = shape,
@@ -154,12 +175,55 @@ internal fun SelectionGroupCard(
 }
 
 @Composable
+private fun ProviderPickHeader() {
+    val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val style = MaterialTheme.typography.titleMedium.copy(
+        fontSize = 16.sp,
+        lineHeight = 28.sp,
+    )
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            text = stringResource(R.string.ui_onboard_provider_pick_description),
+            style = style,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.ui_onboard_provider_pick_byok_hint),
+            style = style,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.primary,
+            textDecoration = TextDecoration.Underline,
+            modifier = Modifier
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    role = Role.Button,
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                        val intent = Intent(Intent.ACTION_VIEW, BYOK_URL.toUri()).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        runCatchingCancellable { context.startActivity(intent) }
+                    },
+                )
+                .padding(vertical = 4.dp),
+        )
+    }
+}
+
+@Composable
 fun SelectionPageContent(
     options: List<SelectionOption>,
 ) {
-    SettingsListPageContent(
-        description = stringResource(R.string.ui_onboard_provider_pick_description),
-    ) {
+    SettingsListPageContent {
+        ProviderPickHeader()
         SelectionGroupCard(options = options, isDarkTheme = LocalAppDarkTheme.current)
     }
 }

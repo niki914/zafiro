@@ -8,7 +8,8 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.LocalAppDarkTheme
-import com.niki914.uikit.base.LocalThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.infra.component.settings.item.SettingsTokens
 import com.niki914.uikit.infra.shape.G2FieldShape
@@ -153,7 +154,7 @@ fun resolveSettingIconColors(
     key: String,
     index: Int = 0,
 ): Pair<Color, Color> {
-    val themeStyle = LocalThemeStyle.current
+    val themeStyle = resolvedUiStyle(UiStylePart.Settings)
     val isDark = LocalAppDarkTheme.current
     val colorScheme = MaterialTheme.colorScheme
 

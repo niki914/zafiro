@@ -20,8 +20,9 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.motion.springSquish
 
 /**
@@ -40,7 +41,7 @@ fun MaterialTopBarButton(
     onButtonBoundsChanged: ((Rect) -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    val themeStyle = LocalThemeStyle.current
+    val themeStyle = resolvedUiStyle(UiStylePart.TopBarButtons)
     val interactionSource = remember { MutableInteractionSource() }
     val buttonSize = 48.dp
 
