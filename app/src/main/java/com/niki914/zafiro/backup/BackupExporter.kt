@@ -40,6 +40,7 @@ internal object BackupExporter {
             built[BackupPartition.Models.jsonName] = models.toByteArray()
             built[BackupPartition.Preferences.jsonName] =
                 preferencesDocument(snapshot.appStateJson).toByteArray()
+            built[BackupPartition.UiStyles.jsonName] = snapshot.uiStylesJson.toByteArray()
         }
         if (BackupGroup.Tools in request.groups) {
             val servers = if (request.includeSecrets) {

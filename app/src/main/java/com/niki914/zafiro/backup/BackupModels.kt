@@ -62,6 +62,14 @@ enum class BackupPartition(
         listKey = null,
         honorsExplicitEmpty = false,
     ),
+    UiStyles(
+        id = "ui_styles",
+        group = BackupGroup.Config,
+        apply = Apply.Overwrite,
+        singletonApply = null,
+        listKey = null,
+        honorsExplicitEmpty = false,
+    ),
     McpServers(
         id = "mcp_servers",
         group = BackupGroup.Tools,
@@ -217,6 +225,7 @@ data class SkillSnapshot(
 /** 导出时的全量读数。未选中的组不会写入包，但读数可以先备齐。 */
 data class BackupSnapshot(
     val appStateJson: String = "{}",
+    val uiStylesJson: String = """{"overrides":{}}""",
     val modelsJson: String = """{"active_id":"","prompt":"","configs":[]}""",
     val memoryJson: String = """{"memories":[]}""",
     val mcpServersJson: String = """{"servers":[]}""",
