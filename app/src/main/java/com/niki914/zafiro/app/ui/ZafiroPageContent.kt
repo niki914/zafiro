@@ -23,6 +23,7 @@ import com.niki914.zafiro.app.ui.nav.OnboardingPreferencesPage
 import com.niki914.zafiro.app.ui.nav.OnboardingThemePage
 import com.niki914.zafiro.app.ui.nav.PromptEditPage
 import com.niki914.zafiro.app.ui.nav.ProviderPickPage
+import com.niki914.zafiro.app.ui.nav.QuickPromptDetailPage
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
 import com.niki914.zafiro.app.ui.nav.SavedConfigPromptEditPage
 import com.niki914.zafiro.app.ui.nav.SettingsDetailPage
@@ -50,6 +51,7 @@ import com.niki914.zafiro.app.ui.route.OnboardingPreferencesRoute
 import com.niki914.zafiro.app.ui.route.OnboardingThemeRoute
 import com.niki914.zafiro.app.ui.route.PromptEditRoute
 import com.niki914.zafiro.app.ui.route.ProviderPickPageRoute
+import com.niki914.zafiro.app.ui.route.QuickPromptDetailRoute
 import com.niki914.zafiro.app.ui.route.SavedConfigDetailRoute
 import com.niki914.zafiro.app.ui.route.SavedConfigPromptEditRoute
 import com.niki914.zafiro.app.ui.route.SettingsDetailPageRoute
@@ -162,6 +164,11 @@ fun ZafiroPageContent(
         )
 
         is McpServerDetailPage -> McpServerDetailRoute(
+            page = page,
+            onBack = onPop,
+        )
+
+        is QuickPromptDetailPage -> QuickPromptDetailRoute(
             page = page,
             onBack = onPop,
         )

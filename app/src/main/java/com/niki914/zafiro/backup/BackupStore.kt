@@ -45,6 +45,7 @@ internal fun BackupPartition.storeId(): String? {
         BackupPartition.BuiltinTools -> StoreDescriptorRegistry.TOOLS_BUILTIN_ID
         BackupPartition.PyTools -> StoreDescriptorRegistry.TOOLS_PY_ID
         BackupPartition.TextActions -> StoreDescriptorRegistry.TOOLS_TEXT_ACTIONS_ID
+        BackupPartition.QuickPrompts -> StoreDescriptorRegistry.PROMPTS_QUICK_ID
         BackupPartition.ExecutionRules -> StoreDescriptorRegistry.RULES_EXECUTION_ID
         BackupPartition.TakeoverRules -> StoreDescriptorRegistry.RULES_TAKEOVER_ID
         BackupPartition.MaskingRules -> StoreDescriptorRegistry.RULES_MASKING_ID

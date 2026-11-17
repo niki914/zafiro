@@ -280,8 +280,10 @@ fun HomePageContent(
         }
     }
 
-    LaunchedEffect(Unit) {
-        latestViewModel.sendIntent(HomeChatIntent.RefreshConfigs)
+    LaunchedEffect(isCurrentPage) {
+        if (isCurrentPage) {
+            latestViewModel.sendIntent(HomeChatIntent.RefreshConfigs)
+        }
     }
 
     DisposableEffect(Unit) {
@@ -328,6 +330,7 @@ fun HomePageContent(
             latestViewModel.sendIntent(HomeChatIntent.NewConversation)
         },
         onOpenSettings = latestOnOpenSettings,
+        isGenerating = uiState.isGenerating,
         titleContent = titleContent,
     )
 

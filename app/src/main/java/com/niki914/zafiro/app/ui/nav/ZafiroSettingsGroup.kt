@@ -38,6 +38,11 @@ enum class ZafiroSettingsGroup(
         summaryRes = R.string.ui_settings_skills_summary,
         routeSuffix = "skills",
     ),
+    QuickPrompts(
+        titleRes = R.string.ui_settings_quick_prompts,
+        summaryRes = R.string.ui_settings_quick_prompts_summary,
+        routeSuffix = "quick-prompts",
+    ),
     Actions(
         titleRes = R.string.ui_settings_actions,
         summaryRes = R.string.ui_settings_actions_summary,

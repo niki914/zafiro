@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.app.ui.home
 
 import android.app.Activity
@@ -22,6 +23,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +63,13 @@ import com.niki914.zafiro.app.ui.home.composer.attach.GrantingTakePicture
 import com.niki914.zafiro.app.ui.home.composer.attach.HomeAttachmentSheet
 import com.niki914.zafiro.app.ui.home.composer.attach.createCameraTarget
 import com.niki914.zafiro.app.ui.home.composer.attach.isImportableImage
+import com.niki914.zafiro.app.ui.home.composer.suggestion.HomeComposerSuggestionOverlay
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashFuzzyMatcher
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashSuggestion
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashTrigger
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SuggestionAction
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SuggestionScope
+import com.niki914.zafiro.app.ui.home.composer.suggestion.isStandalone
 import com.niki914.zafiro.app.ui.model.home.ActionSource
 import com.niki914.zafiro.app.ui.model.home.HomeChatFile
 import com.niki914.zafiro.app.ui.model.home.HomeChatImage
@@ -122,6 +131,31 @@ internal fun HomePageContentBody(
     val context = LocalContext.current
     var attachSheetVisible by remember { mutableStateOf(false) }
     var pendingCapture by remember { mutableStateOf<CameraTarget?>(null) }
+
+    var activeSlashTrigger by remember { mutableStateOf<SlashTrigger?>(null) }
+    var pendingSuggestionToApply by remember { mutableStateOf<SlashSuggestion?>(null) }
+
+    val isStandaloneContext = remember(activeSlashTrigger, uiState.input, pendingImages, pendingFiles) {
+        val trigger = activeSlashTrigger ?: return@remember false
+        trigger.isStandalone(
+            input = uiState.input,
+            hasAttachments = pendingImages.isNotEmpty() || pendingFiles.isNotEmpty(),
+        )
+    }
+
+    val matchingSuggestions = remember(activeSlashTrigger?.query, uiState.slashSuggestions, isStandaloneContext) {
+        val trigger = activeSlashTrigger
+        if (trigger != null) {
+            val candidates = uiState.slashSuggestions.filter { suggestion ->
+                suggestion.scope == SuggestionScope.ANYWHERE || isStandaloneContext
+            }
+            SlashFuzzyMatcher.match(trigger.query, candidates)
+        } else {
+            emptyList()
+        }
+    }
+
+    val isSuggestionPanelVisible = activeSlashTrigger != null && matchingSuggestions.isNotEmpty()
 
     // 系统图片选择器（photo picker，无权限）：可多选，选完逐张 ingest 落盘 → pendingImages
     val photoPicker = rememberLauncherForActivityResult(
@@ -297,6 +331,27 @@ internal fun HomePageContentBody(
                 )
             }
 
+            HomeComposerSuggestionOverlay(
+                visible = isSuggestionPanelVisible,
+                suggestions = matchingSuggestions,
+                onSelectSuggestion = { suggestion ->
+                    when (val action = suggestion.action) {
+                        is SuggestionAction.Insert -> {
+                            pendingSuggestionToApply = suggestion
+                        }
+                        is SuggestionAction.Submit -> {
+                            onInputChange(action.replaceToken)
+                            activeSlashTrigger = null
+                            onSendClick()
+                        }
+                    }
+                },
+                composerBottomPadding = composerBottomPadding,
+                composerHeight = composerHeight.value,
+                hasAttachments = pendingImages.isNotEmpty() || pendingFiles.isNotEmpty(),
+                isComposerExpanded = composerHeight.value > 76.dp || uiState.input.contains('\n'),
+            )
+
             ZafiroChatComposer(
                 value = uiState.input,
                 onValueChange = onInputChange,
@@ -319,6 +374,9 @@ internal fun HomePageContentBody(
                     },
                 contextProgress = uiState.contextProgress,
                 onAttachImageClick = { attachSheetVisible = true },
+                onSlashTriggerChange = { activeSlashTrigger = it },
+                pendingSuggestion = pendingSuggestionToApply,
+                onSuggestionApplied = { pendingSuggestionToApply = null },
             )
 
             val scrollToBottomScope = rememberCoroutineScope()

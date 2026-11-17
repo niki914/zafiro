@@ -57,6 +57,9 @@ import com.niki914.uikit.motion.springSquish
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.home.composer.attach.ComposerAttachButton
 import com.niki914.zafiro.app.ui.home.composer.send.ComposerSendButton
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashSuggestion
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashTrigger
+import com.niki914.zafiro.app.ui.home.composer.suggestion.findSlashTrigger
 
 /** 紧凑态 composer 最小高度：12dp 容器垂直 padding × 2 + 48sp 按钮 footprint。 */
 internal val COMPACT_COMPOSER_MIN_HEIGHT = 72.dp
@@ -86,6 +89,9 @@ fun ZafiroChatComposer(
     modifier: Modifier = Modifier,
     contextProgress: Float? = null,
     onAttachImageClick: () -> Unit = {},
+    onSlashTriggerChange: (SlashTrigger?) -> Unit = {},
+    pendingSuggestion: SlashSuggestion? = null,
+    onSuggestionApplied: () -> Unit = {},
 ) {
     var expandedLatch by remember { mutableStateOf(false) }
     var compactWidth by remember { mutableIntStateOf(0) }
@@ -126,6 +132,39 @@ fun ZafiroChatComposer(
                 selection = TextRange(value.length),
             )
         }
+    }
+
+    val currentTrigger = remember(textFieldValue.text, textFieldValue.selection.end, isFocused) {
+        if (isFocused) {
+            findSlashTrigger(textFieldValue.text, textFieldValue.selection.end)
+        } else {
+            null
+        }
+    }
+
+    LaunchedEffect(currentTrigger) {
+        onSlashTriggerChange(currentTrigger)
+    }
+
+    LaunchedEffect(pendingSuggestion) {
+        val suggestion = pendingSuggestion ?: return@LaunchedEffect
+        val text = textFieldValue.text
+        val cursor = textFieldValue.selection.end
+        val trigger = findSlashTrigger(text, cursor)
+        if (trigger != null) {
+            val before = text.substring(0, trigger.slashIndex)
+            val after = text.substring(trigger.endIndex)
+            val newText = before + suggestion.replaceToken + after
+            val newCursor = before.length + suggestion.replaceToken.length
+            textFieldValue = TextFieldValue(
+                text = newText,
+                selection = TextRange(newCursor),
+            )
+            if (newText != value) {
+                onValueChange(newText)
+            }
+        }
+        onSuggestionApplied()
     }
 
     val themeStyle = resolvedUiStyle(UiStylePart.Composer)
