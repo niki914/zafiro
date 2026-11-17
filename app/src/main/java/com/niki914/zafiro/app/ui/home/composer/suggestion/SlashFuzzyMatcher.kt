@@ -22,7 +22,7 @@ object SlashFuzzyMatcher {
         val targetCategory = if (hasCategoryPrefix) trimmed.substringBefore(':') else null
         val effectiveQuery = if (hasCategoryPrefix) trimmed.substringAfter(':') else trimmed
 
-        val matched = candidates
+        return candidates
             .mapNotNull { candidate ->
                 if (targetCategory != null && !candidate.category.prefix.startsWith(targetCategory)) {
                     return@mapNotNull null
@@ -32,20 +32,6 @@ object SlashFuzzyMatcher {
             }
             .sortedByDescending { it.second }
             .map { it.first }
-
-        val exactMatch = matched.find { candidate ->
-            trimmed == candidate.displayText.lowercase().removePrefix("/") ||
-                    trimmed == "${candidate.category.prefix}:${candidate.id.lowercase()}"
-        }
-
-        return if (exactMatch != null) {
-            // If other longer completions exist (e.g. user typed /skill:git and candidates have git & github),
-            // suppress the exact match itself and show the longer completions.
-            // If only the exact match exists, return emptyList to suppress the popup.
-            matched.filter { it.id != exactMatch.id }
-        } else {
-            matched
-        }
     }
 
     private fun calculateScore(

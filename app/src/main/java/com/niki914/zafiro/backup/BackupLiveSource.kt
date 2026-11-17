@@ -78,6 +78,11 @@ internal object BackupLiveSource {
             } else {
                 "{}"
             },
+            quickPromptsJson = if (includeTools) {
+                XRepo.readJson(StoreDescriptorRegistry.PROMPTS_QUICK_ID)
+            } else {
+                "{}"
+            },
             executionRulesJson = if (includeExecutionRules) {
                 XRepo.readJson(StoreDescriptorRegistry.RULES_EXECUTION_ID)
             } else {

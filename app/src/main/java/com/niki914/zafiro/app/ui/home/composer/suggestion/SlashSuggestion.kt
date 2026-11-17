@@ -3,6 +3,7 @@ package com.niki914.zafiro.app.ui.home.composer.suggestion
 enum class SlashCategory(val prefix: String) {
     COMMAND("cmd"),
     SKILL("skill"),
+    PROMPT("prompt"),
 }
 
 enum class SuggestionScope {
