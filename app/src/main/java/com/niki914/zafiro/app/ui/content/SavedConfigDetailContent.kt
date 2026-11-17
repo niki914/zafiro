@@ -5,10 +5,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.niki914.uikit.dialog.ZafiroConfirmationDialog
+import com.niki914.uikit.dialog.ZafiroInputDialog
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureEffect
@@ -118,6 +120,7 @@ fun SavedConfigDetailContent(
             onShowModelCatalogSheet = { viewModel.sendIntent(ConfigureIntent.ShowModelCatalogSheet) },
             onHideModelCatalogSheet = { viewModel.sendIntent(ConfigureIntent.HideModelCatalogSheet) },
             onSelectCatalogModel = { viewModel.sendIntent(ConfigureIntent.SelectCatalogModel(it)) },
+            onShowAddModelDialog = { viewModel.sendIntent(ConfigureIntent.ShowAddModelDialog) },
         )
 
         EndpointMismatchDialog(
@@ -126,12 +129,38 @@ fun SavedConfigDetailContent(
             onCancel = { viewModel.sendIntent(ConfigureIntent.CancelEndpointMismatch) },
         )
 
+        var addModelInput by rememberSaveable { mutableStateOf("") }
+        if (uiState.showAddModelDialog) {
+            ZafiroInputDialog(
+                visible = true,
+                onDismissRequest = { viewModel.sendIntent(ConfigureIntent.HideAddModelDialog) },
+                title = stringResource(R.string.ui_onboard_configure_model_add_title),
+                value = addModelInput,
+                onValueChange = { addModelInput = it },
+                placeholder = stringResource(R.string.ui_onboard_configure_model_add_placeholder),
+                positiveButtonText = stringResource(android.R.string.ok),
+                positiveEnabled = addModelInput.trim().isNotBlank(),
+                onPositiveClick = {
+                    val trimmed = addModelInput.trim()
+                    if (trimmed.isNotBlank()) {
+                        viewModel.sendIntent(ConfigureIntent.AddAvailableModel(trimmed))
+                        addModelInput = ""
+                    } else {
+                        viewModel.sendIntent(ConfigureIntent.HideAddModelDialog)
+                    }
+                },
+            )
+        }
+
         ModelCatalogSheet(
             visible = uiState.showModelCatalogSheet,
-            catalog = uiState.modelCatalog,
+            catalog = uiState.availableModels,
             currentModelInput = uiState.modelInput,
+            fetchStatus = uiState.catalogFetchStatus,
             onDismissRequest = { viewModel.sendIntent(ConfigureIntent.HideModelCatalogSheet) },
             onSelect = { viewModel.sendIntent(ConfigureIntent.SelectCatalogModel(it)) },
+            onRefresh = { viewModel.sendIntent(ConfigureIntent.RefreshModelCatalog) },
+            onRequestAddModel = { viewModel.sendIntent(ConfigureIntent.ShowAddModelDialog) },
         )
 
         ZafiroConfirmationDialog(
@@ -173,6 +202,7 @@ private fun SavedConfigDetailContentBody(
     onShowModelCatalogSheet: () -> Unit = {},
     onHideModelCatalogSheet: () -> Unit = {},
     onSelectCatalogModel: (String) -> Unit = {},
+    onShowAddModelDialog: () -> Unit = {},
 ) {
     // 编辑态不限制端点编辑；新建态仅部分品牌开放自定义端点
     val policy = if (!showEndpointOverrideToggle) {
@@ -212,6 +242,7 @@ private fun SavedConfigDetailContentBody(
             onApiKeyChange = onApiKeyChange,
             onToggleApiKeyVisibility = onToggleApiKeyVisibility,
             onShowModelCatalogSheet = onShowModelCatalogSheet,
+            onShowAddModelDialog = onShowAddModelDialog,
         )
 
         ConfigureProtocolSettingsBlock(

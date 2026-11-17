@@ -22,6 +22,10 @@
     <string name="ui_onboard_configure_model_placeholder">شناسه مدل خود را وارد کنید</string>
     <string name="ui_onboard_configure_model_example">نمونه: %1$s</string>
     <string name="ui_onboard_configure_model_catalog_open">انتخاب مدل</string>
+    <string name="ui_onboard_configure_model_add_button">افزودن مدل</string>
+    <string name="ui_onboard_configure_model_add_title">افزودن مدل در دسترس</string>
+    <string name="ui_onboard_configure_model_add_placeholder">شناسه مدل را وارد کنید، مثلاً gpt-4o</string>
+    <string name="ui_onboard_configure_model_catalog_refresh">به‌روزرسانی فهرست مدل‌ها</string>
     <string name="ui_onboard_configure_model_catalog_title">انتخاب مدل</string>
     <string name="ui_onboard_configure_model_catalog_search_placeholder">جستجوی مدل</string>
     <string name="ui_onboard_configure_model_catalog_empty">مدل منطبقی نیست</string>

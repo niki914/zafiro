@@ -22,6 +22,10 @@
     <string name="ui_onboard_configure_model_placeholder">モデル名を入力</string>
     <string name="ui_onboard_configure_model_example">例：%1$s</string>
     <string name="ui_onboard_configure_model_catalog_open">モデルを選択</string>
+    <string name="ui_onboard_configure_model_add_button">モデルを追加</string>
+    <string name="ui_onboard_configure_model_add_title">利用可能なモデルを追加</string>
+    <string name="ui_onboard_configure_model_add_placeholder">モデルIDを入力、例：gpt-4o</string>
+    <string name="ui_onboard_configure_model_catalog_refresh">モデルカタログを更新</string>
     <string name="ui_onboard_configure_model_catalog_title">モデルを選択</string>
     <string name="ui_onboard_configure_model_catalog_search_placeholder">モデルを検索</string>
     <string name="ui_onboard_configure_model_catalog_empty">一致するモデルがありません</string>

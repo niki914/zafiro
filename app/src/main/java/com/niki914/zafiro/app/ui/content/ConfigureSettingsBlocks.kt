@@ -2,6 +2,7 @@ package com.niki914.zafiro.app.ui.content
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -102,6 +103,7 @@ internal fun ConfigureConnectionSettingsBlock(
     onApiKeyChange: (String) -> Unit,
     onToggleApiKeyVisibility: () -> Unit,
     onShowModelCatalogSheet: () -> Unit = {},
+    onShowAddModelDialog: () -> Unit = {},
 ) {
     val onClearActiveField = fieldController.clearActiveField
     SettingsConnectedGroup {
@@ -130,22 +132,28 @@ internal fun ConfigureConnectionSettingsBlock(
                 ),
             )
         }
-        // 双模式：目录为空 = 输入框占满（现状）；非空 = 输入框挤左 + 右侧按钮
+        // 双模式：有可用模型或已拉取目录时无条件展示选择按钮；否则展示添加按钮
         item { shape, isStandalone, _ ->
-            val catalogButton: (@Composable () -> Unit)? =
-                if (uiState.modelCatalog.isEmpty()) {
-                    null
+            val hasChoices = uiState.availableModels.isNotEmpty() || uiState.modelCatalog.isNotEmpty()
+            val trailingButton: @Composable () -> Unit = {
+                if (hasChoices) {
+                    ModelCatalogButton(
+                        enabled = !uiState.isSaving,
+                        onClick = {
+                            onClearActiveField()
+                            onShowModelCatalogSheet()
+                        },
+                    )
                 } else {
-                    {
-                        ModelCatalogButton(
-                            enabled = !uiState.isSaving,
-                            onClick = {
-                                onClearActiveField()
-                                onShowModelCatalogSheet()
-                            },
-                        )
-                    }
+                    ModelAddButton(
+                        enabled = !uiState.isSaving,
+                        onClick = {
+                            onClearActiveField()
+                            onShowAddModelDialog()
+                        },
+                    )
                 }
+            }
             SettingControlledExpandableTextItem(
                 field = ConfigureEditableField.Model,
                 controller = fieldController,
@@ -167,7 +175,7 @@ internal fun ConfigureConnectionSettingsBlock(
                 isStandaloneCard = isStandalone,
                 minLines = 1,
                 maxLines = 1,
-                fieldTrailingContent = catalogButton,
+                fieldTrailingContent = trailingButton,
             )
         }
         if (policy.showEndpointSection) {
@@ -233,9 +241,28 @@ private fun ModelCatalogButton(
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.FormatListBulleted,
-                contentDescription = stringResource(
-                    R.string.ui_onboard_configure_model_catalog_open
-                ),
+                contentDescription = "Pick model",
+            )
+        }
+    }
+}
+
+/** 手动添加模型按钮：与模型目录按钮同款外观。 */
+@Composable
+private fun ModelAddButton(
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    CompositionLocalProvider(
+        LocalContentColor provides MaterialTheme.colorScheme.primary,
+    ) {
+        ZafiroActionButton(
+            onClick = onClick,
+            enabled = enabled,
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Add model",
             )
         }
     }

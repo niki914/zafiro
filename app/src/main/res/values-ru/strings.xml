@@ -19,6 +19,10 @@
     <string name="ui_onboard_configure_model_placeholder">Введите ID модели</string>
     <string name="ui_onboard_configure_model_example">Например: %1$s</string>
     <string name="ui_onboard_configure_model_catalog_open">Выбрать модель</string>
+    <string name="ui_onboard_configure_model_add_button">Добавить модель</string>
+    <string name="ui_onboard_configure_model_add_title">Добавить доступную модель</string>
+    <string name="ui_onboard_configure_model_add_placeholder">Введите ID модели, напр. gpt-4o</string>
+    <string name="ui_onboard_configure_model_catalog_refresh">Обновить каталог моделей</string>
     <string name="ui_onboard_configure_model_catalog_title">Выбрать модель</string>
     <string name="ui_onboard_configure_model_catalog_search_placeholder">Поиск моделей</string>
     <string name="ui_onboard_configure_model_catalog_empty">Подходящих моделей нет</string>

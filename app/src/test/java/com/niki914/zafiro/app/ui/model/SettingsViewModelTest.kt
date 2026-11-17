@@ -44,6 +44,7 @@ class SettingsViewModelTest {
             listOf(
                 ZafiroSettingsGroup.Tools,
                 ZafiroSettingsGroup.Skills,
+                ZafiroSettingsGroup.QuickPrompts,
                 ZafiroSettingsGroup.Actions,
             ),
             state.sections[2].groups,

@@ -110,6 +110,10 @@ internal fun ConfigurePageRoute(
         onShowModelCatalogSheet = { viewModel.sendIntent(ConfigureIntent.ShowModelCatalogSheet) },
         onHideModelCatalogSheet = { viewModel.sendIntent(ConfigureIntent.HideModelCatalogSheet) },
         onSelectCatalogModel = { viewModel.sendIntent(ConfigureIntent.SelectCatalogModel(it)) },
+        onShowAddModelDialog = { viewModel.sendIntent(ConfigureIntent.ShowAddModelDialog) },
+        onHideAddModelDialog = { viewModel.sendIntent(ConfigureIntent.HideAddModelDialog) },
+        onAddAvailableModel = { viewModel.sendIntent(ConfigureIntent.AddAvailableModel(it)) },
+        onRefreshModelCatalog = { viewModel.sendIntent(ConfigureIntent.RefreshModelCatalog) },
         requestedFocusField = pendingFocusField,
         onRequestedFocusHandled = {
             pendingFocusField = null

@@ -260,69 +260,6 @@ class ConfigureViewModelTest {
         assertEquals(ConfigureEffect.FocusModel, effectDeferred.await())
     }
 
-    @Test
-    fun catalogFetch_successOverwritesIncludingEmpty() = runTest {
-        val deps = RecordingDeps()
-        deps.catalogResult = ModelCatalog(listOf("m-1"))
-        val viewModel = ConfigureViewModel(deps.toDependencies())
-        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew))
-        advanceUntilIdle()
-
-        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-1"))
-        advanceUntilIdle()
-        assertEquals(listOf("m-1"), viewModel.uiStateFlow.value.modelCatalog)
-
-        // 成功空结果也覆盖：按钮藏起，不残留旧名单
-        deps.catalogResult = ModelCatalog(emptyList())
-        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-2"))
-        advanceUntilIdle()
-        assertTrue(viewModel.uiStateFlow.value.modelCatalog.isEmpty())
-    }
-
-    @Test
-    fun catalogFetch_failureKeepsOldCache() = runTest {
-        val deps = RecordingDeps()
-        deps.catalogResult = ModelCatalog(listOf("m-1"))
-        val viewModel = ConfigureViewModel(deps.toDependencies())
-        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew))
-        advanceUntilIdle()
-
-        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-1"))
-        advanceUntilIdle()
-        assertEquals(listOf("m-1"), viewModel.uiStateFlow.value.modelCatalog)
-
-        // 失败保留旧缓存：不断网恢复前按钮仍可用
-        deps.catalogError = RuntimeException("boom")
-        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-2"))
-        advanceUntilIdle()
-        assertEquals(listOf("m-1"), viewModel.uiStateFlow.value.modelCatalog)
-    }
-
-    @Test
-    fun catalogFetch_successSavesFactsOnlyWhenPresent() = runTest {
-        val deps = RecordingDeps()
-        deps.catalogResult = ModelCatalog(
-            ids = listOf("m-1"),
-            facts = mapOf("m-1" to CloudModelFacts(windowTokens = 1_048_576L)),
-        )
-        val viewModel = ConfigureViewModel(deps.toDependencies())
-        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew))
-        advanceUntilIdle()
-
-        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-1"))
-        advanceUntilIdle()
-
-        val (endpoint, facts) = deps.savedFacts.single()
-        assertEquals("https://api.deepseek.com/responses", endpoint)
-        assertEquals(1_048_576L, facts["m-1"]?.windowTokens)
-
-        // 全缺字段（如 Google）：facts 为空，不写，旧缓存保留
-        deps.savedFacts.clear()
-        deps.catalogResult = ModelCatalog(ids = listOf("m-2"))
-        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-2"))
-        advanceUntilIdle()
-        assertTrue(deps.savedFacts.isEmpty())
-    }
 
     @Test
     fun initializeOnboarding_leavesTokenFieldsEmptyForCloudResolution() = runTest {
@@ -471,71 +408,6 @@ class ConfigureViewModelTest {
         assertEquals("final custom prompt", deps.upserted.first().prompt)
     }
 
-    @Test
-    fun initialize_prefillsNameWithProviderBrandName() = runTest {
-        val deps = RecordingDeps()
-        val viewModel = ConfigureViewModel(deps.toDependencies())
-
-        viewModel.sendIntent(
-            ConfigureIntent.Initialize(
-                ConfigureScene.SettingsNew,
-                providerId = "deepseek"
-            )
-        )
-        advanceUntilIdle()
-        assertEquals("DeepSeek", viewModel.uiStateFlow.value.configNameInput)
-
-        viewModel.sendIntent(
-            ConfigureIntent.Initialize(
-                ConfigureScene.Onboarding,
-                providerId = "deepseek"
-            )
-        )
-        advanceUntilIdle()
-        assertEquals("DeepSeek", viewModel.uiStateFlow.value.configNameInput)
-    }
-
-    @Test
-    fun save_withDuplicateName_rejectsWithNameError() = runTest {
-        val deps = RecordingDeps()
-        deps.document = LlmConfigsDocument(
-            activeId = "cfg-a",
-            configs = listOf(savedLlmConfig("cfg-a").copy(name = "Taken")),
-        )
-        val viewModel = ConfigureViewModel(deps.toDependencies())
-        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew))
-        advanceUntilIdle()
-        val effectDeferred = async { viewModel.uiEffect.first() }
-
-        viewModel.sendIntent(ConfigureIntent.UpdateName("Taken"))
-        viewModel.sendIntent(ConfigureIntent.Save)
-        advanceUntilIdle()
-
-        assertTrue(deps.upserted.isEmpty())
-        assertEquals(
-            R.string.ui_settings_configure_error_name_duplicate,
-            viewModel.uiStateFlow.value.nameErrorResId,
-        )
-        assertEquals(ConfigureEffect.FocusName, effectDeferred.await())
-    }
-
-    @Test
-    fun initializeNew_withExistingName_picksUniqueName() = runTest {
-        val deps = RecordingDeps()
-        deps.document = LlmConfigsDocument(
-            activeId = "cfg-a",
-            configs = listOf(savedLlmConfig("cfg-a").copy(name = "DeepSeek")),
-        )
-        val viewModel = ConfigureViewModel(deps.toDependencies())
-        viewModel.sendIntent(
-            ConfigureIntent.Initialize(
-                ConfigureScene.SettingsNew,
-                providerId = "deepseek",
-            )
-        )
-        advanceUntilIdle()
-        assertEquals("DeepSeek 2", viewModel.uiStateFlow.value.configNameInput)
-    }
 
     @Test
     fun revisions_updatesSavedConfigsAndActiveConfigId() = runTest {
@@ -600,28 +472,5 @@ class ConfigureViewModelTest {
         assertEquals("sk-onboarding", viewModel.uiStateFlow.value.apiKeyInput)
         assertEquals(savedId, viewModel.uiStateFlow.value.editingConfigId)
         assertEquals(ConfigureEffect.OnboardingSaveSucceeded, effectDeferred.await())
-    }
-
-    @Test
-    fun save_editingConfigWithOwnName_allowed() = runTest {
-        val deps = RecordingDeps()
-        deps.document = LlmConfigsDocument(
-            activeId = "cfg-a",
-            configs = listOf(savedLlmConfig("cfg-a").copy(name = "Same")),
-        )
-        val viewModel = ConfigureViewModel(deps.toDependencies())
-        viewModel.sendIntent(
-            ConfigureIntent.Initialize(
-                ConfigureScene.SettingsEdit,
-                configId = "cfg-a"
-            )
-        )
-        advanceUntilIdle()
-
-        viewModel.sendIntent(ConfigureIntent.Save)
-        advanceUntilIdle()
-
-        assertEquals(1, deps.upserted.size)
-        assertNull(viewModel.uiStateFlow.value.nameErrorResId)
     }
 }

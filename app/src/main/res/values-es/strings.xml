@@ -22,6 +22,10 @@
     <string name="ui_onboard_configure_model_placeholder">Introduzca el nombre del modelo</string>
     <string name="ui_onboard_configure_model_example">Ejemplo: %1$s</string>
     <string name="ui_onboard_configure_model_catalog_open">Elegir modelo</string>
+    <string name="ui_onboard_configure_model_add_button">Añadir modelo</string>
+    <string name="ui_onboard_configure_model_add_title">Añadir modelo disponible</string>
+    <string name="ui_onboard_configure_model_add_placeholder">Introduzca el ID del modelo, ej. gpt-4o</string>
+    <string name="ui_onboard_configure_model_catalog_refresh">Actualizar catálogo de modelos</string>
     <string name="ui_onboard_configure_model_catalog_title">Elegir modelo</string>
     <string name="ui_onboard_configure_model_catalog_search_placeholder">Buscar modelos</string>
     <string name="ui_onboard_configure_model_catalog_empty">Sin modelos coincidentes</string>

@@ -16,6 +16,28 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 /**
+ * 可用模型来源。
+ */
+enum class AvailableModelSource(val wireId: String) {
+    Custom("custom"),
+    Remote("remote");
+
+    companion object {
+        fun fromWire(wire: String?): AvailableModelSource {
+            return entries.firstOrNull { it.wireId.equals(wire, ignoreCase = true) } ?: Custom
+        }
+    }
+}
+
+/**
+ * 可用模型项。
+ */
+data class AvailableModelItem(
+    val id: String,
+    val source: AvailableModelSource = AvailableModelSource.Custom,
+)
+
+/**
  * 一份 Saved Configuration（完整可切换的 LLM 接入配置）。
  * 包含可选的独立 prompt（留空则回退至 [LlmConfigsDocument.prompt] 全局提示词）；
  * proxy 属于网络接入层，随配置走。
@@ -26,7 +48,10 @@ data class SavedLlmConfig(
     val provider: String,
     val endpoint: String,
     val apiKey: String,
+    /** 当前应用生效的模型 ID（持久化键名保持 model）。 */
     val model: String,
+    /** 该配置下保存的可用模型列表（含用户添加与云端拉取的项）。 */
+    val availableModels: List<AvailableModelItem> = emptyList(),
     /** LlmProtocol.wireId；空串 = 未设置，运行时回落默认协议。 */
     val protocol: String,
     /** 视觉模型开关（图片输入支持），默认关。 */
@@ -146,6 +171,20 @@ internal object LlmConfigsSettingsCodec {
             endpoint = obj.string(ENDPOINT_KEY),
             apiKey = obj.string(API_KEY_KEY),
             model = obj.string(MODEL_KEY),
+            availableModels = (obj[AVAILABLE_MODELS_KEY] as? JsonArray)?.mapNotNull { element ->
+                when (element) {
+                    is JsonObject -> {
+                        val id = element.string("id").trim()
+                        val source = AvailableModelSource.fromWire(element.string("source"))
+                        if (id.isNotBlank()) AvailableModelItem(id, source) else null
+                    }
+                    is JsonPrimitive -> {
+                        val id = element.contentOrNull?.trim().orEmpty()
+                        if (id.isNotBlank()) AvailableModelItem(id, AvailableModelSource.Custom) else null
+                    }
+                    else -> null
+                }
+            }.orEmpty(),
             protocol = obj.string(PROTOCOL_KEY),
             supportsImages = obj.boolean(SUPPORTS_IMAGES_KEY, default = false),
             prompt = obj.string(PROMPT_KEY),
@@ -170,6 +209,16 @@ internal object LlmConfigsSettingsCodec {
                 ENDPOINT_KEY to JsonPrimitive(config.endpoint),
                 API_KEY_KEY to JsonPrimitive(config.apiKey),
                 MODEL_KEY to JsonPrimitive(config.model),
+                AVAILABLE_MODELS_KEY to JsonArray(
+                    config.availableModels.map { item ->
+                        JsonObject(
+                            mapOf(
+                                "id" to JsonPrimitive(item.id),
+                                "source" to JsonPrimitive(item.source.wireId),
+                            )
+                        )
+                    }
+                ),
                 PROTOCOL_KEY to JsonPrimitive(config.protocol),
                 SUPPORTS_IMAGES_KEY to JsonPrimitive(config.supportsImages),
                 PROMPT_KEY to JsonPrimitive(config.prompt),
@@ -196,6 +245,7 @@ internal object LlmConfigsSettingsCodec {
     private const val ENDPOINT_KEY = "endpoint"
     private const val API_KEY_KEY = "api_key"
     private const val MODEL_KEY = "model"
+    private const val AVAILABLE_MODELS_KEY = "available_models"
     private const val PROTOCOL_KEY = "protocol"
     private const val SUPPORTS_IMAGES_KEY = "supports_images"
     private const val PROXY_KEY = "proxy"
