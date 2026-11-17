@@ -19,8 +19,9 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsListPageContent
@@ -96,8 +97,7 @@ private fun SettingsSectionContent(
 
     when (section.layout) {
         SettingsSectionLayout.GroupedCard -> {
-            val themeStyle = LocalThemeStyle.current
-            val isConnectedCard = (themeStyle != ThemeStyle.LiquidGlass)
+            val isConnectedCard = resolvedUiStyle(UiStylePart.Settings) != ThemeStyle.LiquidGlass
 
             if (isConnectedCard) {
                 // ── M3 / Expressive 模式：Python 工具卡片同款 Connected Shapes，无分割线，3dp 物理间距 ──

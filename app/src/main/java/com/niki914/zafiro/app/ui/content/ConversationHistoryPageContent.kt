@@ -33,7 +33,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material3.CircularProgressIndicator
+import com.niki914.uikit.control.ZafiroLoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -612,12 +612,12 @@ private fun ConversationHistoryItem(
                             modifier = Modifier.padding(start = 8.dp),
                         ) {
                             if (runState == ConversationRunState.Running) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier
-                                        .padding(end = 4.dp)
-                                        .size(11.dp),
-                                    strokeWidth = 1.2.dp,
+                                ZafiroLoadingIndicator(
+                                    modifier = Modifier.padding(end = 4.dp),
                                     color = MaterialTheme.colorScheme.primary,
+                                    size = 11.dp,
+                                    petalSize = 11.dp,
+                                    strokeWidth = 1.2.dp,
                                 )
                             } else if (runState == ConversationRunState.WaitingApproval || runState == ConversationRunState.UnreadCompleted) {
                                 Icon(

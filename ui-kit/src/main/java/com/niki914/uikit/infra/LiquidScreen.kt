@@ -43,8 +43,9 @@ import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.infra.internal.LiquidTopBarBackground
 import com.niki914.uikit.screen.ZafiroTopBar
 import com.niki914.uikit.screen.ZafiroTopBarDefaults
@@ -153,9 +154,8 @@ fun LiquidScreen(
         LocalHasActiveDialog provides dialogHostState.hasActiveDialog,
         LocalSheetProgress provides sheetProgressState,
     ) {
-        val themeStyle = LocalThemeStyle.current
-        val isLiquid = themeStyle == ThemeStyle.LiquidGlass
-        val backdropCaptureModifier = if (isLiquid) {
+        val plateIsLiquid = resolvedUiStyle(UiStylePart.TopBarPlate) == ThemeStyle.LiquidGlass
+        val backdropCaptureModifier = if (plateIsLiquid) {
             Modifier.layerBackdrop(contentBackdrop)
         } else {
             Modifier
@@ -202,7 +202,7 @@ fun LiquidScreen(
                     enter = fadeIn(tween(320, easing = FastOutSlowInEasing)),
                     exit = fadeOut(tween(320, easing = FastOutSlowInEasing)),
                 ) {
-                    if (isLiquid) {
+                    if (plateIsLiquid) {
                         LiquidTopBarBackground(
                             contentBackdrop = contentBackdrop,
                             chromeBackdrop = chromeBackdrop,

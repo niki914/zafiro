@@ -48,7 +48,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.base.LocalThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.infra.LocalLiquidDialogHostState
 import com.niki914.uikit.infra.nextLiquidDialogHostEntryId
@@ -105,7 +106,7 @@ private fun MaterialDialogSurface(
     actions: (@Composable RowScope.() -> Unit)? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    val themeStyle = LocalThemeStyle.current
+    val themeStyle = resolvedUiStyle(UiStylePart.Dialog)
     val colorScheme = MaterialTheme.colorScheme
     val scrimColor = colorScheme.scrim.copy(alpha = 0.32f)
     val panelShape = G2FieldShape(28.dp)

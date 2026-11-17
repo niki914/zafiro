@@ -31,7 +31,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.LocalAppDarkTheme
-import com.niki914.uikit.base.LocalThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.infra.LiquidMenuItem
 import com.niki914.uikit.infra.shape.G2FieldShape
@@ -46,7 +47,7 @@ fun ZafiroMenuItem(
     leadingIcon: ImageVector? = null,
     trailingText: String? = null,
 ) {
-    when (LocalThemeStyle.current) {
+    when (resolvedUiStyle(UiStylePart.Menu)) {
         ThemeStyle.LiquidGlass -> {
             LiquidMenuItem(
                 title = title,
@@ -83,7 +84,7 @@ internal fun MaterialMenuItem(
     leadingIcon: ImageVector? = null,
     trailingText: String? = null,
 ) {
-    val themeStyle = LocalThemeStyle.current
+    val themeStyle = resolvedUiStyle(UiStylePart.Menu)
     val isExpressive = themeStyle == ThemeStyle.Material3Expressive
     val isChecked = checked == true
     val isDarkTheme = LocalAppDarkTheme.current

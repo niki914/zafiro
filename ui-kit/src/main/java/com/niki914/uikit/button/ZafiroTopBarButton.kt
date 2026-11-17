@@ -5,8 +5,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.emptyBackdrop
-import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.infra.ActionBarButton
 
 /**
@@ -25,7 +26,7 @@ fun ZafiroTopBarButton(
     onButtonBoundsChanged: ((Rect) -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    when (LocalThemeStyle.current) {
+    when (resolvedUiStyle(UiStylePart.TopBarButtons)) {
         ThemeStyle.LiquidGlass -> ActionBarButton(
             onClick = onClick,
             modifier = modifier,

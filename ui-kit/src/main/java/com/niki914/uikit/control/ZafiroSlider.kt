@@ -24,8 +24,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.infra.component.LiquidSlider
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -33,7 +34,7 @@ import kotlin.math.roundToInt
 /**
  * 通用滑块控件门面组件：
  * - 统一收敛离散步长吸附、触觉震动反馈与高频 UI 更新 / 松手提交落盘契约；
- * - 业务层直接面向本基件编程，通过 [LocalThemeStyle] 自动分流；
+ * - 业务层直接面向本基件编程。风格只看滑块这一项，缺省跟随全局。
  * - [ThemeStyle.LiquidGlass]: 渲染为带毛玻璃折射与阻尼物理形变的 [LiquidSlider]，并在有极模式下内聚底部刻度分点；
  * - [ThemeStyle.Material3] / [ThemeStyle.Material3Expressive]: 渲染为原生 Material [Slider]，轨道内置 Stop 点，无下方额外分点，零 GPU 离屏损耗。
  */
@@ -102,7 +103,7 @@ fun ZafiroSlider(
         currentOnValueChangeFinished?.invoke()
     }
 
-    when (LocalThemeStyle.current) {
+    when (resolvedUiStyle(UiStylePart.Slider)) {
         ThemeStyle.LiquidGlass -> {
             Column(modifier = modifier) {
                 LiquidSlider(
