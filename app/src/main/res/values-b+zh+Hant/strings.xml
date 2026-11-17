@@ -86,6 +86,7 @@
     <string name="ui_toast_copied">已複製</string>
     <string name="ui_toast_generating">生成中，請稍後</string>
     <string name="ui_toast_empty_input">請輸入內容</string>
+    <string name="ui_toast_no_compactable_history">暫無可壓縮的對話內容</string>
     <string name="ui_home_error_retry_body">請稍後再試。</string>
     <string name="ui_home_error_config_required_title">模型配置不完整</string>
     <string name="ui_home_error_config_required_body">請前往填寫模型配置。</string>
@@ -108,7 +109,7 @@
     <string name="ui_conversation_history_this_month">本月</string>
     <string name="ui_conversation_history_older">更早</string>
     <string name="ui_conversation_history_pinned_section">置頂對話</string>
-    <string name="ui_conversation_history_loading">正在讀取對話歷史...</string>
+    <string name="ui_conversation_history_loading">正在讀取對話歷史…</string>
     <string name="ui_conversation_history_empty_title">暫無對話歷史</string>
     <string name="ui_conversation_history_empty_body">傳送一則訊息後，對話會顯示在這裡。</string>
     <string name="ui_conversation_history_error_title">無法讀取對話歷史</string>
@@ -157,7 +158,7 @@
     <string name="ui_settings_skills">Skills</string>
     <string name="ui_settings_skills_summary">管理本地 Skills</string>
     <string name="skill_page_description">開啟或關閉本地 Skills。啟用後，Agent 可在對話中按需使用。</string>
-    <string name="skill_loading">正在讀取 Skills...</string>
+    <string name="skill_loading">正在讀取 Skills…</string>
     <string name="skill_empty">目前沒有可用的 Skill。</string>
     <string name="skill_editor_description">編輯完整的 SKILL.md。儲存後，變更會在下一次對話時更新。</string>
     <string name="skill_save_action">儲存</string>
@@ -206,7 +207,7 @@
     <string name="ui_settings_storage_downloads_summary">Agent 在任務過程中下載的檔案</string>
     <string name="ui_settings_storage_other_cache">其他快取</string>
     <string name="ui_settings_storage_other_cache_summary">應用運行時的暫存檔案</string>
-    <string name="ui_settings_storage_loading">正在統計儲存空間...</string>
+    <string name="ui_settings_storage_loading">正在統計儲存空間…</string>
     <string name="ui_settings_storage_clear_dialog_title">清理快取</string>
     <string name="ui_settings_storage_clear_dialog_text">確定要清空「%1$s」嗎？此操作不可撤銷。</string>
     <string name="ui_settings_storage_clear_dialog_confirm">清理</string>
@@ -621,8 +622,8 @@
 
     <string name="ui_theme_preview_primary_btn">主按鈕</string>
     <string name="ui_theme_preview_tonal_btn">次按鈕</string>
-    <string name="ui_theme_preview_loading_hint">載入處理中...</string>
-    <string name="ui_theme_preview_input_hint">輸入內容...</string>
+    <string name="ui_theme_preview_loading_hint">載入處理中…</string>
+    <string name="ui_theme_preview_input_hint">輸入內容…</string>
 
     <string name="ui_theme_mode_system">跟隨系統</string>
     <string name="ui_theme_mode_light">淺色</string>
@@ -667,8 +668,6 @@
     <string name="ui_onboard_preferences_notification_desc">在通知欄顯示 Agent 的即時狀態</string>
     <string name="ui_onboard_preferences_file_title">檔案權限</string>
     <string name="ui_onboard_preferences_file_desc">允許 Agent 讀寫沙箱外的檔案</string>
-    <string name="ui_onboard_preferences_granted">已授權</string>
-    <string name="ui_onboard_preferences_grant_action">點擊授權</string>
     <string name="ui_onboard_preferences_security_group">執行規則</string>
     <string name="ui_onboard_preferences_security_hint">執行前需要二次確認的命令</string>
     <string name="ui_onboard_preferences_rule_add_action">新增規則</string>

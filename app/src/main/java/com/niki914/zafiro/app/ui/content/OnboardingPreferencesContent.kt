@@ -136,9 +136,7 @@ fun OnboardingPreferencesContent(
                         IconButton(onClick = { onIntent(OnboardingPreferencesIntent.ShowAddRuleDialog) }) {
                             Icon(
                                 imageVector = Icons.Rounded.Add,
-                                contentDescription = stringResource(
-                                    R.string.ui_onboard_preferences_rule_add_action
-                                ),
+                                contentDescription = "Add rule",
                                 tint = MaterialTheme.colorScheme.primary,
                             )
                         }
@@ -207,13 +205,7 @@ private fun PermissionRow(
         trailingContent = {
             Icon(
                 imageVector = if (granted) Icons.Rounded.Check else Icons.Rounded.Close,
-                contentDescription = stringResource(
-                    if (granted) {
-                        R.string.ui_onboard_preferences_granted
-                    } else {
-                        R.string.ui_onboard_preferences_grant_action
-                    }
-                ),
+                contentDescription = if (granted) "Granted" else "Grant permission",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp),
             )

@@ -44,7 +44,7 @@
     <!-- Home -->
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">新对话</string>
-    <string name="ui_home_input_placeholder">输入消息...</string>
+    <string name="ui_home_input_placeholder">输入消息…</string>
     <string name="ui_home_conversation_compacted">对话已压缩</string>
     <string name="ui_home_conversation_compacting">正在压缩</string>
     <string name="ui_tool_status_called">已调用</string>
@@ -86,6 +86,7 @@
     <string name="ui_toast_copied">已复制</string>
     <string name="ui_toast_generating">生成中，请稍后</string>
     <string name="ui_toast_empty_input">请输入内容</string>
+    <string name="ui_toast_no_compactable_history">暂无可压缩的对话内容</string>
     <string name="ui_home_error_retry_body">请稍后重试。</string>
     <string name="ui_home_error_config_required_title">模型配置不完整</string>
     <string name="ui_home_error_config_required_body">请前往填写模型配置。</string>
@@ -108,7 +109,7 @@
     <string name="ui_conversation_history_this_month">本月</string>
     <string name="ui_conversation_history_older">更早</string>
     <string name="ui_conversation_history_pinned_section">置顶对话</string>
-    <string name="ui_conversation_history_loading">正在读取对话历史...</string>
+    <string name="ui_conversation_history_loading">正在读取对话历史…</string>
     <string name="ui_conversation_history_empty_title">暂无对话历史</string>
     <string name="ui_conversation_history_empty_body">发送一条消息后，对话会显示在这里。</string>
     <string name="ui_conversation_history_error_title">无法读取对话历史</string>
@@ -157,7 +158,7 @@
     <string name="ui_settings_skills">Skills</string>
     <string name="ui_settings_skills_summary">管理本地 Skills</string>
     <string name="skill_page_description">开启或关闭本地 Skills。开启后，Agent 可在对话中按需使用。</string>
-    <string name="skill_loading">正在读取 Skills...</string>
+    <string name="skill_loading">正在读取 Skills…</string>
     <string name="skill_empty">当前没有可用的 Skill。</string>
     <string name="skill_editor_description">编辑完整的 SKILL.md。保存后，变更会在下次对话更新。</string>
     <string name="skill_save_action">保存</string>
@@ -206,7 +207,7 @@
     <string name="ui_settings_storage_downloads_summary">Agent 在任务过程中下载的文件</string>
     <string name="ui_settings_storage_other_cache">其他缓存</string>
     <string name="ui_settings_storage_other_cache_summary">应用运行时的临时文件</string>
-    <string name="ui_settings_storage_loading">正在统计存储空间...</string>
+    <string name="ui_settings_storage_loading">正在统计存储空间…</string>
     <string name="ui_settings_storage_clear_dialog_title">清理缓存</string>
     <string name="ui_settings_storage_clear_dialog_text">确定要清空「%1$s」吗？此操作不可撤销。</string>
     <string name="ui_settings_storage_clear_dialog_confirm">清理</string>
@@ -272,7 +273,7 @@
     <!-- Memory Module -->
     <string name="memory_page_description">管理记忆，你可以通过左右滑动来删除、点击来编辑单条记忆。添加后，Agent 会记得这些内容，即使是新的对话。</string>
     <string name="memory_page_empty_description">当前没有保存的记忆。点击右上方添加第一条记忆。</string>
-    <string name="memory_loading">正在读取记忆...</string>
+    <string name="memory_loading">正在读取记忆…</string>
     <string name="memory_editor_title_create">新增记忆</string>
     <string name="memory_editor_title_edit">编辑记忆</string>
     <string name="memory_field_content">输入内容</string>
@@ -350,7 +351,7 @@
 
     <!-- Tool Module -->
     <string name="tool_page_description">开启或关闭工具。开启后，工具将在下次对话更新。</string>
-    <string name="tool_loading">正在读取工具状态...</string>
+    <string name="tool_loading">正在读取工具状态…</string>
     <string name="tool_empty">当前没有可用的工具。</string>
     <string name="tool_load_failed">读取失败：%1$s</string>
     <string name="tool_save_failed">保存失败：%1$s</string>
@@ -367,7 +368,7 @@
     <string name="custom_py_tool_page_title">自定义 Python 工具</string>
     <string name="custom_py_tool_page_description">管理你的 自定义 Python 工具。</string>
     <string name="custom_py_tool_page_empty_description">让你的 Agent 帮你创建，或点击右上方新增。</string>
-    <string name="custom_py_tool_loading">正在读取已保存的 自定义 Python 工具...</string>
+    <string name="custom_py_tool_loading">正在读取已保存的 自定义 Python 工具…</string>
     <string name="custom_py_tool_editor_title_create">新增 自定义 Python 工具</string>
     <string name="custom_py_tool_editor_description">写一个 main() 入口函数。\n\n参数的类型标注决定 Agent 能传什么，docstring 会成为工具说明。</string>
     <string name="custom_py_tool_field_name">工具名称</string>
@@ -636,8 +637,8 @@
 
     <string name="ui_theme_preview_primary_btn">主按钮</string>
     <string name="ui_theme_preview_tonal_btn">次按钮</string>
-    <string name="ui_theme_preview_loading_hint">加载处理中...</string>
-    <string name="ui_theme_preview_input_hint">输入内容...</string>
+    <string name="ui_theme_preview_loading_hint">加载处理中…</string>
+    <string name="ui_theme_preview_input_hint">输入内容…</string>
 
     <string name="ui_theme_mode_system">跟随系统</string>
     <string name="ui_theme_mode_light">浅色</string>
@@ -682,8 +683,6 @@
     <string name="ui_onboard_preferences_notification_desc">在通知栏显示 Agent 的实时状态</string>
     <string name="ui_onboard_preferences_file_title">文件权限</string>
     <string name="ui_onboard_preferences_file_desc">允许 Agent 读写沙箱外的文件</string>
-    <string name="ui_onboard_preferences_granted">已授权</string>
-    <string name="ui_onboard_preferences_grant_action">点击授权</string>
     <string name="ui_onboard_preferences_security_group">执行规则</string>
     <string name="ui_onboard_preferences_security_hint">执行前需要二次确认的命令</string>
     <string name="ui_onboard_preferences_rule_add_action">新增规则</string>

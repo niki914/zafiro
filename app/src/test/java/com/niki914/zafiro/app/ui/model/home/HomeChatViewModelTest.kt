@@ -89,6 +89,45 @@ class HomeChatViewModelTest {
     }
 
     @Test
+    fun sendCompactCommandWithoutCompactableHistoryEmitsNoCompactableHistoryEffect() = runTest {
+        val fixture = fixture()
+        val effectDeferred = async { fixture.vm.uiEffect.first() }
+        fixture.vm.sendIntent(HomeChatIntent.InputChanged("/compact"))
+        runCurrent()
+        fixture.vm.sendIntent(HomeChatIntent.Send)
+        advanceUntilIdle()
+
+        assertEquals(HomeChatEffect.NoCompactableHistory, effectDeferred.await())
+        assertEquals("/compact", fixture.vm.uiStateFlow.value.input)
+        assertTrue(fixture.agent.sentDrafts.isEmpty())
+        assertFalse(fixture.vm.uiStateFlow.value.isGenerating)
+    }
+
+    @Test
+    fun sendCompactCommandWithCompactableHistoryPassesThroughToAgent() = runTest {
+        val fixture = fixture()
+        fixture.agent.publishConversation(
+            Conversation(
+                id = ConversationId("session-1"),
+                turns = listOf(
+                    ConversationTurn(
+                        id = turnIdAt(0),
+                        userText = "hello",
+                        blocks = listOf(TurnBlock.Text("t0:0", "answer"))
+                    )
+                ),
+            ),
+        )
+        runCurrent()
+        fixture.vm.sendIntent(HomeChatIntent.InputChanged("/compact"))
+        runCurrent()
+        fixture.vm.sendIntent(HomeChatIntent.Send)
+        advanceUntilIdle()
+
+        assertEquals("/compact", fixture.agent.sentDrafts.single().text)
+    }
+
+    @Test
     fun imageDraftComesFromAgentAndImageOnlySendKeepsAttachment() = runTest {
         val fixture = fixture()
         fixture.vm.sendIntent(HomeChatIntent.ImageAttached("content://image/1"))

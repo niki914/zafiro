@@ -44,7 +44,7 @@
     <!-- Home -->
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">New conversation</string>
-    <string name="ui_home_input_placeholder">Type a message...</string>
+    <string name="ui_home_input_placeholder">Type a message…</string>
     <string name="ui_home_conversation_compacted">Conversation compacted</string>
     <string name="ui_home_conversation_compacting">Compacting</string>
     <string name="ui_tool_status_called">Called</string>
@@ -88,6 +88,7 @@
     <string name="ui_toast_copied">Copied</string>
     <string name="ui_toast_generating">Generating, please wait</string>
     <string name="ui_toast_empty_input">Please enter a message</string>
+    <string name="ui_toast_no_compactable_history">No conversation history to compact</string>
     <string name="ui_home_error_retry_body">Please try again later.</string>
     <string name="ui_home_error_config_required_title">Model configuration is incomplete</string>
     <string name="ui_home_error_config_required_body">Please go fill in the model configuration.</string>
@@ -110,7 +111,7 @@
     <string name="ui_conversation_history_this_month">This month</string>
     <string name="ui_conversation_history_older">Earlier</string>
     <string name="ui_conversation_history_pinned_section">Pinned</string>
-    <string name="ui_conversation_history_loading">Loading conversation history...</string>
+    <string name="ui_conversation_history_loading">Loading conversation history…</string>
     <string name="ui_conversation_history_empty_title">No conversation history yet</string>
     <string name="ui_conversation_history_empty_body">Send a message and conversations will appear here.</string>
     <string name="ui_conversation_history_error_title">Unable to load conversation history</string>
@@ -159,7 +160,7 @@
     <string name="ui_settings_skills">Skills</string>
     <string name="ui_settings_skills_summary">Manage local Skills</string>
     <string name="skill_page_description">Turn local Skills on or off. Enabled Skills can be used by the Agent when needed.</string>
-    <string name="skill_loading">Loading Skills...</string>
+    <string name="skill_loading">Loading Skills…</string>
     <string name="skill_empty">No Skills are available right now.</string>
     <string name="skill_editor_description">Edit the full SKILL.md. Saved changes apply in the next conversation.</string>
     <string name="skill_save_action">Save</string>
@@ -208,7 +209,7 @@
     <string name="ui_settings_storage_downloads_summary">Files downloaded by the Agent during tasks</string>
     <string name="ui_settings_storage_other_cache">Other caches</string>
     <string name="ui_settings_storage_other_cache_summary">Temporary files from normal app operation</string>
-    <string name="ui_settings_storage_loading">Measuring storage...</string>
+    <string name="ui_settings_storage_loading">Measuring storage…</string>
     <string name="ui_settings_storage_clear_dialog_title">Clear cache</string>
     <string name="ui_settings_storage_clear_dialog_text">Clear \"%1$s\"? This action cannot be undone.</string>
     <string name="ui_settings_storage_clear_dialog_confirm">Clear</string>
@@ -274,7 +275,7 @@
     <!-- Memory Module -->
     <string name="memory_page_description">Manage saved memories. Swipe left or right to delete, or tap an item to edit it. Once added, the Agent will remember this information even in new conversations.</string>
     <string name="memory_page_empty_description">No memories have been saved yet. Tap the top right to add your first memory.</string>
-    <string name="memory_loading">Loading memories...</string>
+    <string name="memory_loading">Loading memories…</string>
     <string name="memory_editor_title_create">New Memory</string>
     <string name="memory_editor_title_edit">Edit Memory</string>
     <string name="memory_field_content">Enter content</string>
@@ -294,7 +295,7 @@
     <!-- Execution Rules Module -->
     <string name="execution_rules_page_description">Configure rules for Shell and tool execution. This page currently provides only the UI shell and is not yet wired into the actual interception flow.</string>
     <string name="execution_rules_empty_action_hint">Tap the top right to add your first draft rule.</string>
-    <string name="execution_rules_loading">Loading execution rules...</string>
+    <string name="execution_rules_loading">Loading execution rules…</string>
     <string name="execution_rules_editor_title_create">New Execution Rule</string>
     <string name="execution_rules_delete_dialog_title">Delete Execution Rule</string>
     <string name="execution_rules_delete_dialog_text">Are you sure you want to delete the execution rule \"%1$s\"? This action cannot be undone.</string>
@@ -326,7 +327,7 @@
     <string name="takeover_default_responder">Default Responder</string>
     <string name="takeover_page_description">Check rules in order and choose who should respond.</string>
     <string name="takeover_empty_action_hint">Tap the top right to add your first takeover rule.</string>
-    <string name="takeover_loading">Loading takeover rules...</string>
+    <string name="takeover_loading">Loading takeover rules…</string>
     <string name="takeover_editor_title_create">New Takeover Rule</string>
     <string name="takeover_editor_description">Choose which requests go to the native assistant and which stay with Zafiro.</string>
     <string name="takeover_field_name">Rule Name</string>
@@ -352,7 +353,7 @@
 
     <!-- Tool Module -->
     <string name="tool_page_description">Turn tools on or off. Changes take effect in the next conversation.</string>
-    <string name="tool_loading">Loading tool status...</string>
+    <string name="tool_loading">Loading tool status…</string>
     <string name="tool_empty">No tools are available right now.</string>
     <string name="tool_load_failed">Failed to load: %1$s</string>
     <string name="tool_save_failed">Failed to save: %1$s</string>
@@ -369,7 +370,7 @@
     <string name="custom_py_tool_page_title">Custom Python Tools</string>
     <string name="custom_py_tool_page_description">Manage your Custom Python tools.</string>
     <string name="custom_py_tool_page_empty_description">Let your Agent create one, or tap the top right to add a new tool.</string>
-    <string name="custom_py_tool_loading">Loading saved Custom Python tools...</string>
+    <string name="custom_py_tool_loading">Loading saved Custom Python tools…</string>
     <string name="custom_py_tool_editor_title_create">New Python Tool</string>
     <string name="custom_py_tool_editor_description">Define a main() entry function.\n\nParameter type annotations decide what the agent can pass in, and the docstring becomes the tool description.</string>
     <string name="custom_py_tool_field_name">Tool Name</string>
@@ -403,7 +404,7 @@
 
     <string name="mcp_page_description">Configure connection and authentication for MCP. After saving, Zafiro will automatically discover available tools at runtime.</string>
     <string name="mcp_page_empty_description">Tap the top right to add your first MCP server.</string>
-    <string name="mcp_loading">Loading saved MCP servers...</string>
+    <string name="mcp_loading">Loading saved MCP servers…</string>
     <string name="mcp_editor_title_create">New MCP Server</string>
     <string name="mcp_field_name">Name</string>
     <string name="mcp_field_name_hint">For example: my-xxx-mcp-server</string>
@@ -638,8 +639,8 @@
 
     <string name="ui_theme_preview_primary_btn">Primary</string>
     <string name="ui_theme_preview_tonal_btn">Tonal</string>
-    <string name="ui_theme_preview_loading_hint">Processing...</string>
-    <string name="ui_theme_preview_input_hint">Sample input...</string>
+    <string name="ui_theme_preview_loading_hint">Processing…</string>
+    <string name="ui_theme_preview_input_hint">Sample input…</string>
 
     <string name="ui_theme_mode_system">Follow system</string>
     <string name="ui_theme_mode_light">Light</string>
@@ -684,8 +685,6 @@
     <string name="ui_onboard_preferences_notification_desc">Show live agent status in the notification drawer</string>
     <string name="ui_onboard_preferences_file_title">File access</string>
     <string name="ui_onboard_preferences_file_desc">Allow the Agent to read and write files outside the sandbox</string>
-    <string name="ui_onboard_preferences_granted">Granted</string>
-    <string name="ui_onboard_preferences_grant_action">Tap to grant</string>
     <string name="ui_onboard_preferences_security_group">Execution rules</string>
     <string name="ui_onboard_preferences_security_hint">Commands that need confirmation before running</string>
     <string name="ui_onboard_preferences_rule_add_action">Add rule</string>
@@ -738,7 +737,7 @@
     <string name="ui_settings_quick_prompts_summary">Configure slash prompts and snippets for composer</string>
     <string name="quick_prompt_page_description">Quickly suggest and expand preset prompts by typing / in the composer.</string>
     <string name="quick_prompt_page_empty_description">Tap the top right to add your first quick prompt.</string>
-    <string name="quick_prompt_loading">Loading quick prompts...</string>
+    <string name="quick_prompt_loading">Loading quick prompts…</string>
     <string name="quick_prompt_editor_title_create">New Quick Prompt</string>
     <string name="quick_prompt_save_action">Save Prompt</string>
     <string name="quick_prompt_field_name">Trigger Key</string>
@@ -759,7 +758,7 @@
     <string name="quick_prompt_error_delete_failed">Failed to delete quick prompt.</string>
     <string name="text_action_page_description">Actions run on text you selected in other apps.</string>
     <string name="text_action_page_empty_description">Tap the top right to add your first action.</string>
-    <string name="text_action_loading">Loading actions...</string>
+    <string name="text_action_loading">Loading actions…</string>
     <string name="text_action_editor_title_create">New Action</string>
     <string name="text_action_save_action">Save Action</string>
     <string name="text_action_field_name">Name</string>
@@ -785,7 +784,7 @@
     <string name="ui_settings_masking_rules_summary">Mask sensitive data before outbound requests</string>
     <string name="masking_rules_page_description">Configure masking rules for sensitive data. Matches in outbound requests will be replaced with placeholders while local chats and tool executions retain raw data.</string>
     <string name="masking_rules_empty_action_hint">Tap the top right to add your first masking rule.</string>
-    <string name="masking_rules_loading">Loading masking rules...</string>
+    <string name="masking_rules_loading">Loading masking rules…</string>
     <string name="masking_rules_editor_title_create">New Masking Rule</string>
     <string name="masking_rules_editor_description">Sensitive data is only replaced with placeholders before outbound LLM requests. Local chat display and tool execution are unaffected.</string>
     <string name="masking_rules_field_name">Rule Name</string>

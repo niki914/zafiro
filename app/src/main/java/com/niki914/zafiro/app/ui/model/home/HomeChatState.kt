@@ -250,6 +250,7 @@ sealed interface HomeChatIntent {
 sealed interface HomeChatEffect {
     data class FileAttachFailed(val reason: FileAttachReason) : HomeChatEffect
     data object EmptyInputAttempted : HomeChatEffect
+    data object NoCompactableHistory : HomeChatEffect
 }
 
 /**

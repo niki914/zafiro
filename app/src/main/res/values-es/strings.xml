@@ -44,7 +44,7 @@
     <!-- Home -->
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">Nueva conversación</string>
-    <string name="ui_home_input_placeholder">Escriba un mensaje...</string>
+    <string name="ui_home_input_placeholder">Escriba un mensaje…</string>
     <string name="ui_home_conversation_compacted">Conversación compactada</string>
     <string name="ui_home_conversation_compacting">Compactando</string>
     <string name="ui_tool_status_called">Llamado</string>
@@ -88,6 +88,7 @@
     <string name="ui_toast_copied">Copiado al portapapeles</string>
     <string name="ui_toast_generating">Generando, espere un momento</string>
     <string name="ui_toast_empty_input">Por favor ingrese un mensaje</string>
+    <string name="ui_toast_no_compactable_history">No hay historial de conversación para compactar</string>
     <string name="ui_home_error_retry_body">Inténtelo de nuevo más tarde.</string>
     <string name="ui_home_error_config_required_title">Configuración del modelo incompleta</string>
     <string name="ui_home_error_config_required_body">Complete la configuración del modelo antes de continuar.</string>
@@ -110,7 +111,7 @@
     <string name="ui_conversation_history_this_month">Este mes</string>
     <string name="ui_conversation_history_older">Anterior</string>
     <string name="ui_conversation_history_pinned_section">Fijadas</string>
-    <string name="ui_conversation_history_loading">Cargando historial...</string>
+    <string name="ui_conversation_history_loading">Cargando historial…</string>
     <string name="ui_conversation_history_empty_title">Sin conversaciones</string>
     <string name="ui_conversation_history_empty_body">Envíe un mensaje para comenzar una nueva conversación.</string>
     <string name="ui_conversation_history_error_title">No se pudo cargar el historial</string>
@@ -159,7 +160,7 @@
     <string name="ui_settings_skills">Skills</string>
     <string name="ui_settings_skills_summary">Gestionar Skills locales</string>
     <string name="skill_page_description">Activar o desactivar Skills locales. Cuando están activadas, el agente puede usarlas según sea necesario durante las conversaciones.</string>
-    <string name="skill_loading">Cargando Skills...</string>
+    <string name="skill_loading">Cargando Skills…</string>
     <string name="skill_empty">No hay Skills disponibles actualmente.</string>
     <string name="skill_editor_description">Editar el archivo SKILL.md completo. Los cambios se aplicarán en la siguiente conversación tras guardar.</string>
     <string name="skill_save_action">Guardar</string>
@@ -208,7 +209,7 @@
     <string name="ui_settings_storage_downloads_summary">Archivos descargados por el Agente durante las tareas</string>
     <string name="ui_settings_storage_other_cache">Otras cachés</string>
     <string name="ui_settings_storage_other_cache_summary">Archivos temporales del funcionamiento normal</string>
-    <string name="ui_settings_storage_loading">Midiendo el almacenamiento...</string>
+    <string name="ui_settings_storage_loading">Midiendo el almacenamiento…</string>
     <string name="ui_settings_storage_clear_dialog_title">Borrar caché</string>
     <string name="ui_settings_storage_clear_dialog_text">¿Vaciar «%1$s»? Esta acción no se puede deshacer.</string>
     <string name="ui_settings_storage_clear_dialog_confirm">Borrar</string>
@@ -274,7 +275,7 @@
     <!-- Memory Module -->
     <string name="memory_page_description">Gestione memorias guardadas. Deslice a la izquierda o derecha para eliminar, o toque para editar. Una vez añadidas, el agente las recordará en todas las conversaciones.</string>
     <string name="memory_page_empty_description">No hay memorias guardadas. Toque el botón superior derecho para añadir la primera.</string>
-    <string name="memory_loading">Cargando memorias...</string>
+    <string name="memory_loading">Cargando memorias…</string>
     <string name="memory_editor_title_create">Añadir memoria</string>
     <string name="memory_editor_title_edit">Editar memoria</string>
     <string name="memory_field_content">Contenido</string>
@@ -294,7 +295,7 @@
     <!-- Execution Rules Module -->
     <string name="execution_rules_page_description">Añada reglas de ejecución para mejorar la seguridad. Salvo los scripts, todas las ejecuciones de comandos de la app están reguladas por estas políticas.</string>
     <string name="execution_rules_empty_action_hint">Toque en la esquina superior derecha para añadir la primera regla de ejecución.</string>
-    <string name="execution_rules_loading">Cargando reglas de ejecución...</string>
+    <string name="execution_rules_loading">Cargando reglas de ejecución…</string>
     <string name="execution_rules_editor_title_create">Nueva regla de ejecución</string>
     <string name="execution_rules_delete_dialog_title">Eliminar regla de ejecución</string>
     <string name="execution_rules_delete_dialog_text">¿Está seguro de que desea eliminar la regla de ejecución «%1$s»? Esta acción no se puede deshacer.</string>
@@ -326,7 +327,7 @@
     <string name="takeover_default_responder">Modelo predeterminado</string>
     <string name="takeover_page_description">Las reglas se evalúan en orden para determinar qué asistente responderá cuando haya una coincidencia.</string>
     <string name="takeover_empty_action_hint">Toque en la esquina superior derecha para añadir la primera regla de control.</string>
-    <string name="takeover_loading">Cargando reglas de control...</string>
+    <string name="takeover_loading">Cargando reglas de control…</string>
     <string name="takeover_editor_title_create">Nueva regla de control</string>
     <string name="takeover_editor_description">Configure qué peticiones debe responder el asistente nativo y cuáles deben enviarse a Zafiro.</string>
     <string name="takeover_field_name">Nombre de la regla</string>
@@ -352,7 +353,7 @@
 
     <!-- Tool Module -->
     <string name="tool_page_description">Active o desactive las herramientas. Los cambios se aplicarán en la siguiente conversación.</string>
-    <string name="tool_loading">Cargando estado de las herramientas...</string>
+    <string name="tool_loading">Cargando estado de las herramientas…</string>
     <string name="tool_empty">No hay herramientas disponibles actualmente.</string>
     <string name="tool_load_failed">Error al cargar: %1$s</string>
     <string name="tool_save_failed">Error al guardar: %1$s</string>
@@ -369,7 +370,7 @@
     <string name="custom_py_tool_page_title">Herramientas personalizadas de Python</string>
     <string name="custom_py_tool_page_description">Gestione sus herramientas personalizadas de Python.</string>
     <string name="custom_py_tool_page_empty_description">Deje que el agente las cree por usted o toque el botón superior derecho para añadir una nueva.</string>
-    <string name="custom_py_tool_loading">Cargando herramientas de Python guardadas...</string>
+    <string name="custom_py_tool_loading">Cargando herramientas de Python guardadas…</string>
     <string name="custom_py_tool_editor_title_create">Añadir herramienta de Python</string>
     <string name="custom_py_tool_editor_description">Defina una función de entrada main().\n\nLas anotaciones de tipo de los parámetros determinan lo que el agente puede pasar y el docstring se convierte en la descripción de la herramienta.</string>
     <string name="custom_py_tool_field_name">Nombre de la herramienta</string>
@@ -403,7 +404,7 @@
 
     <string name="mcp_page_description">Configure los métodos de conexión y autenticación para MCP. Tras guardar, Zafiro descubrirá automáticamente las herramientas disponibles en tiempo de ejecución.</string>
     <string name="mcp_page_empty_description">Toque en la esquina superior derecha para añadir su primer servidor MCP.</string>
-    <string name="mcp_loading">Cargando servidores MCP guardados...</string>
+    <string name="mcp_loading">Cargando servidores MCP guardados…</string>
     <string name="mcp_editor_title_create">Añadir servidor MCP</string>
     <string name="mcp_field_name">Nombre</string>
     <string name="mcp_field_name_hint">Ejemplo: mi-servidor-mcp</string>
@@ -638,8 +639,8 @@
 
     <string name="ui_theme_preview_primary_btn">Principal</string>
     <string name="ui_theme_preview_tonal_btn">Secundario</string>
-    <string name="ui_theme_preview_loading_hint">Procesando...</string>
-    <string name="ui_theme_preview_input_hint">Escribe algo...</string>
+    <string name="ui_theme_preview_loading_hint">Procesando…</string>
+    <string name="ui_theme_preview_input_hint">Escribe algo…</string>
 
     <string name="ui_theme_mode_system">Según el sistema</string>
     <string name="ui_theme_mode_light">Claro</string>
@@ -684,8 +685,6 @@
     <string name="ui_onboard_preferences_notification_desc">Mostrar el estado del agente en vivo en el panel de notificaciones</string>
     <string name="ui_onboard_preferences_file_title">Acceso a archivos</string>
     <string name="ui_onboard_preferences_file_desc">Permitir que el agente lea y escriba archivos fuera del sandbox</string>
-    <string name="ui_onboard_preferences_granted">Concedido</string>
-    <string name="ui_onboard_preferences_grant_action">Tocar para conceder</string>
     <string name="ui_onboard_preferences_security_group">Reglas de ejecución</string>
     <string name="ui_onboard_preferences_security_hint">Comandos que requieren confirmación antes de ejecutarse</string>
     <string name="ui_onboard_preferences_rule_add_action">Añadir regla</string>
@@ -785,7 +784,7 @@
     <string name="ui_settings_masking_rules_summary">Enmascarar datos sensibles antes de solicitudes salientes</string>
     <string name="masking_rules_page_description">Configure reglas de enmascaramiento para datos sensibles. Las coincidencias en solicitudes salientes se sustituirán por marcadores de posición mientras los chats locales y herramientas conservan los datos originales.</string>
     <string name="masking_rules_empty_action_hint">Toque en la esquina superior derecha para añadir su primera regla de enmascaramiento.</string>
-    <string name="masking_rules_loading">Cargando reglas de enmascaramiento...</string>
+    <string name="masking_rules_loading">Cargando reglas de enmascaramiento…</string>
     <string name="masking_rules_editor_title_create">Nueva regla de enmascaramiento</string>
     <string name="masking_rules_editor_description">Los datos sensibles solo se reemplazan por marcadores de posición antes de enviar solicitudes salientes. La visualización local y la ejecución de herramientas no se ven afectadas.</string>
     <string name="masking_rules_field_name">Nombre de la regla</string>

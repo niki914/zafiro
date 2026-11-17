@@ -44,7 +44,7 @@
     <!-- Home -->
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">محادثة جديدة</string>
-    <string name="ui_home_input_placeholder">اكتب رسالة...</string>
+    <string name="ui_home_input_placeholder">اكتب رسالة…</string>
     <string name="ui_home_conversation_compacted">تم ضغط المحادثة</string>
     <string name="ui_home_conversation_compacting">جارٍ الضغط</string>
     <string name="ui_tool_status_called">تم الاستدعاء</string>
@@ -96,6 +96,7 @@
     <string name="ui_toast_copied">تم النسخ</string>
     <string name="ui_toast_generating">جارٍ التوليد، انتظر قليلاً</string>
     <string name="ui_toast_empty_input">أدخل نصًا</string>
+    <string name="ui_toast_no_compactable_history">لا يوجد سجل محادثة للضغط</string>
     <string name="ui_home_error_retry_body">أعد المحاولة لاحقًا.</string>
     <string name="ui_home_error_config_required_title">إعداد النموذج ناقص</string>
     <string name="ui_home_error_config_required_body">انتقل وأكمل إعداد النموذج.</string>
@@ -118,7 +119,7 @@
     <string name="ui_conversation_history_this_month">هذا الشهر</string>
     <string name="ui_conversation_history_older">أقدم</string>
     <string name="ui_conversation_history_pinned_section">المحادثات المثبتة</string>
-    <string name="ui_conversation_history_loading">جارٍ قراءة سجل المحادثات...</string>
+    <string name="ui_conversation_history_loading">جارٍ قراءة سجل المحادثات…</string>
     <string name="ui_conversation_history_empty_title">لا سجل محادثات بعد</string>
     <string name="ui_conversation_history_empty_body">بعد إرسال رسالة، تظهر المحادثة هنا.</string>
     <string name="ui_conversation_history_error_title">تعذّرت قراءة سجل المحادثات</string>
@@ -167,7 +168,7 @@
     <string name="ui_settings_skills">Skills</string>
     <string name="ui_settings_skills_summary">إدارة Skills المحلية</string>
     <string name="skill_page_description">شغّل Skills المحلية أو أوقفها. بعد التشغيل، يستطيع Agent استخدامها في المحادثة عند الحاجة.</string>
-    <string name="skill_loading">جارٍ قراءة Skills...</string>
+    <string name="skill_loading">جارٍ قراءة Skills…</string>
     <string name="skill_empty">لا Skill متاحة الآن.</string>
     <string name="skill_editor_description">حرّر ملف SKILL.md كاملًا. بعد الحفظ، يسري التغيير في المحادثة التالية.</string>
     <string name="skill_save_action">حفظ</string>
@@ -216,7 +217,7 @@
     <string name="ui_settings_storage_downloads_summary">ملفات نزّلها Agent أثناء المهام</string>
     <string name="ui_settings_storage_other_cache">ذاكرة أخرى</string>
     <string name="ui_settings_storage_other_cache_summary">ملفات مؤقتة من تشغيل التطبيق</string>
-    <string name="ui_settings_storage_loading">جارٍ حساب المساحة...</string>
+    <string name="ui_settings_storage_loading">جارٍ حساب المساحة…</string>
     <string name="ui_settings_storage_clear_dialog_title">مسح الذاكرة</string>
     <string name="ui_settings_storage_clear_dialog_text">مسح «%1$s»؟ لا يمكن التراجع عن هذا.</string>
     <string name="ui_settings_storage_clear_dialog_confirm">مسح</string>
@@ -282,7 +283,7 @@
     <!-- Memory Module -->
     <string name="memory_page_description">أدر الذكريات. اسحب يمينًا أو يسارًا للحذف، واضغط للتحرير. بعد الإضافة، يتذكرها Agent حتى في محادثة جديدة.</string>
     <string name="memory_page_empty_description">لا ذكريات محفوظة. اضغط زر الإضافة أعلى الشاشة لإضافة الأولى.</string>
-    <string name="memory_loading">جارٍ قراءة الذكريات...</string>
+    <string name="memory_loading">جارٍ قراءة الذكريات…</string>
     <string name="memory_editor_title_create">ذاكرة جديدة</string>
     <string name="memory_editor_title_edit">تحرير الذاكرة</string>
     <string name="memory_field_content">أدخل المحتوى</string>
@@ -360,7 +361,7 @@
 
     <!-- Tool Module -->
     <string name="tool_page_description">شغّل الأدوات أو أوقفها. بعد التشغيل، تتحدث في المحادثة التالية.</string>
-    <string name="tool_loading">جارٍ قراءة حالة الأدوات...</string>
+    <string name="tool_loading">جارٍ قراءة حالة الأدوات…</string>
     <string name="tool_empty">لا أدوات متاحة الآن.</string>
     <string name="tool_load_failed">تعذّرت القراءة: %1$s</string>
     <string name="tool_save_failed">تعذّر الحفظ: %1$s</string>
@@ -377,7 +378,7 @@
     <string name="custom_py_tool_page_title">أدوات Python المخصصة</string>
     <string name="custom_py_tool_page_description">أدر أدوات Python المخصصة.</string>
     <string name="custom_py_tool_page_empty_description">دع Agent ينشئ واحدة، أو اضغط زر الإضافة أعلى الشاشة.</string>
-    <string name="custom_py_tool_loading">جارٍ قراءة أدوات Python المحفوظة...</string>
+    <string name="custom_py_tool_loading">جارٍ قراءة أدوات Python المحفوظة…</string>
     <string name="custom_py_tool_editor_title_create">أداة Python جديدة</string>
     <string name="custom_py_tool_editor_description">اكتب دالة دخول main().\n\nتعليق النوع على المعاملات يحدد ما يستطيع Agent تمريره، ويصبح docstring وصف الأداة.</string>
     <string name="custom_py_tool_field_name">اسم الأداة</string>
@@ -646,8 +647,8 @@
 
     <string name="ui_theme_preview_primary_btn">أساسي</string>
     <string name="ui_theme_preview_tonal_btn">نغمي</string>
-    <string name="ui_theme_preview_loading_hint">جارٍ المعالجة...</string>
-    <string name="ui_theme_preview_input_hint">أدخل نصًا...</string>
+    <string name="ui_theme_preview_loading_hint">جارٍ المعالجة…</string>
+    <string name="ui_theme_preview_input_hint">أدخل نصًا…</string>
 
     <string name="ui_theme_mode_system">حسب النظام</string>
     <string name="ui_theme_mode_light">فاتح</string>
@@ -692,8 +693,6 @@
     <string name="ui_onboard_preferences_notification_desc">عرض حالة Agent المباشرة في شريط الإشعارات</string>
     <string name="ui_onboard_preferences_file_title">إذن الملفات</string>
     <string name="ui_onboard_preferences_file_desc">السماح لـ Agent بقراءة الملفات وكتابتها خارج الصندوق</string>
-    <string name="ui_onboard_preferences_granted">مُنح</string>
-    <string name="ui_onboard_preferences_grant_action">اضغط للسماح</string>
     <string name="ui_onboard_preferences_security_group">قواعد التنفيذ</string>
     <string name="ui_onboard_preferences_security_hint">أوامر تحتاج تأكيدًا قبل التنفيذ</string>
     <string name="ui_onboard_preferences_rule_add_action">قاعدة جديدة</string>

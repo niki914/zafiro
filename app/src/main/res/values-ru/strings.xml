@@ -87,6 +87,7 @@
     <string name="ui_toast_copied">Скопировано</string>
     <string name="ui_toast_generating">Идёт генерация, подождите</string>
     <string name="ui_toast_empty_input">Пожалуйста, введите сообщение</string>
+    <string name="ui_toast_no_compactable_history">Нет истории диалога для сжатия</string>
     <string name="ui_home_error_retry_body">Попробуйте позже.</string>
     <string name="ui_home_error_config_required_title">Настройки модели заполнены не полностью</string>
     <string name="ui_home_error_config_required_body">Заполните настройки модели.</string>
@@ -597,8 +598,8 @@
 
     <string name="ui_theme_preview_primary_btn">Основная</string>
     <string name="ui_theme_preview_tonal_btn">Тональная</string>
-    <string name="ui_theme_preview_loading_hint">Обработка...</string>
-    <string name="ui_theme_preview_input_hint">Введите текст...</string>
+    <string name="ui_theme_preview_loading_hint">Обработка…</string>
+    <string name="ui_theme_preview_input_hint">Введите текст…</string>
 
     <string name="ui_theme_mode_system">Как в системе</string>
     <string name="ui_theme_mode_light">Светлая</string>
@@ -639,8 +640,6 @@
     <string name="ui_onboard_preferences_notification_desc">Показывать состояние агента в шторке уведомлений</string>
     <string name="ui_onboard_preferences_file_title">Доступ к файлам</string>
     <string name="ui_onboard_preferences_file_desc">Разрешить агенту читать и записывать файлы вне песочницы приложения</string>
-    <string name="ui_onboard_preferences_granted">Разрешено</string>
-    <string name="ui_onboard_preferences_grant_action">Нажмите, чтобы разрешить</string>
     <string name="ui_onboard_preferences_security_group">Правила выполнения</string>
     <string name="ui_onboard_preferences_security_hint">Команды, требующие подтверждения перед выполнением</string>
     <string name="ui_onboard_preferences_rule_add_action">Добавить правило</string>

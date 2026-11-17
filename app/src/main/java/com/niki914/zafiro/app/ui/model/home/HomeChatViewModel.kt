@@ -668,6 +668,13 @@ class HomeChatViewModel internal constructor(
                     return
                 }
                 BuiltinSlashCommand.Compact -> {
+                    val hasCompactableHistory = currentState.turns.any {
+                        !it.isCompactedDivider && it.userText.isNotBlank()
+                    }
+                    if (!hasCompactableHistory) {
+                        sendEffect(HomeChatEffect.NoCompactableHistory)
+                        return
+                    }
                     // 透传给 agent.stream()，由 AgentImpl 拦截执行强制压缩
                 }
                 null -> { /* 普通消息，继续正常发送 */ }
@@ -713,7 +720,12 @@ class HomeChatViewModel internal constructor(
     private suspend fun stopGenerating() {
         if (!currentState.isGenerating) return
         agent.stop()
-        updateState { copy(activeThinkingKey = null) }
+        updateState {
+            copy(
+                isGenerating = agent.status.value.isRunning,
+                activeThinkingKey = null,
+            )
+        }
         applyConversation(agent.conversation.value, animateTail = false)
     }
 

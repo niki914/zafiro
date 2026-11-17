@@ -98,6 +98,7 @@ fun HomePageContent(
                 )
 
                 HomeChatEffect.EmptyInputAttempted -> ZafiroToast.show(R.string.ui_toast_empty_input)
+                HomeChatEffect.NoCompactableHistory -> ZafiroToast.show(R.string.ui_toast_no_compactable_history)
             }
         }
     }
