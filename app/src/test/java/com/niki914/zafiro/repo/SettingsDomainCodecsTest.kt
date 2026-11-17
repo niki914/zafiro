@@ -2,6 +2,9 @@ package com.niki914.zafiro.repo
 
 // githooks:ignore-file file-token-limit
 
+import com.niki914.zafiro.repo.AvailableModelItem
+import com.niki914.zafiro.repo.AvailableModelSource
+
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
@@ -43,6 +46,10 @@ class SettingsDomainCodecsTest {
                     endpoint = "https://api.example",
                     apiKey = "secret",
                     model = "gpt-test",
+                    availableModels = listOf(
+                        AvailableModelItem("gpt-test", AvailableModelSource.Custom),
+                        AvailableModelItem("gpt-4o", AvailableModelSource.Remote),
+                    ),
                     protocol = "openai-responses",
                     thinkingLevel = "high",
                     prompt = "dedicated prompt",
@@ -99,6 +106,7 @@ class SettingsDomainCodecsTest {
         assertEquals("", config.maxTokensText)
         assertEquals("", config.contextWindowText)
         assertEquals("", config.prompt)
+        assertEquals(emptyList<AvailableModelItem>(), config.availableModels)
     }
 
     @Test
@@ -127,6 +135,24 @@ class SettingsDomainCodecsTest {
         assertEquals("", config.maxTokensText)
         assertEquals("", config.contextWindowText)
         assertEquals("", config.prompt)
+        assertEquals(emptyList<AvailableModelItem>(), config.availableModels)
+    }
+
+    @Test
+    fun llmConfigsDocumentParsesAvailableModelsObjectAndStringFormats() {
+        val json = """
+            {"active_id":"cfg-a","configs":[{"id":"cfg-a","name":"Primary","provider":"openai","endpoint":"https://api.example","api_key":"k","model":"m","protocol":"openai-responses","proxy":"","available_models":[{"id":"remote-1","source":"remote"},{"id":"custom-1","source":"custom"},"legacy-str"]}]}
+        """.trimIndent()
+
+        val config = LlmConfigsSettingsCodec.parse(json).configs.single()
+        assertEquals(
+            listOf(
+                AvailableModelItem("remote-1", AvailableModelSource.Remote),
+                AvailableModelItem("custom-1", AvailableModelSource.Custom),
+                AvailableModelItem("legacy-str", AvailableModelSource.Custom),
+            ),
+            config.availableModels,
+        )
     }
 
     @Test

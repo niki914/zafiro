@@ -62,6 +62,7 @@ class BackupArchiveTest {
                 "builtin_tools" to 5,
                 "py_tools" to 6,
                 "text_actions" to 2,
+                "quick_prompts" to 0,
                 "execution_rules" to 2,
                 "takeover_rules" to 3,
                 "masking_rules" to 4,
@@ -101,6 +102,8 @@ class BackupArchiveTest {
         assertEquals(SecretsMode.Stripped, result.summary.secrets)
         assertEquals(listOf("", "", ""), listOf((config["api_key"] as JsonPrimitive).content, header.content, bearer.content))
         assertEquals("https://example.test", (config["endpoint"] as JsonPrimitive).content)
+        val available = (config["available_models"] as JsonArray).map { ((it as JsonObject)["id"] as JsonPrimitive).content }
+        assertEquals(listOf("m", "gpt-4o"), available)
     }
 
     @Test
@@ -374,7 +377,7 @@ class BackupArchiveTest {
 
     private fun secretSnapshot(): BackupSnapshot {
         return BackupSnapshot(
-            modelsJson = """{"active_id":"m","prompt":"","configs":[{"id":"m","endpoint":"https://example.test","api_key":"sk-live"}]}""",
+            modelsJson = """{"active_id":"m","prompt":"","configs":[{"id":"m","endpoint":"https://example.test","api_key":"sk-live","available_models":[{"id":"m","source":"custom"},{"id":"gpt-4o","source":"remote"}]}]}""",
             mcpServersJson = """{"servers":[{"name":"local","url":"http://127.0.0.1","headers":{"Authorization":"secret-token"}}]}""",
             mcpServiceJson = """{"enabled":true,"bearerToken":"bearer-live"}""",
         )

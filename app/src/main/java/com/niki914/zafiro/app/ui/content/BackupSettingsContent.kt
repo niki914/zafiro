@@ -55,6 +55,7 @@ import com.niki914.uikit.button.ZafiroButton
 import com.niki914.uikit.control.ZafiroSwitch
 import com.niki914.uikit.infra.component.OptionRow
 import com.niki914.uikit.infra.component.OptionSheet
+import com.niki914.uikit.infra.component.SheetIconButton
 import com.niki914.uikit.infra.component.SettingsSegmentedSelector
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
 import com.niki914.uikit.infra.component.settings.SettingsRowAction
@@ -367,41 +368,13 @@ private fun SheetToggleIcon(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    val haptics = LocalHapticFeedback.current
-    val interactionSource = remember { MutableInteractionSource() }
-    val background = if (highlighted) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        Color.Transparent
-    }
-    val tint = if (highlighted) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
-    Box(
-        modifier = Modifier
-            .size(48.dp)
-            .clip(CircleShape)
-            .background(background)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                enabled = enabled,
-                role = Role.Button,
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
-                    onClick()
-                },
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = imageVector,
-            contentDescription = contentDescription,
-            tint = tint,
-        )
-    }
+    SheetIconButton(
+        imageVector = imageVector,
+        contentDescription = contentDescription,
+        highlighted = highlighted,
+        enabled = enabled,
+        onClick = onClick,
+    )
 }
 
 @Composable

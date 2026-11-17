@@ -9,6 +9,8 @@ import com.niki914.okia.message.ThinkingLevel
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.settings.form.buildFormSpec
+import com.niki914.zafiro.repo.AvailableModelItem
+import com.niki914.zafiro.repo.AvailableModelSource
 import com.niki914.zafiro.repo.CloudModelFacts
 import com.niki914.zafiro.repo.LlmConfigsDocument
 import com.niki914.zafiro.repo.ModelCatalog
@@ -100,9 +102,25 @@ data class ConfigureUiState(
     val pendingEndpointMismatch: EndpointMismatch? = null,
     /** 模型目录扫描缓存：为空 = 不显示扫描按钮；非空 = 显示按钮。 */
     val modelCatalog: List<String> = emptyList(),
+    /** 当前配置保存的可用模型列表。 */
+    val availableModels: List<AvailableModelItem> = emptyList(),
+    /** 模型目录刷新状态机。 */
+    val catalogFetchStatus: ModelCatalogFetchStatus = ModelCatalogFetchStatus.Idle,
     /** 非 null 时应弹出模型选择单。 */
     val showModelCatalogSheet: Boolean = false,
+    /** 是否展示添加可用模型弹窗。 */
+    val showAddModelDialog: Boolean = false,
 )
+
+/**
+ * 模型目录拉取状态机。
+ */
+enum class ModelCatalogFetchStatus {
+    Idle,
+    Loading,
+    Success,
+    Failure,
+}
 
 data class ConfigureSnapshot(
     val configName: String,
@@ -117,6 +135,7 @@ data class ConfigureSnapshot(
     val proxy: String,
     val maxTokens: String,
     val contextWindow: String,
+    val availableModels: List<AvailableModelItem> = emptyList(),
 )
 
 val ConfigureFormSpec = buildFormSpec<ConfigureSnapshot, String> {
@@ -180,6 +199,10 @@ sealed interface ConfigureIntent {
     data object ShowModelCatalogSheet : ConfigureIntent
     data object HideModelCatalogSheet : ConfigureIntent
     data class SelectCatalogModel(val modelId: String) : ConfigureIntent
+    data object ShowAddModelDialog : ConfigureIntent
+    data object HideAddModelDialog : ConfigureIntent
+    data class AddAvailableModel(val modelId: String) : ConfigureIntent
+    data object RefreshModelCatalog : ConfigureIntent
 
     /** 确认端点不匹配弹窗：点击更新。 */
     data object ConfirmEndpointMismatch : ConfigureIntent
@@ -353,13 +376,52 @@ class ConfigureViewModel internal constructor(
             }
 
             is ConfigureIntent.SelectCatalogModel -> updateState {
+                val trimmed = intent.modelId.trim()
+                val updated = if (trimmed.isNotBlank() && availableModels.none { it.id == trimmed }) {
+                    availableModels + AvailableModelItem(trimmed, AvailableModelSource.Remote)
+                } else {
+                    availableModels
+                }
                 copy(
-                    modelInput = intent.modelId,
+                    modelInput = trimmed,
+                    availableModels = updated,
                     modelErrorResId = null,
                     inlineError = null,
                     showModelCatalogSheet = false,
                 )
             }
+
+            ConfigureIntent.ShowAddModelDialog -> updateState {
+                copy(showAddModelDialog = true)
+            }
+
+            ConfigureIntent.HideAddModelDialog -> updateState {
+                copy(showAddModelDialog = false)
+            }
+
+            is ConfigureIntent.AddAvailableModel -> {
+                val trimmed = intent.modelId.trim()
+                if (trimmed.isNotBlank()) {
+                    updateState {
+                        val updated = if (availableModels.any { it.id == trimmed }) {
+                            availableModels
+                        } else {
+                            availableModels + AvailableModelItem(trimmed, AvailableModelSource.Custom)
+                        }
+                        copy(
+                            availableModels = updated,
+                            modelInput = trimmed,
+                            modelErrorResId = null,
+                            inlineError = null,
+                            showAddModelDialog = false,
+                        )
+                    }
+                } else {
+                    updateState { copy(showAddModelDialog = false) }
+                }
+            }
+
+            ConfigureIntent.RefreshModelCatalog -> refreshModelCatalog()
         }
     }
 
@@ -445,6 +507,9 @@ class ConfigureViewModel internal constructor(
                 activeConfigId = document.activeId,
                 // 新会话：目录缓存不跨页复用（同 VM 复用时旧名单不清会误回填）
                 modelCatalog = emptyList(),
+                availableModels = emptyList(),
+                catalogFetchStatus = ModelCatalogFetchStatus.Idle,
+                showAddModelDialog = false,
                 showModelCatalogSheet = false,
             )
             next
@@ -497,6 +562,9 @@ class ConfigureViewModel internal constructor(
                 activeConfigId = document.activeId,
                 // 新会话：目录缓存不跨页复用（同 VM 复用时旧名单不清会误回填）
                 modelCatalog = emptyList(),
+                availableModels = emptyList(),
+                catalogFetchStatus = ModelCatalogFetchStatus.Idle,
+                showAddModelDialog = false,
                 showModelCatalogSheet = false,
             )
             // 快照必须取自初始化后的状态，否则未修改也会被判为 dirty
@@ -546,6 +614,9 @@ class ConfigureViewModel internal constructor(
                 activeConfigId = document.activeId,
                 // 新会话：目录缓存不跨页复用（同 VM 复用时旧名单不清会误回填）
                 modelCatalog = emptyList(),
+                availableModels = target.availableModels,
+                catalogFetchStatus = ModelCatalogFetchStatus.Idle,
+                showAddModelDialog = false,
                 showModelCatalogSheet = false,
             )
             // 快照必须取自初始化后的状态，否则未修改也会被判为 dirty
@@ -588,23 +659,82 @@ class ConfigureViewModel internal constructor(
                 val ids = catalog.ids
                 // 成功覆盖：空结果也写入（藏按钮），失败走 catch 保留旧缓存
                 updateState {
+                    val merged = mergeAvailableModelsWithRemote(availableModels, ids)
                     // 没走 Provider 默认 model ID（编辑区为空）时，拉到的首个直接回填，免开选择单
                     if (modelInput.isBlank() && ids.isNotEmpty()) {
                         copy(
                             modelCatalog = ids,
+                            availableModels = merged,
                             modelInput = ids.first(),
                             modelErrorResId = null,
                             inlineError = null,
                             showModelCatalogSheet = false,
                         )
                     } else {
-                        copy(modelCatalog = ids)
+                        copy(
+                            modelCatalog = ids,
+                            availableModels = merged,
+                        )
                     }
                 }
             }.onFailure { throwable ->
                 Logger.w(LOG_TAG, "catalog fetch failed: ${throwable.message}")
             }
         }
+    }
+
+    private suspend fun refreshModelCatalog() {
+        if (currentState.catalogFetchStatus == ModelCatalogFetchStatus.Loading) return
+        updateState { copy(catalogFetchStatus = ModelCatalogFetchStatus.Loading) }
+        val state = currentState
+        val endpoint = state.endpointInput.trim()
+        val apiKey = state.apiKeyInput.trim()
+        val protocolWireId = state.protocolWireId
+        if (endpoint.isBlank() || apiKey.isBlank()) {
+            updateState { copy(catalogFetchStatus = ModelCatalogFetchStatus.Failure) }
+            return
+        }
+        val protocol = LlmProtocol.fromWire(protocolWireId)
+        val modelsUrl = EndpointInference.modelsUrl(endpoint, protocol)
+        if (modelsUrl == null) {
+            updateState { copy(catalogFetchStatus = ModelCatalogFetchStatus.Failure) }
+            return
+        }
+        runCatchingCancellable {
+            val catalog = dependencies.fetchModelCatalog(modelsUrl, apiKey, protocol)
+            if (catalog.facts.isNotEmpty()) {
+                runCatchingCancellable {
+                    dependencies.saveModelFacts(endpoint, catalog.facts)
+                }.onFailure { throwable ->
+                    Logger.w(LOG_TAG, "save model facts failed: ${throwable.message}")
+                }
+            }
+            val ids = catalog.ids
+            updateState {
+                val merged = mergeAvailableModelsWithRemote(availableModels, ids)
+                copy(
+                    modelCatalog = ids,
+                    availableModels = merged,
+                    catalogFetchStatus = if (ids.isNotEmpty()) ModelCatalogFetchStatus.Success else ModelCatalogFetchStatus.Failure,
+                )
+            }
+        }.onFailure { throwable ->
+            Logger.w(LOG_TAG, "catalog fetch failed: ${throwable.message}")
+            updateState { copy(catalogFetchStatus = ModelCatalogFetchStatus.Failure) }
+        }
+    }
+
+    private fun mergeAvailableModelsWithRemote(
+        current: List<AvailableModelItem>,
+        remoteIds: List<String>,
+    ): List<AvailableModelItem> {
+        val customItems = current.filter { it.source == AvailableModelSource.Custom }
+        val remoteItems = remoteIds.mapNotNull { id ->
+            val trimmed = id.trim()
+            if (trimmed.isBlank() || customItems.any { it.id == trimmed }) null
+            else AvailableModelItem(trimmed, AvailableModelSource.Remote)
+        }
+        return customItems + remoteItems
     }
 
     private data class CatalogKey(
@@ -903,6 +1033,7 @@ private fun ConfigureUiState.toSavedLlmConfig(): SavedLlmConfig {
         endpoint = resolvedEndpoint(),
         apiKey = apiKeyInput,
         model = modelInput,
+        availableModels = availableModels,
         protocol = protocolWireId,
         thinkingLevel = thinkingLevelWire,
         supportsImages = supportsImages,
@@ -933,6 +1064,7 @@ private fun ConfigureUiState.toSettingsSnapshot(): ConfigureSnapshot {
         proxy = proxyInput.trim(),
         maxTokens = maxTokensInput.trim(),
         contextWindow = contextWindowInput.trim(),
+        availableModels = availableModels,
     )
 }
 

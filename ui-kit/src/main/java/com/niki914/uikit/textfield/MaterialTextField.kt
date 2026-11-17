@@ -307,7 +307,6 @@ internal fun MaterialOutlinedTextField(
     ) { indicatorThickness, indicatorColor, motionModifier, innerContent ->
         Surface(
             modifier = modifier
-                .fillMaxWidth()
                 .then(motionModifier),
             shape = shape,
             color = Color.Transparent,

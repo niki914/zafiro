@@ -22,6 +22,10 @@
     <string name="ui_onboard_configure_model_placeholder">أدخل معرّف نموذجك</string>
     <string name="ui_onboard_configure_model_example">مثال: %1$s</string>
     <string name="ui_onboard_configure_model_catalog_open">اختيار نموذج</string>
+    <string name="ui_onboard_configure_model_add_button">إضافة نموذج</string>
+    <string name="ui_onboard_configure_model_add_title">إضافة نموذج متاح</string>
+    <string name="ui_onboard_configure_model_add_placeholder">أدخل معرّف النموذج، مثل gpt-4o</string>
+    <string name="ui_onboard_configure_model_catalog_refresh">تحديث كتالوج النماذج</string>
     <string name="ui_onboard_configure_model_catalog_title">اختيار نموذج</string>
     <string name="ui_onboard_configure_model_catalog_search_placeholder">ابحث عن نموذج</string>
     <string name="ui_onboard_configure_model_catalog_empty">لا نماذج مطابقة</string>
