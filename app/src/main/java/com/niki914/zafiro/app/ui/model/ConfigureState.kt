@@ -45,7 +45,23 @@ data class SavedConfigSummary(
     val name: String,
     val providerBrandName: String = "",
     val modelId: String,
+    val availableModels: List<AvailableModelItem> = emptyList(),
+    val thinkingLevel: String = "",
     val isActive: Boolean,
+)
+
+/** 思考强度可选项：「Provider 默认」（空串 = 不发字段）+ 全部 ThinkingLevel。 */
+data class ThinkingLevelOption(val wire: String, val label: String)
+
+val THINKING_LEVEL_OPTIONS: List<ThinkingLevelOption> = listOf(
+    ThinkingLevelOption("", "Default"),
+    ThinkingLevelOption(ThinkingLevel.OFF.wireValue, "Off"),
+    ThinkingLevelOption(ThinkingLevel.MINIMAL.wireValue, "Minimal"),
+    ThinkingLevelOption(ThinkingLevel.LOW.wireValue, "Low"),
+    ThinkingLevelOption(ThinkingLevel.MEDIUM.wireValue, "Medium"),
+    ThinkingLevelOption(ThinkingLevel.HIGH.wireValue, "High"),
+    ThinkingLevelOption(ThinkingLevel.XHIGH.wireValue, "X-High"),
+    ThinkingLevelOption(ThinkingLevel.MAX.wireValue, "Max"),
 )
 
 internal fun summariesOf(document: LlmConfigsDocument): List<SavedConfigSummary> {
@@ -53,11 +69,18 @@ internal fun summariesOf(document: LlmConfigsDocument): List<SavedConfigSummary>
         .sortedBy(SavedLlmConfig::createdAt)
         .map { config ->
             val providerSpec = ProviderSpecs.find(config.provider)
+            val effectiveModels = if (config.model.isNotBlank() && config.availableModels.none { it.id == config.model }) {
+                listOf(AvailableModelItem(config.model, AvailableModelSource.Custom)) + config.availableModels
+            } else {
+                config.availableModels
+            }
             SavedConfigSummary(
                 id = config.id,
                 name = config.name.ifBlank { providerSpec.brandName },
                 providerBrandName = providerSpec.brandName,
                 modelId = config.model,
+                availableModels = effectiveModels,
+                thinkingLevel = config.thinkingLevel,
                 isActive = config.id == document.activeId,
             )
         }
@@ -239,6 +262,9 @@ data class EndpointMismatch(
 internal data class ConfigureViewModelDependencies(
     val loadDocument: suspend () -> LlmConfigsDocument,
     val upsertConfig: suspend (SavedLlmConfig) -> String?,
+    val updateAvailableModels: suspend (String, List<AvailableModelItem>) -> Unit = { id, models ->
+        XRepo.llmConfigs.updateAvailableModels(id, models)
+    },
     val deleteConfig: suspend (String) -> Unit,
     val setActiveConfig: suspend (String) -> Unit,
     val fetchModelCatalog: suspend (modelsUrl: String, apiKey: String, protocol: LlmProtocol) -> ModelCatalog,
@@ -402,12 +428,13 @@ class ConfigureViewModel internal constructor(
             is ConfigureIntent.AddAvailableModel -> {
                 val trimmed = intent.modelId.trim()
                 if (trimmed.isNotBlank()) {
+                    val currentModels = currentState.availableModels
+                    val updated = if (currentModels.any { it.id == trimmed }) {
+                        currentModels
+                    } else {
+                        currentModels + AvailableModelItem(trimmed, AvailableModelSource.Custom)
+                    }
                     updateState {
-                        val updated = if (availableModels.any { it.id == trimmed }) {
-                            availableModels
-                        } else {
-                            availableModels + AvailableModelItem(trimmed, AvailableModelSource.Custom)
-                        }
                         copy(
                             availableModels = updated,
                             modelInput = trimmed,
@@ -415,6 +442,16 @@ class ConfigureViewModel internal constructor(
                             inlineError = null,
                             showAddModelDialog = false,
                         )
+                    }
+                    val editingId = currentState.editingConfigId
+                    if (editingId != null) {
+                        viewModelScope.launch {
+                            runCatchingCancellable {
+                                dependencies.updateAvailableModels(editingId, updated)
+                            }.onFailure { throwable ->
+                                Logger.w(LOG_TAG, "auto-persist custom model failed: ${throwable.message}")
+                            }
+                        }
                     }
                 } else {
                     updateState { copy(showAddModelDialog = false) }
@@ -677,6 +714,14 @@ class ConfigureViewModel internal constructor(
                         )
                     }
                 }
+                val editingId = currentState.editingConfigId
+                if (editingId != null && ids.isNotEmpty()) {
+                    runCatchingCancellable {
+                        dependencies.updateAvailableModels(editingId, currentState.availableModels)
+                    }.onFailure { throwable ->
+                        Logger.w(LOG_TAG, "auto-persist catalog fetch failed: ${throwable.message}")
+                    }
+                }
             }.onFailure { throwable ->
                 Logger.w(LOG_TAG, "catalog fetch failed: ${throwable.message}")
             }
@@ -717,6 +762,14 @@ class ConfigureViewModel internal constructor(
                     availableModels = merged,
                     catalogFetchStatus = if (ids.isNotEmpty()) ModelCatalogFetchStatus.Success else ModelCatalogFetchStatus.Failure,
                 )
+            }
+            val editingId = currentState.editingConfigId
+            if (editingId != null && ids.isNotEmpty()) {
+                runCatchingCancellable {
+                    dependencies.updateAvailableModels(editingId, currentState.availableModels)
+                }.onFailure { throwable ->
+                    Logger.w(LOG_TAG, "auto-persist catalog refresh failed: ${throwable.message}")
+                }
             }
         }.onFailure { throwable ->
             Logger.w(LOG_TAG, "catalog fetch failed: ${throwable.message}")

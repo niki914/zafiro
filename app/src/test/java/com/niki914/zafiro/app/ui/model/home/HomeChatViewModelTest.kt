@@ -516,7 +516,51 @@ class HomeChatViewModelTest {
         assertEquals("c2", fixture.vm.uiStateFlow.value.activeConfigId)
         assertEquals("c2", fixture.agent.boundConfigId)
         assertEquals("c2", fixture.store.boundConfigs["conv-1"])
+        assertTrue(fixture.vm.uiStateFlow.value.isConfigMenuVisible)
+
+        fixture.vm.sendIntent(HomeChatIntent.DismissConfigMenu)
+        advanceUntilIdle()
         assertFalse(fixture.vm.uiStateFlow.value.isConfigMenuVisible)
+    }
+
+    @Test
+    fun selectModelAndUpdateThinkingLevel_updatesUiStateAndPersists() = runTest {
+        var persistedModel: Pair<String, String>? = null
+        var persistedThinking: Pair<String, String>? = null
+        val config = SavedLlmConfig(
+            id = "c1",
+            name = "DeepSeek",
+            provider = "deepseek",
+            endpoint = "https://api.deepseek.com",
+            apiKey = "key1",
+            model = "deepseek-chat",
+            protocol = "",
+            proxy = "",
+            thinkingLevel = "none",
+        )
+        val fixture = fixture(
+            configDependencies = HomeChatConfigDependencies(
+                loadConfigs = {
+                    LlmConfigsDocument(
+                        activeId = "c1",
+                        configs = listOf(config),
+                    )
+                },
+                updateConfigModel = { cid, mid -> persistedModel = cid to mid },
+                updateThinkingLevel = { cid, level -> persistedThinking = cid to level },
+            ),
+        )
+        advanceUntilIdle()
+
+        fixture.vm.sendIntent(HomeChatIntent.SelectModel(configId = "c1", modelId = "deepseek-reasoner"))
+        advanceUntilIdle()
+        assertEquals("deepseek-reasoner", fixture.vm.uiStateFlow.value.displayConfig?.modelId)
+        assertEquals("c1" to "deepseek-reasoner", persistedModel)
+
+        fixture.vm.sendIntent(HomeChatIntent.UpdateThinkingLevel(configId = "c1", wireValue = "high"))
+        advanceUntilIdle()
+        assertEquals("high", fixture.vm.uiStateFlow.value.displayConfig?.thinkingLevel)
+        assertEquals("c1" to "high", persistedThinking)
     }
 
     @Test

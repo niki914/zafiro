@@ -34,7 +34,7 @@ internal fun HomeTopBarContribution(
     ) {
         PageChromeContribution(
             titleContent = titleContent,
-            isTitleOccluded = isConfigMenuVisible,
+            isTitleOccluded = false,
             actionsVisible = true,
             topBarLoad = if (isGenerating) TopBarLoad.Indeterminate else TopBarLoad.None,
             leftAction = TopBarActionSpec(

@@ -238,6 +238,8 @@ sealed interface HomeChatIntent {
     data object OpenConfigMenu : HomeChatIntent
     data object DismissConfigMenu : HomeChatIntent
     data class SelectConfig(val id: String) : HomeChatIntent
+    data class SelectModel(val configId: String, val modelId: String) : HomeChatIntent
+    data class UpdateThinkingLevel(val configId: String, val wireValue: String) : HomeChatIntent
     data object RefreshConfigs : HomeChatIntent
 }
 

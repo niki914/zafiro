@@ -23,6 +23,7 @@ import com.niki914.uikit.infra.component.SettingsConnectedGroup
 import com.niki914.uikit.infra.component.SettingsListItem
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureUiState
+import com.niki914.zafiro.app.ui.model.THINKING_LEVEL_OPTIONS
 import com.niki914.zafiro.app.ui.settings.form.EditableDetailFieldController
 import com.niki914.zafiro.app.ui.settings.form.SettingControlledExpandableTextItem
 import com.niki914.zafiro.settings.model.LlmProtocol
@@ -280,7 +281,7 @@ internal fun ConfigureProtocolSettingsBlock(
 ) {
     val onClearActiveField = fieldController.clearActiveField
     var showProtocolDialog by rememberSaveable { mutableStateOf(false) }
-    val thinkingOptions = thinkingLevelOptions()
+    val thinkingOptions = THINKING_LEVEL_OPTIONS
     val currentLevelIndex = thinkingOptions.indexOfFirst { it.wire == uiState.thinkingLevelWire }
         .takeIf { it >= 0 } ?: 0
 
@@ -327,8 +328,8 @@ internal fun ConfigureProtocolSettingsBlock(
                 valueRange = 0f..thinkingOptions.lastIndex.toFloat(),
                 steps = (thinkingOptions.size - 2).coerceAtLeast(0),
                 valueLabel = thinkingOptions[currentLevelIndex].label,
-                startLabel = stringResource(R.string.ui_settings_configure_thinking_start_label),
-                endLabel = stringResource(R.string.ui_settings_configure_thinking_end_label),
+                startLabel = thinkingOptions.first().label,
+                endLabel = thinkingOptions.last().label,
                 enabled = !uiState.isSaving,
                 shape = shape,
                 isStandaloneCard = isStandalone,
@@ -393,10 +394,3 @@ internal fun ConfigureProtocolSettingsBlock(
         },
     )
 }
-
-/** 思考强度可选项：「Provider 默认」（空串 = 不发字段）+ 全部 ThinkingLevel。 */
-private data class ThinkingLevelOption(val wire: String, val label: String)
-
-private fun thinkingLevelOptions(): List<ThinkingLevelOption> =
-    listOf(ThinkingLevelOption("", "Default")) +
-            ThinkingLevel.entries.map { ThinkingLevelOption(it.wireValue, it.wireValue) }
