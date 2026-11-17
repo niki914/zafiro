@@ -10,8 +10,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 import com.niki914.uikit.motion.springSquish
 
@@ -28,9 +29,7 @@ fun RowScope.ZafiroDialogButton(
     enabled: Boolean = true,
     isPrimary: Boolean = false,
 ) {
-    val themeStyle = LocalThemeStyle.current
-
-    when (themeStyle) {
+    when (val themeStyle = resolvedUiStyle(UiStylePart.Dialog)) {
         ThemeStyle.LiquidGlass -> {
             MaterialTintLiquidButton(
                 text = text,

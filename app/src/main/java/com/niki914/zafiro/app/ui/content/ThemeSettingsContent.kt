@@ -57,6 +57,7 @@ import com.niki914.zafiro.app.ui.model.ThemeSettingsEffect
 import com.niki914.zafiro.app.ui.model.ThemeSettingsIntent
 import com.niki914.zafiro.app.ui.model.ThemeSettingsViewModel
 import com.niki914.zafiro.app.ui.nav.MarkdownScalePage
+import com.niki914.zafiro.app.ui.nav.ThemeStylesPage
 import com.niki914.zafiro.app.ui.nav.SettingsDetailPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.nav.ZafiroSettingsGroup
@@ -158,11 +159,6 @@ internal val ThemeColorLabelRes: List<Int> = listOf(
     R.string.ui_theme_color_sunset,
 )
 
-data class ThemeStyleOption(
-    val style: ThemeStyle,
-    val label: String,
-)
-
 data class LanguageOption(
     /** BCP-47 tag；空串 = 跟随系统。 */
     val tag: String,
@@ -229,12 +225,7 @@ fun ThemeSettingsContent(
     )
     val languageOptionList = languageOptions()
 
-    var themeStyleDialogVisible by rememberSaveable { mutableStateOf(false) }
-    val themeStyleOptions = listOf(
-        ThemeStyleOption(ThemeStyle.LiquidGlass, stringResource(R.string.ui_theme_style_liquid)),
-        ThemeStyleOption(ThemeStyle.Material3, stringResource(R.string.ui_theme_style_md3)),
-        ThemeStyleOption(ThemeStyle.Material3Expressive, stringResource(R.string.ui_theme_style_md3e)),
-    )
+    val unifiedStyle = ThemeController.unifiedThemeStyleOrNull()
 
     val spec = SettingsPageSpec(
         sections = listOf(
@@ -267,10 +258,11 @@ fun ThemeSettingsContent(
                     SettingsRowSpec.Navigation(
                         id = THEME_STYLE_ROW_ID,
                         title = stringResource(R.string.ui_settings_theme_style_title),
-                        currentState = when (prefs.themeStyle) {
+                        currentState = when (unifiedStyle) {
                             ThemeStyle.LiquidGlass -> stringResource(R.string.ui_theme_style_liquid)
                             ThemeStyle.Material3 -> stringResource(R.string.ui_theme_style_md3)
                             ThemeStyle.Material3Expressive -> stringResource(R.string.ui_theme_style_md3e)
+                            null -> stringResource(R.string.ui_theme_style_custom)
                         },
                         leadingIcon = SettingsRowLeadingIcon.Vector(Icons.Rounded.BrightnessAuto),
                     ),
@@ -333,28 +325,12 @@ fun ThemeSettingsContent(
             when (action) {
                 is SettingsRowAction.Navigate -> {
                     when (action.id) {
-                        THEME_STYLE_ROW_ID -> themeStyleDialogVisible = true
+                        THEME_STYLE_ROW_ID -> onPush(ThemeStylesPage)
                         LANGUAGE_ROW_ID -> viewModel.sendIntent(ThemeSettingsIntent.OpenLanguageDialog)
                         MARKDOWN_SCALE_ROW_ID -> onPush(MarkdownScalePage)
                     }
                 }
                 else -> Unit
-            }
-        },
-    )
-
-    ZafiroSingleChoiceDialog(
-        visible = themeStyleDialogVisible,
-        onDismissRequest = { themeStyleDialogVisible = false },
-        title = stringResource(R.string.ui_settings_theme_style_title),
-        options = themeStyleOptions,
-        selectedId = prefs.themeStyle.storageKey,
-        optionId = { it.style.storageKey },
-        optionLabel = ThemeStyleOption::label,
-        onSelect = { option ->
-            themeStyleDialogVisible = false
-            if (option.style != prefs.themeStyle) {
-                scope.launch { ThemeController.setThemeStyle(option.style) }
             }
         },
     )

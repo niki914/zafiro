@@ -327,6 +327,7 @@ object FloatingBallOverlayManager {
                         dynamicColor = themePrefs.seedColor == null,
                         seedColor = seed,
                         themeStyle = themePrefs.themeStyle,
+                        uiStyleLookup = ThemeController.uiStyleLookup(),
                     ) {
                         FloatingBallCollapsedBall(
                             onClick = {
@@ -393,6 +394,7 @@ object FloatingBallOverlayManager {
                         dynamicColor = themePrefs.seedColor == null,
                         seedColor = seed,
                         themeStyle = themePrefs.themeStyle,
+                        uiStyleLookup = ThemeController.uiStyleLookup(),
                     ) {
                         FloatingBallMorphCard(
                             state = uiState.ballState,
@@ -541,6 +543,7 @@ object FloatingBallOverlayManager {
                     dynamicColor = themePrefs.seedColor == null,
                     seedColor = seed,
                     themeStyle = themePrefs.themeStyle,
+                    uiStyleLookup = ThemeController.uiStyleLookup(),
                 ) {
                     val uiState by vm.uiStateFlow.collectAsState()
                     FloatingBallDetailMorphCard(

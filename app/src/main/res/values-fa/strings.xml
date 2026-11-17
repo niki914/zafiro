@@ -8,6 +8,8 @@
     <string name="ui_onboard_startup_demo_button">شروع</string>
     <string name="ui_onboard_provider_pick_title">سرویس‌دهنده را انتخاب کنید</string>
     <string name="ui_onboard_provider_pick_description">از اینجا مدل‌تان را وصل کنید.\nبرای ادامه یک سرویس‌دهنده انتخاب کنید.</string>
+    <string name="ui_onboard_provider_pick_byok_hint">BYOK چیست؟</string>
+    <string name="ui_provider_official_and_relay_summary">رسمی و رله‌های شخص ثالث</string>
     <string name="ui_onboard_configure_title">پیکربندی دسترسی به مدل</string>
     <string name="ui_onboard_configure_description">تنظیمات مدل را وارد کنید. بعد از آن می‌توانید شروع کنید.</string>
     <string name="ui_onboard_configure_next">بعدی</string>
@@ -601,6 +603,43 @@
     <string name="ui_theme_style_liquid">Glass</string>
     <string name="ui_theme_style_md3">MD3</string>
     <string name="ui_theme_style_md3e">MD3E</string>
+    <string name="ui_theme_style_custom">سفارشی</string>
+    <string name="ui_theme_style_unified">سبک یکپارچه</string>
+
+    <string name="ui_theme_group_controls">کنترل‌های پایه</string>
+    <string name="ui_theme_group_layout">طرح‌بندی و پیمایش</string>
+    <string name="ui_theme_group_system">حرکت و سیستم</string>
+
+    <string name="ui_theme_part_button">دکمه‌ها</string>
+
+    <string name="ui_theme_part_switch">کلید سوئیچ</string>
+
+    <string name="ui_theme_part_slider">نوار لغزنده</string>
+
+    <string name="ui_theme_part_text_field">کادر متنی</string>
+
+    <string name="ui_theme_part_loading">نشانگر بارگذاری</string>
+
+    <string name="ui_theme_part_top_bar_buttons">دکمه‌های نوار بالا</string>
+
+    <string name="ui_theme_part_top_bar_plate">صفحه نوار بالا</string>
+
+    <string name="ui_theme_part_composer">نوار ورودی گفتگو</string>
+
+    <string name="ui_theme_part_search">نوار جستجو</string>
+
+    <string name="ui_theme_part_page_scroll">پیمایش صفحه</string>
+
+    <string name="ui_theme_part_dialog">دیالوگ‌ها</string>
+
+    <string name="ui_theme_part_menu">منوی کشویی</string>
+
+    <string name="ui_theme_part_settings">کارت‌های تنظیمات</string>
+
+    <string name="ui_theme_preview_primary_btn">اصلی</string>
+    <string name="ui_theme_preview_tonal_btn">تنال</string>
+    <string name="ui_theme_preview_loading_hint">در حال پردازش...</string>
+    <string name="ui_theme_preview_input_hint">چیزی تایپ کنید...</string>
 
     <string name="ui_theme_mode_system">پیروی از سیستم</string>
     <string name="ui_theme_mode_light">روشن</string>

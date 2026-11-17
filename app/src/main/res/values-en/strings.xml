@@ -8,6 +8,8 @@
     <string name="ui_onboard_startup_demo_button">Get Started</string>
     <string name="ui_onboard_provider_pick_title">Choose a Provider</string>
     <string name="ui_onboard_provider_pick_description">Start here to connect your model.\nSelect a provider to continue.</string>
+    <string name="ui_onboard_provider_pick_byok_hint">What is BYOK?</string>
+    <string name="ui_provider_official_and_relay_summary">Official &amp; third-party relays</string>
     <string name="ui_onboard_configure_title">Configure Model Access</string>
     <string name="ui_onboard_configure_description">Enter your model settings to get started.</string>
     <string name="ui_onboard_configure_next">Next</string>
@@ -601,6 +603,43 @@
     <string name="ui_theme_style_liquid">Glass</string>
     <string name="ui_theme_style_md3">MD3</string>
     <string name="ui_theme_style_md3e">MD3E</string>
+    <string name="ui_theme_style_custom">Custom</string>
+    <string name="ui_theme_style_unified">Unified Style</string>
+
+    <string name="ui_theme_group_controls">Controls</string>
+    <string name="ui_theme_group_layout">Layout &amp; Navigation</string>
+    <string name="ui_theme_group_system">Motion &amp; System</string>
+
+    <string name="ui_theme_part_button">Buttons</string>
+
+    <string name="ui_theme_part_switch">Switch</string>
+
+    <string name="ui_theme_part_slider">Slider</string>
+
+    <string name="ui_theme_part_text_field">Text Field</string>
+
+    <string name="ui_theme_part_loading">Loading Indicator</string>
+
+    <string name="ui_theme_part_top_bar_buttons">Top Bar Buttons</string>
+
+    <string name="ui_theme_part_top_bar_plate">Top Bar Plate</string>
+
+    <string name="ui_theme_part_composer">Chat Composer</string>
+
+    <string name="ui_theme_part_search">Search Bar</string>
+
+    <string name="ui_theme_part_page_scroll">Page Scroll</string>
+
+    <string name="ui_theme_part_dialog">Dialogs</string>
+
+    <string name="ui_theme_part_menu">Dropdown Menu</string>
+
+    <string name="ui_theme_part_settings">Settings Cards</string>
+
+    <string name="ui_theme_preview_primary_btn">Primary</string>
+    <string name="ui_theme_preview_tonal_btn">Tonal</string>
+    <string name="ui_theme_preview_loading_hint">Processing...</string>
+    <string name="ui_theme_preview_input_hint">Sample input...</string>
 
     <string name="ui_theme_mode_system">Follow system</string>
     <string name="ui_theme_mode_light">Light</string>

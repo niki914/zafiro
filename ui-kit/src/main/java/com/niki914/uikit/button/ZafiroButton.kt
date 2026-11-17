@@ -6,8 +6,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 import com.niki914.uikit.infra.component.TintLiquidButton
 
@@ -29,7 +30,7 @@ fun ZafiroButton(
     leadingIcon: (@Composable () -> Unit)? = null,
     trailingIcon: (@Composable () -> Unit)? = null,
 ) {
-    when (LocalThemeStyle.current) {
+    when (resolvedUiStyle(UiStylePart.Button)) {
         ThemeStyle.LiquidGlass -> {
             MaterialTintLiquidButton(
                 text = text,
@@ -79,7 +80,7 @@ fun ZafiroTonalButton(
     leadingIcon: (@Composable () -> Unit)? = null,
     trailingIcon: (@Composable () -> Unit)? = null,
 ) {
-    when (LocalThemeStyle.current) {
+    when (resolvedUiStyle(UiStylePart.Button)) {
         ThemeStyle.LiquidGlass -> {
             TintLiquidButton(
                 text = text,

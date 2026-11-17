@@ -43,6 +43,11 @@ internal object BackupLiveSource {
             } else {
                 "{}"
             },
+            uiStylesJson = if (includeConfig) {
+                XRepo.readJson(StoreDescriptorRegistry.UI_STYLES_ID)
+            } else {
+                "{}"
+            },
             modelsJson = if (includeConfig) {
                 XRepo.readJson(StoreDescriptorRegistry.LLM_CONFIGS_ID)
             } else {

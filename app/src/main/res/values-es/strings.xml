@@ -8,6 +8,8 @@
     <string name="ui_onboard_startup_demo_button">Empezar</string>
     <string name="ui_onboard_provider_pick_title">Seleccionar proveedor</string>
     <string name="ui_onboard_provider_pick_description">Comience a conectar sus modelos desde aquí.\nSeleccione un proveedor para continuar.</string>
+    <string name="ui_onboard_provider_pick_byok_hint">¿Qué es BYOK?</string>
+    <string name="ui_provider_official_and_relay_summary">Oficial y relés de terceros</string>
     <string name="ui_onboard_configure_title">Configurar modelo</string>
     <string name="ui_onboard_configure_description">Complete la configuración del modelo para empezar a usar Zafiro.</string>
     <string name="ui_onboard_configure_next">Siguiente</string>
@@ -601,6 +603,43 @@
     <string name="ui_theme_style_liquid">Glass</string>
     <string name="ui_theme_style_md3">MD3</string>
     <string name="ui_theme_style_md3e">MD3E</string>
+    <string name="ui_theme_style_custom">Personalizado</string>
+    <string name="ui_theme_style_unified">Estilo unificado</string>
+
+    <string name="ui_theme_group_controls">Controles básicos</string>
+    <string name="ui_theme_group_layout">Diseño y navegación</string>
+    <string name="ui_theme_group_system">Animación y sistema</string>
+
+    <string name="ui_theme_part_button">Botones</string>
+
+    <string name="ui_theme_part_switch">Interruptor</string>
+
+    <string name="ui_theme_part_slider">Deslizador</string>
+
+    <string name="ui_theme_part_text_field">Campo de texto</string>
+
+    <string name="ui_theme_part_loading">Indicador de carga</string>
+
+    <string name="ui_theme_part_top_bar_buttons">Botones de barra superior</string>
+
+    <string name="ui_theme_part_top_bar_plate">Placa de barra superior</string>
+
+    <string name="ui_theme_part_composer">Barra de entrada de chat</string>
+
+    <string name="ui_theme_part_search">Barra de búsqueda</string>
+
+    <string name="ui_theme_part_page_scroll">Desplazamiento de página</string>
+
+    <string name="ui_theme_part_dialog">Diálogos</string>
+
+    <string name="ui_theme_part_menu">Menú desplegable</string>
+
+    <string name="ui_theme_part_settings">Tarjetas de configuración</string>
+
+    <string name="ui_theme_preview_primary_btn">Principal</string>
+    <string name="ui_theme_preview_tonal_btn">Secundario</string>
+    <string name="ui_theme_preview_loading_hint">Procesando...</string>
+    <string name="ui_theme_preview_input_hint">Escribe algo...</string>
 
     <string name="ui_theme_mode_system">Según el sistema</string>
     <string name="ui_theme_mode_light">Claro</string>

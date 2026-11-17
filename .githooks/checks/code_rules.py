@@ -66,6 +66,87 @@ CONTENT_DESC_LITERAL = re.compile(
 )
 SETTINGS_ITEM_DIVIDER = re.compile(r"\bSettingsItemDivider\b")
 BUSINESS_MAIN_PREFIX = "app/src/main/"
+STORE_REGISTRY_SUFFIX = "com/niki914/store/StoreDescriptorRegistry.kt"
+STORE_DESCRIPTOR_CALL = re.compile(r"\bStoreDescriptor\s*\(")
+STORE_DESCRIPTOR_WITH_ID = re.compile(
+    r"\bStoreDescriptor\s*\(\s*([A-Za-z0-9_]+|\"[^\"]+\")"
+)
+EXCLUDED_STATIC_STORE_IDS = frozenset({
+    "WEB_SETTINGS_ID",
+    "LOCAL_SETTINGS_ID",
+    "AGENT_REGISTRY_ID",
+    "LLM_MODEL_FACTS_ID",
+    "OPENROUTER_CATALOG_ID",
+    "web_settings",
+    "local_settings",
+    "agents.registry",
+    "llm.model_facts",
+    "llm.openrouter_catalog",
+})
+
+_BACKUP_STORE_CACHE: str | None = None
+
+
+def get_backup_store_text() -> str:
+    global _BACKUP_STORE_CACHE
+    if _BACKUP_STORE_CACHE is not None:
+        return _BACKUP_STORE_CACHE
+    try:
+        from core.git import get_repo_root, get_staged_content
+
+        root = get_repo_root()
+        staged = get_staged_content(
+            root, "app/src/main/java/com/niki914/zafiro/backup/BackupStore.kt"
+        )
+        if staged is not None:
+            _BACKUP_STORE_CACHE = staged
+            return _BACKUP_STORE_CACHE
+        local_path = Path(root, "app/src/main/java/com/niki914/zafiro/backup/BackupStore.kt")
+        if local_path.is_file():
+            _BACKUP_STORE_CACHE = local_path.read_text(
+                encoding="utf-8", errors="replace"
+            )
+            return _BACKUP_STORE_CACHE
+    except Exception:
+        pass
+    _BACKUP_STORE_CACHE = ""
+    return _BACKUP_STORE_CACHE
+
+
+def set_backup_store_cache_for_testing(content: str | None) -> None:
+    global _BACKUP_STORE_CACHE
+    _BACKUP_STORE_CACHE = content
+
+
+def extract_store_descriptor_id(line: str, ctx: LineContext) -> str | None:
+    match = STORE_DESCRIPTOR_WITH_ID.search(line)
+    if match:
+        return match.group(1).strip('"')
+    if STORE_DESCRIPTOR_CALL.search(line):
+        for idx in range(ctx.lineno, min(len(ctx.lines), ctx.lineno + 3)):
+            next_line = ctx.lines[idx].strip()
+            if next_line and not next_line.startswith(("//", "*", "/*")):
+                m = re.match(r"^([A-Za-z0-9_]+|\"[^\"]+\")", next_line)
+                if m:
+                    return m.group(1).strip('"')
+    return None
+
+
+def hit_store_backup_pairing(line: str, ctx: LineContext) -> bool:
+    if is_comment(line):
+        return False
+    path = ctx.path.replace("\\", "/")
+    if not path.endswith(STORE_REGISTRY_SUFFIX):
+        return False
+    store_id = extract_store_descriptor_id(line, ctx)
+    if not store_id:
+        return False
+    if store_id in EXCLUDED_STATIC_STORE_IDS:
+        return False
+    backup_text = get_backup_store_text()
+    if not backup_text:
+        return False
+    return store_id not in backup_text
 
 
 @dataclass(frozen=True)
@@ -413,6 +494,17 @@ CODE_RULES: list[tuple[Rule, callable]] = [
             hint="改用纯英文字符串（如 \"Close\"、\"Clear\"）或 null；确实需要多语言时加 // githooks:ignore content-description-i18n",
         ),
         hit_content_description_i18n,
+    ),
+    # 5. Category.ARCHITECTURE
+    (
+        Rule(
+            name="store-backup-pairing",
+            category=Category.ARCHITECTURE,
+            severity=Severity.BLOCK,
+            description="新增了持久化 StoreDescriptor，但未在 BackupStore 中声明备份映射",
+            hint="在 BackupModels/BackupStore 接入备份；若明确无需备份，在声明处加 // githooks:ignore store-backup-pairing <理由>",
+        ),
+        hit_store_backup_pairing,
     ),
 ]
 

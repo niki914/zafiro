@@ -7,14 +7,14 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.infra.LiquidGlassPresets
 import com.niki914.uikit.infra.component.LiquidTextField
 
 /**
  * 通用下划线文本输入框（专供 Dialog 等模态弹窗）：
- * - 内部依据 [LocalThemeStyle] 纯粹分流：
  *   - [ThemeStyle.LiquidGlass]: 圆角毛玻璃槽（[LiquidGlassPresets.TextField]，内部自治 rememberLayerBackdrop 隔离）。
  *   - [ThemeStyle.Material3] / [ThemeStyle.Material3Expressive]: 纯下划线（[MaterialUnderlineTextField]，全透明底色，文字下方贴底指示线）。
  */
@@ -35,7 +35,7 @@ fun ZafiroTextField(
     leadingContent: (@Composable RowScope.() -> Unit)? = null,
     trailingContent: (@Composable RowScope.() -> Unit)? = null,
 ) {
-    when (LocalThemeStyle.current) {
+    when (resolvedUiStyle(UiStylePart.TextField)) {
         ThemeStyle.LiquidGlass -> {
             LiquidTextField(
                 value = value,

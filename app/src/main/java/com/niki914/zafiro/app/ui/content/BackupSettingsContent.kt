@@ -22,10 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -49,8 +46,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.base.LocalThemeStyle
-import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.control.ZafiroLoadingIndicator
 import com.niki914.uikit.button.ZafiroButton
 import com.niki914.uikit.control.ZafiroSwitch
 import com.niki914.uikit.infra.component.OptionRow
@@ -453,22 +449,14 @@ private fun BackupSheetKind.titleRes(): Int = when (this) {
     BackupSheetKind.Import -> R.string.ui_settings_backup_import
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ChatRunningIndicator() {
-    val color = LocalContentColor.current
-    if (LocalThemeStyle.current == ThemeStyle.Material3Expressive) {
-        LoadingIndicator(
-            modifier = Modifier.size(28.dp),
-            color = color,
-        )
-    } else {
-        CircularProgressIndicator(
-            modifier = Modifier.size(22.dp),
-            color = color,
-            strokeWidth = 2.dp,
-        )
-    }
+    ZafiroLoadingIndicator(
+        color = LocalContentColor.current,
+        size = 22.dp,
+        petalSize = 28.dp,
+        strokeWidth = 2.dp,
+    )
 }
 
 @StringRes

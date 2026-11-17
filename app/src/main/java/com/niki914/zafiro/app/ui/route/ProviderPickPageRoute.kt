@@ -1,6 +1,7 @@
 package com.niki914.zafiro.app.ui.route
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import com.niki914.zafiro.app.ui.content.SelectionOption
 import com.niki914.zafiro.app.ui.content.SelectionPageContent
 import com.niki914.zafiro.app.ui.model.ProviderSpecs
@@ -18,6 +19,7 @@ internal fun ProviderPickPageRoute(
             SelectionOption(
                 id = spec.id,
                 title = spec.brandName,
+                summary = spec.summaryRes?.let { stringResource(it) },
                 leadingIconRes = spec.iconRes,
                 tintLeadingIcon = spec.tintIcon,
                 darkContainerColor = colors?.darkContainerColor,

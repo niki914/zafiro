@@ -83,6 +83,7 @@ internal fun localJson(partition: BackupPartition, local: BackupSnapshot): Strin
         BackupPartition.Memory -> local.memoryJson
         BackupPartition.Models -> local.modelsJson
         BackupPartition.Preferences -> local.appStateJson
+        BackupPartition.UiStyles -> local.uiStylesJson
         BackupPartition.McpServers -> local.mcpServersJson
         BackupPartition.McpService -> local.mcpServiceJson
         BackupPartition.BuiltinTools -> local.builtinToolsJson

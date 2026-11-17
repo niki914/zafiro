@@ -57,7 +57,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.base.LocalThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.control.ZafiroSlider
 import com.niki914.uikit.control.ZafiroSwitch
@@ -668,8 +669,7 @@ private fun SettingExpandableSlotContent(
         is SettingExpandableSlot.None -> Unit
 
         is SettingExpandableSlot.Slider -> {
-            val themeStyle = LocalThemeStyle.current
-            val isLiquid = themeStyle == ThemeStyle.LiquidGlass
+            val isLiquid = resolvedUiStyle(UiStylePart.Slider) == ThemeStyle.LiquidGlass
 
             Row(
                 modifier = Modifier

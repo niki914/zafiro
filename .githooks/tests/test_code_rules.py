@@ -278,6 +278,50 @@ class ContentDescriptionI18nTest(unittest.TestCase):
         self.assertEqual(ignored, 1)
 
 
+class StoreBackupPairingTest(unittest.TestCase):
+    def setUp(self):
+        from checks.code_rules import set_backup_store_cache_for_testing
+        set_backup_store_cache_for_testing(None)
+
+    def tearDown(self):
+        from checks.code_rules import set_backup_store_cache_for_testing
+        set_backup_store_cache_for_testing(None)
+
+    def test_unpaired_store_descriptor_is_flagged(self):
+        from checks.code_rules import set_backup_store_cache_for_testing
+        set_backup_store_cache_for_testing("val BackupStore = listOf(OLD_STORE_ID)")
+        source = 'val NEW_STORE = StoreDescriptor("new_store_id")\n'
+        path = "store/src/main/java/com/niki914/store/StoreDescriptorRegistry.kt"
+        lines = [1]
+        res = check_code_files({path: source}, {path: lines}, {"store-backup-pairing"})
+        self.assertEqual(len(res.findings), 1)
+        self.assertEqual(res.findings[0].rule, "store-backup-pairing")
+
+    def test_paired_store_descriptor_passes(self):
+        from checks.code_rules import set_backup_store_cache_for_testing
+        set_backup_store_cache_for_testing('val BackupStore = listOf("new_store_id")')
+        source = 'val NEW_STORE = StoreDescriptor("new_store_id")\n'
+        path = "store/src/main/java/com/niki914/store/StoreDescriptorRegistry.kt"
+        lines = [1]
+        res = check_code_files({path: source}, {path: lines}, {"store-backup-pairing"})
+        self.assertEqual(len(res.findings), 0)
+
+    def test_excluded_store_passes(self):
+        source = 'val WEB_SETTINGS = StoreDescriptor("web_settings")\n'
+        path = "store/src/main/java/com/niki914/store/StoreDescriptorRegistry.kt"
+        lines = [1]
+        res = check_code_files({path: source}, {path: lines}, {"store-backup-pairing"})
+        self.assertEqual(len(res.findings), 0)
+
+    def test_ignored_store_passes(self):
+        source = 'val NEW_STORE = StoreDescriptor("new_store_id") // githooks:ignore store-backup-pairing 无需备份\n'
+        path = "store/src/main/java/com/niki914/store/StoreDescriptorRegistry.kt"
+        lines = [1]
+        res = check_code_files({path: source}, {path: lines}, {"store-backup-pairing"})
+        self.assertEqual(len(res.findings), 0)
+        self.assertEqual(res.ignored, 1)
+
+
 class IgnoreMarkerTest(unittest.TestCase):
     def test_same_line_marker_allows(self):
         source = "    synchronized(lock) { x() } // githooks:ignore monitor-lock 必须原子交换\n"

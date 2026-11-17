@@ -8,6 +8,8 @@
     <string name="ui_onboard_startup_demo_button">ابدأ</string>
     <string name="ui_onboard_provider_pick_title">اختر مزود الخدمة</string>
     <string name="ui_onboard_provider_pick_description">ابدأ من هنا لربط نموذجك.\nاختر مزود خدمة للمتابعة.</string>
+    <string name="ui_onboard_provider_pick_byok_hint">ما هو BYOK؟</string>
+    <string name="ui_provider_official_and_relay_summary">الرسمي ومرحلات الجهات الخارجية</string>
     <string name="ui_onboard_configure_title">إعداد الوصول إلى النموذج</string>
     <string name="ui_onboard_configure_description">أدخل إعدادات النموذج، ثم يمكنك البدء.</string>
     <string name="ui_onboard_configure_next">التالي</string>
@@ -609,6 +611,43 @@
     <string name="ui_theme_style_liquid">Glass</string>
     <string name="ui_theme_style_md3">MD3</string>
     <string name="ui_theme_style_md3e">MD3E</string>
+    <string name="ui_theme_style_custom">مخصص</string>
+    <string name="ui_theme_style_unified">نمط موحد</string>
+
+    <string name="ui_theme_group_controls">عناصر التحكم الأساسية</string>
+    <string name="ui_theme_group_layout">التخطيط والتنقل</string>
+    <string name="ui_theme_group_system">الحركة والنظام</string>
+
+    <string name="ui_theme_part_button">الأزرار</string>
+
+    <string name="ui_theme_part_switch">مفتاح التبديل</string>
+
+    <string name="ui_theme_part_slider">شريط التمرير</string>
+
+    <string name="ui_theme_part_text_field">حقل النص</string>
+
+    <string name="ui_theme_part_loading">مؤشر التحميل</string>
+
+    <string name="ui_theme_part_top_bar_buttons">أزرار الشريط العلوي</string>
+
+    <string name="ui_theme_part_top_bar_plate">لوحة الشريط العلوي</string>
+
+    <string name="ui_theme_part_composer">شريط إدخال المحادثة</string>
+
+    <string name="ui_theme_part_search">شريط البحث</string>
+
+    <string name="ui_theme_part_page_scroll">تمرير الصفحة</string>
+
+    <string name="ui_theme_part_dialog">مربعات الحوار</string>
+
+    <string name="ui_theme_part_menu">القائمة المنسدلة</string>
+
+    <string name="ui_theme_part_settings">بطاقات الإعدادات</string>
+
+    <string name="ui_theme_preview_primary_btn">أساسي</string>
+    <string name="ui_theme_preview_tonal_btn">نغمي</string>
+    <string name="ui_theme_preview_loading_hint">جارٍ المعالجة...</string>
+    <string name="ui_theme_preview_input_hint">أدخل نصًا...</string>
 
     <string name="ui_theme_mode_system">حسب النظام</string>
     <string name="ui_theme_mode_light">فاتح</string>

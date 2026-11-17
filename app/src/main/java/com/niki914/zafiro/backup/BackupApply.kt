@@ -70,7 +70,7 @@ internal object BackupImporter {
             snapshotsDir = File(context.filesDir, SNAPSHOT_DIR),
             nowMillis = System.currentTimeMillis(),
             sync = { partitions ->
-                if (BackupPartition.Preferences in partitions) syncPreferenceRuntime()
+                if (BackupPartition.Preferences in partitions || BackupPartition.UiStyles in partitions) syncPreferenceRuntime()
             },
             isCancelled = isCancelled,
         )
@@ -93,7 +93,7 @@ internal object BackupImporter {
                 snapshotsDir = File(context.filesDir, SNAPSHOT_DIR),
                 nowMillis = System.currentTimeMillis(),
                 sync = { partitions ->
-                    if (BackupPartition.Preferences in partitions) syncPreferenceRuntime()
+                    if (BackupPartition.Preferences in partitions || BackupPartition.UiStyles in partitions) syncPreferenceRuntime()
                 },
             )
         } finally {
@@ -285,6 +285,7 @@ private fun updateLocalSnapshot(local: BackupSnapshot, write: PartitionWrite): B
     return when (write) {
         is PartitionWrite.Document -> when (write.partition) {
             BackupPartition.Preferences -> local.copy(appStateJson = write.json)
+            BackupPartition.UiStyles -> local.copy(uiStylesJson = write.json)
             BackupPartition.Memory -> local.copy(memoryJson = write.json)
             BackupPartition.Models -> local.copy(modelsJson = write.json)
             BackupPartition.McpServers -> local.copy(mcpServersJson = write.json)
