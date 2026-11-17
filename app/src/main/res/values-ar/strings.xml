@@ -8,6 +8,8 @@
     <string name="ui_onboard_startup_demo_button">ابدأ</string>
     <string name="ui_onboard_provider_pick_title">اختر مزود الخدمة</string>
     <string name="ui_onboard_provider_pick_description">ابدأ من هنا لربط نموذجك.\nاختر مزود خدمة للمتابعة.</string>
+    <string name="ui_onboard_provider_pick_byok_hint">ما هو BYOK؟</string>
+    <string name="ui_provider_official_and_relay_summary">الرسمي ومرحلات الجهات الخارجية</string>
     <string name="ui_onboard_configure_title">إعداد الوصول إلى النموذج</string>
     <string name="ui_onboard_configure_description">أدخل إعدادات النموذج، ثم يمكنك البدء.</string>
     <string name="ui_onboard_configure_next">التالي</string>

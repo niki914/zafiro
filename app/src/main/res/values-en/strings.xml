@@ -8,6 +8,8 @@
     <string name="ui_onboard_startup_demo_button">Get Started</string>
     <string name="ui_onboard_provider_pick_title">Choose a Provider</string>
     <string name="ui_onboard_provider_pick_description">Start here to connect your model.\nSelect a provider to continue.</string>
+    <string name="ui_onboard_provider_pick_byok_hint">What is BYOK?</string>
+    <string name="ui_provider_official_and_relay_summary">Official &amp; third-party relays</string>
     <string name="ui_onboard_configure_title">Configure Model Access</string>
     <string name="ui_onboard_configure_description">Enter your model settings to get started.</string>
     <string name="ui_onboard_configure_next">Next</string>

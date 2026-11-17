@@ -8,6 +8,8 @@
     <string name="ui_onboard_startup_demo_button">Empezar</string>
     <string name="ui_onboard_provider_pick_title">Seleccionar proveedor</string>
     <string name="ui_onboard_provider_pick_description">Comience a conectar sus modelos desde aquí.\nSeleccione un proveedor para continuar.</string>
+    <string name="ui_onboard_provider_pick_byok_hint">¿Qué es BYOK?</string>
+    <string name="ui_provider_official_and_relay_summary">Oficial y relés de terceros</string>
     <string name="ui_onboard_configure_title">Configurar modelo</string>
     <string name="ui_onboard_configure_description">Complete la configuración del modelo para empezar a usar Zafiro.</string>
     <string name="ui_onboard_configure_next">Siguiente</string>

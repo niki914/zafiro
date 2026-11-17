@@ -8,6 +8,8 @@
     <string name="ui_onboard_startup_demo_button">شروع</string>
     <string name="ui_onboard_provider_pick_title">سرویس‌دهنده را انتخاب کنید</string>
     <string name="ui_onboard_provider_pick_description">از اینجا مدل‌تان را وصل کنید.\nبرای ادامه یک سرویس‌دهنده انتخاب کنید.</string>
+    <string name="ui_onboard_provider_pick_byok_hint">BYOK چیست؟</string>
+    <string name="ui_provider_official_and_relay_summary">رسمی و رله‌های شخص ثالث</string>
     <string name="ui_onboard_configure_title">پیکربندی دسترسی به مدل</string>
     <string name="ui_onboard_configure_description">تنظیمات مدل را وارد کنید. بعد از آن می‌توانید شروع کنید.</string>
     <string name="ui_onboard_configure_next">بعدی</string>
