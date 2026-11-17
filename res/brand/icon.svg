@@ -1,8 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="18 18 72 72" width="512" height="512">
-  <!-- 背景：宝石蓝 -->
-  <rect x="0" y="0" width="108" height="108" fill="#0F52BA"/>
+  <rect x="0" y="0" width="108" height="108" fill="#2563EB"/>
 
-  <g stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" fill="none">
+  <g stroke="#E0F2FE" stroke-linecap="round" stroke-linejoin="round" fill="none">
     <!-- 左侧外轮廓线 -->
     <path d="M54,34 L44,52.3 C45.4,53.7 45.4,55.3 44,56.7 L54,74" stroke-width="2"/>
     <!-- 左侧内棱线 -->
