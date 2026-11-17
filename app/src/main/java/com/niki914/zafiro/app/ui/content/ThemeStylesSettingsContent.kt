@@ -355,6 +355,8 @@ fun ThemeStylesSettingsContent(
                 }
             }
 
+            BareComponentDivider()
+
             // 10. 动效与系统行为
             SettingsConnectedGroup(title = stringResource(R.string.ui_theme_group_system)) {
                 item { shape, isStandalone, _ ->
