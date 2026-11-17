@@ -27,8 +27,9 @@ import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.emptyBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.niki914.uikit.base.LocalAppDarkTheme
-import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.infra.LiquidGlassPresets
 import com.niki914.uikit.infra.LocalScreenBackdrop
 import com.niki914.uikit.infra.interaction.InteractiveHighlight
@@ -49,7 +50,7 @@ fun ZafiroScrollToBottomButton(
     backdrop: Backdrop? = LocalScreenBackdrop.current,
     icon: (@Composable () -> Unit)? = null,
 ) {
-    when (LocalThemeStyle.current) {
+    when (resolvedUiStyle(UiStylePart.Button)) {
         ThemeStyle.LiquidGlass -> {
             LiquidScrollToBottomButtonCore(
                 visible = visible,

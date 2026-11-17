@@ -44,8 +44,9 @@ import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.niki914.uikit.base.LocalAppDarkTheme
-import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.infra.LiquidGlassPresets
 import com.niki914.uikit.infra.LocalScreenBackdrop
 import com.niki914.uikit.infra.interaction.InteractiveHighlight
@@ -127,7 +128,7 @@ fun ZafiroChatComposer(
         }
     }
 
-    val themeStyle = LocalThemeStyle.current
+    val themeStyle = resolvedUiStyle(UiStylePart.Composer)
     val colorScheme = MaterialTheme.colorScheme
     val isDarkTheme = LocalAppDarkTheme.current
     val interactiveEffectsEnabled = !isFocused || textFieldValue.text.isEmpty()

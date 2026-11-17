@@ -38,10 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Fullscreen
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -87,8 +84,7 @@ import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.BaseTheme
-import com.niki914.uikit.base.LocalThemeStyle
-import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.control.ZafiroLoadingIndicator
 import com.niki914.uikit.infra.shape.G2CardShape
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.app.R
@@ -193,6 +189,7 @@ internal object VirtualDisplayCard {
                     dynamicColor = themePrefs.seedColor == null,
                     seedColor = seed,
                     themeStyle = themePrefs.themeStyle,
+                    uiStyleLookup = ThemeController.uiStyleLookup(),
                 ) {
                     MiniPreviewCard(
                         frames = frames,
@@ -345,6 +342,7 @@ internal object VirtualDisplayCard {
                     dynamicColor = themePrefs.seedColor == null,
                     seedColor = seed,
                     themeStyle = themePrefs.themeStyle,
+                    uiStyleLookup = ThemeController.uiStyleLookup(),
                 ) {
                     ExpandedCardOverlay(
                         dockSide = dockSide,
@@ -445,7 +443,6 @@ internal object VirtualDisplayCard {
 /**
  * 小窗常态渲染（Mini PIP 卡片）。
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MiniPreviewCard(
     frames: StateFlow<Bitmap?>,
@@ -490,19 +487,12 @@ private fun MiniPreviewCard(
                 contentScale = ContentScale.FillBounds,
             )
         } else if (currentStatus == VirtualDisplayStatus.Launching) {
-            val themeStyle = LocalThemeStyle.current
-            if (themeStyle == ThemeStyle.Material3Expressive) {
-                LoadingIndicator(
-                    modifier = Modifier.size(28.dp),
-                    color = colors.primary,
-                )
-            } else {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = colors.primary,
-                    strokeWidth = 2.2.dp,
-                )
-            }
+            ZafiroLoadingIndicator(
+                color = colors.primary,
+                size = 24.dp,
+                petalSize = 28.dp,
+                strokeWidth = 2.2.dp,
+            )
         } else {
             Icon(
                 painter = painterResource(R.drawable.ic_launcher_monochrome),
@@ -731,9 +721,10 @@ private fun ExpandedCardOverlay(
                             contentScale = ContentScale.FillBounds,
                         )
                     } else if (currentStatus == VirtualDisplayStatus.Launching) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(28.dp),
+                        ZafiroLoadingIndicator(
                             color = colors.primary,
+                            size = 28.dp,
+                            petalSize = 28.dp,
                             strokeWidth = 2.5.dp,
                         )
                     } else {

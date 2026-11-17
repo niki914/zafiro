@@ -8,12 +8,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import com.niki914.logging.Logger
+import com.niki914.store.StoreDescriptorRegistry
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStyleLookup
+import com.niki914.uikit.base.UiStylePart
 import com.niki914.uikit.base.resolveThemeColorScheme
 import com.niki914.zafiro.api.util.runCatchingCancellable
+import com.niki914.zafiro.app.BuildConfig
 import com.niki914.zafiro.app.ui.model.ThemeController.load
 import com.niki914.zafiro.app.ui.model.ThemeController.setMode
 import com.niki914.zafiro.app.ui.model.ThemeController.setSeedColor
+import com.niki914.zafiro.repo.UiStylesCodec
 import com.niki914.zafiro.repo.XRepo
 
 /** 深浅色模式。 */
@@ -53,6 +58,41 @@ object ThemeController {
     var prefs by mutableStateOf(ThemePrefs())
         private set
 
+    /** 组件覆盖表。空表或某键缺失时，该组件跟随 [ThemePrefs.themeStyle]。 */
+    var uiStyleOverrides by mutableStateOf<Map<String, String>>(emptyMap())
+        private set
+
+    /**
+     * 调试构建的部件风格。改这一份即可，只留在内存，不写 settings/ui_styles.json。
+     * 正式包不读。删掉某一行后，该部件改跟文件；文件也没有就跟全局风格。
+     */
+    private val debugPreset = listOf(
+        UiStylePart.TopBarPlate to ThemeStyle.LiquidGlass,
+        UiStylePart.TopBarButtons to ThemeStyle.Material3Expressive,
+        UiStylePart.Button to ThemeStyle.Material3Expressive,
+        UiStylePart.Slider to ThemeStyle.Material3Expressive,
+        UiStylePart.Switch to ThemeStyle.Material3Expressive,
+        UiStylePart.PageScroll to ThemeStyle.LiquidGlass,
+        UiStylePart.Dialog to ThemeStyle.Material3Expressive,
+        UiStylePart.Menu to ThemeStyle.Material3Expressive,
+        UiStylePart.TextField to ThemeStyle.Material3Expressive,
+        UiStylePart.Settings to ThemeStyle.Material3Expressive,
+        UiStylePart.Composer to ThemeStyle.Material3Expressive,
+        UiStylePart.Search to ThemeStyle.Material3Expressive,
+        UiStylePart.Loading to ThemeStyle.Material3Expressive,
+    )
+
+    fun styleOverride(part: UiStylePart): ThemeStyle? {
+        if (BuildConfig.DEBUG) {
+            debugPreset.firstOrNull { it.first == part }?.second?.let { return it }
+        }
+        return UiStylesCodec.overrideOrNull(uiStyleOverrides, part)
+    }
+
+    private val styleLookup = UiStyleLookup { styleOverride(it) }
+
+    fun uiStyleLookup(): UiStyleLookup = styleLookup
+
     suspend fun load() {
         runCatchingCancellable {
             prefs = ThemePrefs(
@@ -63,6 +103,13 @@ object ThemeController {
             )
         }.onFailure {
             Logger.w("niki914_zafiro_ThemeController", "load failed ${it.message}")
+        }
+        runCatchingCancellable {
+            uiStyleOverrides = UiStylesCodec.parse(
+                XRepo.readJson(StoreDescriptorRegistry.UI_STYLES_ID),
+            )
+        }.onFailure {
+            Logger.w("niki914_zafiro_ThemeController", "load ui styles failed ${it.message}")
         }
     }
 

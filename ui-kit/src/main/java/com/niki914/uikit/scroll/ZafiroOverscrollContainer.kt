@@ -5,8 +5,9 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.infra.scrollbar.LiquidOverscrollContainer
 import com.niki914.uikit.infra.scrollbar.LiquidOverscrollController
 import com.niki914.uikit.infra.scrollbar.rememberLiquidOverscrollController
@@ -29,7 +30,7 @@ fun ZafiroOverscrollContainer(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    when (LocalThemeStyle.current) {
+    when (resolvedUiStyle(UiStylePart.PageScroll)) {
         ThemeStyle.LiquidGlass -> {
             LiquidOverscrollContainer(
                 overscrollController = overscrollController,

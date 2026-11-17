@@ -4,9 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.niki914.uikit.control.ZafiroLoadingIndicator
 import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.uikit.dialog.ZafiroDialog
 import com.niki914.uikit.dialog.ZafiroDialogButton
@@ -319,7 +317,6 @@ private data class CustomPyToolSaveDialogSpec(
  * 每个状态只有一个按钮，系统返回键等同那个按钮：
  * 校验中 = 取消（真取消，不写盘）、成功 = 完成（返回列表）、失败 = 关闭（留在原页）。
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun CustomPyToolSaveProgressDialog(
     progress: CustomPyToolSaveProgress?,
@@ -361,9 +358,11 @@ private fun CustomPyToolSaveProgressDialog(
         },
         content = {
             if (spec.checking) {
-                LoadingIndicator(
-                    modifier = Modifier.size(28.dp),
+                ZafiroLoadingIndicator(
                     color = MaterialTheme.colorScheme.primary,
+                    size = 22.dp,
+                    petalSize = 28.dp,
+                    strokeWidth = 2.dp,
                 )
             }
             Text(

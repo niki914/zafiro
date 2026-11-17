@@ -18,6 +18,7 @@ object StoreDescriptorRegistry {
     const val RULES_TAKEOVER_ID = "rules.takeover"
     const val RULES_MASKING_ID = "rules.masking"
     const val APP_STATE_ID = "app.state"
+    const val UI_STYLES_ID = "ui.styles"
     const val AGENT_CONFIG_PREFIX = "agent.config."
     const val MAIN_AGENT_ID = "main"
 
@@ -81,7 +82,9 @@ object StoreDescriptorRegistry {
             "settings/rules/masking_rules.json",
             """{"rules":[]}"""
         ),
-        StoreDescriptor(APP_STATE_ID, "settings/app_state.json")
+        StoreDescriptor(APP_STATE_ID, "settings/app_state.json"),
+        // 缺文件时读到空覆盖表。界面跟随全局 theme_style，不在启动时补写。
+        StoreDescriptor(UI_STYLES_ID, "settings/ui_styles.json", """{"overrides":{}}"""),
     )
 
     private val staticDescriptorById = staticDescriptors.associateBy(StoreDescriptor::id)

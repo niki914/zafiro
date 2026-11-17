@@ -9,8 +9,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.infra.scrollbar.LiquidScrollableContainer
 import com.niki914.uikit.infra.scrollbar.LiquidScrollbarState
 import com.niki914.uikit.infra.scrollbar.rememberLazyListStateAdapter
@@ -51,7 +52,7 @@ fun ZafiroScrollableContainer(
     bottomClearance: Dp = 0.dp,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    when (LocalThemeStyle.current) {
+    when (resolvedUiStyle(UiStylePart.PageScroll)) {
         ThemeStyle.LiquidGlass -> {
             LiquidScrollableContainer(
                 state = state,

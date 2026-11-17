@@ -46,7 +46,8 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
-import com.niki914.uikit.base.LocalThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.infra.GlobalTouchDispatcher
 import com.niki914.uikit.infra.LocalLiquidDialogHostState
@@ -118,7 +119,7 @@ internal fun MaterialMenuSurface(
     onProgressChanged: ((Float) -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val themeStyle = LocalThemeStyle.current
+    val themeStyle = resolvedUiStyle(UiStylePart.Menu)
     val isExpressive = themeStyle == ThemeStyle.Material3Expressive
     val density = LocalDensity.current
     val statusBarTopPx = WindowInsets.statusBars.getTop(density).toFloat()

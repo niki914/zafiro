@@ -15,8 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.infra.component.settings.item.SettingsTokens
 import com.niki914.uikit.infra.component.settings.resolveConnectedShape
 import com.niki914.uikit.infra.shape.G2CardShape
@@ -48,8 +49,7 @@ fun SettingsConnectedGroup(
     builder: SettingsConnectedGroupScope.() -> Unit,
 ) {
     val scope = SettingsConnectedGroupScopeImpl().apply(builder)
-    val themeStyle = LocalThemeStyle.current
-    val isConnected = themeStyle != ThemeStyle.LiquidGlass
+    val isConnected = resolvedUiStyle(UiStylePart.Settings) != ThemeStyle.LiquidGlass
 
     if (isConnected) {
         Column(modifier = modifier.fillMaxWidth()) {
