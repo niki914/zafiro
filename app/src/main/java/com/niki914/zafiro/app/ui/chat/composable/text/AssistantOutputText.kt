@@ -20,6 +20,7 @@ import com.mikepenz.markdown.compose.elements.MarkdownCodeBlock
 import com.mikepenz.markdown.compose.elements.MarkdownCodeFence
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.elements.MarkdownCheckBox
+import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.MarkdownTypography
 import com.mikepenz.markdown.model.rememberMarkdownState
@@ -65,11 +66,18 @@ fun AssistantOutputText(
     modifier: Modifier = Modifier,
 ) {
     val markdownState = rememberMarkdownState(content = text, retainState = true)
+    // 围栏块、缩进块读 codeBackground；行内代码读 inlineCodeBackground。
+    // 两者都用低一级表面，和输入栏的 surfaceContainerHigh 分开。
+    val codePlate = MaterialTheme.colorScheme.surfaceContainerLow
 
     SelectionContainer(modifier = modifier.fillMaxWidth()) {
         Markdown(
             markdownState = markdownState,
             modifier = Modifier.fillMaxWidth(),
+            colors = markdownColor(
+                codeBackground = codePlate,
+                inlineCodeBackground = codePlate,
+            ),
             typography = assistantMarkdownTypography(),
             components = assistantMarkdownComponents(),
         )
