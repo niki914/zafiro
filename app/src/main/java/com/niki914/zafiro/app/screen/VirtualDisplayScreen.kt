@@ -10,7 +10,6 @@ import com.niki914.zafiro.accessibility.port.A11yDisplayPort
 import com.niki914.zafiro.accessibility.port.A11yDisplayScreen
 import com.niki914.zafiro.accessibility.table.DisplayNodeTable
 import com.niki914.zafiro.api.screen.ActResult
-import com.niki914.zafiro.api.screen.AppHit
 import com.niki914.zafiro.api.screen.ImageFrame
 import com.niki914.zafiro.api.screen.ScreenAction
 import com.niki914.zafiro.api.screen.ScreenId
@@ -25,8 +24,6 @@ import com.niki914.zafiro.business.application.ApplicationService
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionState
-import com.niki914.zafiro.chat.agentic.device.AppInfoProvider
-import com.niki914.zafiro.chat.agentic.device.AppMatchResult
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -86,15 +83,8 @@ internal class VirtualDisplayScreen(
         _status.value = VirtualDisplayStatus.Launching
         val result = when (target) {
             is ShowTarget.PackageName -> launch(target.packageName)
-            is ShowTarget.AppName -> when (val match = AppInfoProvider.cache().findByAppName(target.name)) {
-                is AppMatchResult.Found -> launch(match.app.packageName)
-                is AppMatchResult.Candidates -> ShowResult.Ambiguous(
-                    target.name,
-                    match.apps.map { app -> AppHit(app.packageName, app.appName) },
-                )
-                AppMatchResult.NotFound -> ShowResult.Failed("APP_NOT_FOUND")
-            }
             is ShowTarget.Uri -> ShowResult.Unsupported("uri")
+            is ShowTarget.InAppPreview -> ShowResult.Unsupported("in_app_preview")
         }
         if (result !is ShowResult.Shown) {
             _status.value = VirtualDisplayStatus.Idle

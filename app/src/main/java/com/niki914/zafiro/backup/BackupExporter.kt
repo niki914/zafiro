@@ -61,6 +61,7 @@ internal object BackupExporter {
                 snapshot.pyDownloadFileDir,
             ).toByteArray()
             built[BackupPartition.TextActions.jsonName] = snapshot.textActionsJson.toByteArray()
+            built[BackupPartition.QuickPrompts.jsonName] = snapshot.quickPromptsJson.toByteArray()
         }
         if (BackupGroup.Skills in request.groups) {
             built += skillEntries(snapshot)

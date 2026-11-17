@@ -7,6 +7,7 @@ import com.niki914.zafiro.app.conversation.ConversationSummary
 import com.niki914.zafiro.app.conversation.ForkKind
 import com.niki914.zafiro.app.conversation.ForkResult
 import com.niki914.zafiro.app.conversation.TurnBranchState
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashSuggestion
 import com.niki914.zafiro.app.ui.model.SavedConfigSummary
 import com.niki914.zafiro.chat.LlmErrorCode
 
@@ -165,6 +166,7 @@ data class HomeChatUiState(
      * 或模型未上报 usage），此时不画环。
      */
     val contextProgress: Float? = null,
+    val slashSuggestions: List<SlashSuggestion> = emptyList(),
 ) {
     val displayConfig: SavedConfigSummary?
         get() {

@@ -40,9 +40,9 @@ sealed interface ActResult {
 }
 
 sealed interface ShowTarget {
-    data class AppName(val name: String) : ShowTarget
     data class PackageName(val packageName: String) : ShowTarget
     data class Uri(val uri: String) : ShowTarget
+    data class InAppPreview(val url: String) : ShowTarget
 }
 
 data class AppHit(val packageName: String, val label: String)

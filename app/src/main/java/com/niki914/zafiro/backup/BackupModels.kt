@@ -110,6 +110,14 @@ enum class BackupPartition(
         listKey = "actions",
         honorsExplicitEmpty = true,
     ),
+    QuickPrompts(
+        id = "quick_prompts",
+        group = BackupGroup.Tools,
+        apply = Apply.Items,
+        singletonApply = null,
+        listKey = "prompts",
+        honorsExplicitEmpty = true,
+    ),
     ExecutionRules(
         id = "execution_rules",
         group = BackupGroup.ExecutionRules,
@@ -216,6 +224,7 @@ data class BackupSnapshot(
     val builtinToolsJson: String = """{"version":2,"enabled":{}}""",
     val pyToolsJson: String = """{"tools":[]}""",
     val textActionsJson: String = """{"actions":[]}""",
+    val quickPromptsJson: String = """{"prompts":[]}""",
     val executionRulesJson: String = """{"rules":[]}""",
     val takeoverRulesJson: String = """{"default_target":"ZAFIRO","rules":[]}""",
     val maskingRulesJson: String = """{"rules":[]}""",

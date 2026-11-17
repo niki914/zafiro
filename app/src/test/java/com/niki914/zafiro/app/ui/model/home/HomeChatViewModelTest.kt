@@ -21,6 +21,7 @@ import com.niki914.zafiro.app.ui.model.MainDispatcherRule
 import com.niki914.zafiro.app.ui.model.TextPacer
 import com.niki914.zafiro.business.agent.turnIdAt
 import com.niki914.zafiro.repo.LlmConfigsDocument
+import com.niki914.zafiro.repo.RuntimeQuickPrompt
 import com.niki914.zafiro.repo.SavedLlmConfig
 import com.niki914.zafiro.service.ServiceRegistry
 import com.niki914.zafiro.service.installService
@@ -713,5 +714,39 @@ class HomeChatViewModelTest {
         assertEquals("Bug 暴露：旧 Agent 被错误写入！", 0, oldAgent.sentDrafts.size)
         // 断言 2：新 Agent 必须收到 prompt 并发起流式生成
         assertTrue("致命 Bug：新 Agent 根本没有收到 Regenerate 任务！", newAgent.sentDrafts.isNotEmpty())
+    }
+
+    @Test
+    fun expandQuickPrompts_expandsTriggersOnWordBoundaries() {
+        val prompts = listOf(
+            RuntimeQuickPrompt("btw", "by the way", enabled = true),
+            RuntimeQuickPrompt("m", "my prompt", enabled = true),
+            RuntimeQuickPrompt("disabled", "nope", enabled = false),
+        )
+
+        assertEquals("abc by the way hhh", expandQuickPrompts("abc /btw hhh", prompts))
+        assertEquals("my prompt", expandQuickPrompts("/m", prompts))
+        assertEquals("https://example.com/btw", expandQuickPrompts("https://example.com/btw", prompts))
+        assertEquals("abc /disabled hhh", expandQuickPrompts("abc /disabled hhh", prompts))
+    }
+
+    @Test
+    fun send_expandsQuickPromptsBeforePassingToAgent() = runTest {
+        val deps = HomeChatConfigDependencies(
+            loadConfigs = { LlmConfigsDocument() },
+            loadQuickPrompts = {
+                listOf(
+                    RuntimeQuickPrompt("btw", "by the way", enabled = true),
+                    RuntimeQuickPrompt("m", "my prompt", enabled = true),
+                )
+            },
+        )
+        val fixture = fixture(configDependencies = deps)
+        fixture.vm.sendIntent(HomeChatIntent.InputChanged("abc /btw hhh /m"))
+        runCurrent()
+        fixture.vm.sendIntent(HomeChatIntent.Send)
+        advanceUntilIdle()
+
+        assertEquals("abc by the way hhh my prompt", fixture.agent.sentDrafts.single().text)
     }
 }

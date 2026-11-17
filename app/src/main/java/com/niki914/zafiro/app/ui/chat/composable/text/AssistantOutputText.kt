@@ -5,9 +5,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -26,39 +29,10 @@ import com.mikepenz.markdown.model.MarkdownTypography
 import com.mikepenz.markdown.model.rememberMarkdownState
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.zafiro.app.ui.chat.composable.body.custom.AssistantCodeBlock
+import com.niki914.zafiro.app.ui.viewer.LocalViewerOpener
+import com.niki914.zafiro.app.ui.viewer.ViewerContent
 
 val LocalMarkdownScale = compositionLocalOf { 1.0f }
-
-/** 预览样张：同一句 hello 的多文字变体 + 字符表 + 符号，只做字形展示，不作阅读内容。 */
-internal const val AssistantMarkdownPreviewText = """
-# hello
-
-HELLO 你好 こんにちは ПРИВЕТ HOLA 안녕하세요 ALLÔ CIAO
-
-## ＡＢＣ あいう 日月山川
-
-- ABCDEFGHIJKLMNOPQRSTUVWXYZ
-- abcdefghijklmnopqrstuvwxyz
-- 0123456789 ! ? . , : ; — … · « » 「 」 『 』
-- あいうえお かきくけこ さしすせそ
-- 天地玄黄 宇宙洪荒 日月盈昃 辰宿列张
-
-### ▲ ● ■ ◆ ★ ♪ ⚡ ⌘
-
-| A | あ | 永 |
-| --- | --- | --- |
-| B | か | 空 |
-| Γ | さ | 海 |
-
-> ! ? ¿ ¡ : ; ~ ≈ ≠ ∞ °
-
-`Aa` **Aa** *Aa* あ 永 Ж Ω
-
-```kotlin
-val hello = "hello 你好 こんにちは ПРИВЕТ"
-repeat(8) { print(hello) }
-```
-"""
 
 @Composable
 fun AssistantOutputText(
@@ -66,22 +40,53 @@ fun AssistantOutputText(
     modifier: Modifier = Modifier,
 ) {
     val markdownState = rememberMarkdownState(content = text, retainState = true)
+    val openViewer = LocalViewerOpener.current
+    val defaultUriHandler = LocalUriHandler.current
+
+    val previewUriHandler = remember(openViewer, defaultUriHandler) {
+        object : UriHandler {
+            override fun openUri(uri: String) {
+                if (isWebOrHtmlPreviewable(uri)) {
+                    openViewer(ViewerContent.Web(url = uri))
+                } else {
+                    defaultUriHandler.openUri(uri)
+                }
+            }
+        }
+    }
+
     // 围栏块、缩进块读 codeBackground；行内代码读 inlineCodeBackground。
     // 两者都用低一级表面，和输入栏的 surfaceContainerHigh 分开。
     val codePlate = MaterialTheme.colorScheme.surfaceContainerLow
 
-    SelectionContainer(modifier = modifier.fillMaxWidth()) {
-        Markdown(
-            markdownState = markdownState,
-            modifier = Modifier.fillMaxWidth(),
-            colors = markdownColor(
-                codeBackground = codePlate,
-                inlineCodeBackground = codePlate,
-            ),
-            typography = assistantMarkdownTypography(),
-            components = assistantMarkdownComponents(),
-        )
+    CompositionLocalProvider(LocalUriHandler provides previewUriHandler) {
+        SelectionContainer(modifier = modifier.fillMaxWidth()) {
+            Markdown(
+                markdownState = markdownState,
+                modifier = Modifier.fillMaxWidth(),
+                colors = markdownColor(
+                    codeBackground = codePlate,
+                    inlineCodeBackground = codePlate,
+                ),
+                typography = assistantMarkdownTypography(),
+                components = assistantMarkdownComponents(),
+            )
+        }
     }
+}
+
+internal fun isWebOrHtmlPreviewable(uri: String): Boolean {
+    val trimmed = uri.trim()
+    if (trimmed.startsWith("http://", ignoreCase = true) || trimmed.startsWith("https://", ignoreCase = true)) {
+        return true
+    }
+    if (trimmed.startsWith("file://", ignoreCase = true)) {
+        return true
+    }
+    if (trimmed.startsWith("/") && (trimmed.endsWith(".html", ignoreCase = true) || trimmed.endsWith(".htm", ignoreCase = true))) {
+        return true
+    }
+    return false
 }
 
 @Composable
