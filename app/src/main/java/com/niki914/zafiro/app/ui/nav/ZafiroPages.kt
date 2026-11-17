@@ -187,6 +187,19 @@ data class McpServerDetailPage(
         if (isCreating) null else TopBarActionSpec(icon = Icons.Default.Delete, contentDescription = "Delete Button")
 }
 
+data class QuickPromptDetailPage(
+    val promptName: String,
+    val promptIndex: Int,
+    val isCreating: Boolean = false,
+) : ZafiroPage {
+    override val routeKey: String = "quick-prompt-detail:$promptIndex:$promptName"
+    override val titleSpec: PageTitleSpec = TextTitle(promptName)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? =
+        if (isCreating) null else TopBarActionSpec(icon = Icons.Default.Delete, contentDescription = "Delete Button")
+}
+
 data class TextActionDetailPage(
     val actionName: String,
     val actionIndex: Int,

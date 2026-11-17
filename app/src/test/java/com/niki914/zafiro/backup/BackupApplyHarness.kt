@@ -152,6 +152,7 @@ internal class BackupApplyHarness(
             BackupPartition.BuiltinTools to snapshot.builtinToolsJson,
             BackupPartition.PyTools to snapshot.pyToolsJson,
             BackupPartition.TextActions to snapshot.textActionsJson,
+            BackupPartition.QuickPrompts to snapshot.quickPromptsJson,
             BackupPartition.ExecutionRules to snapshot.executionRulesJson,
             BackupPartition.TakeoverRules to snapshot.takeoverRulesJson,
             BackupPartition.MaskingRules to snapshot.maskingRulesJson,
@@ -288,6 +289,7 @@ internal class MemoryBackupStore(
     var builtinToolsJson = """{"version":2,"enabled":{}}"""
     var pyToolsJson = """{"tools":[]}"""
     var textActionsJson = """{"actions":[]}"""
+    var quickPromptsJson = """{"prompts":[]}"""
     var executionRulesJson = """{"rules":[]}"""
     var takeoverRulesJson = """{"default_target":"ZAFIRO","rules":[]}"""
     var maskingRulesJson = """{"rules":[]}"""
@@ -308,6 +310,7 @@ internal class MemoryBackupStore(
             builtinToolsJson = builtinToolsJson,
             pyToolsJson = pyToolsJson,
             textActionsJson = textActionsJson,
+            quickPromptsJson = quickPromptsJson,
             executionRulesJson = executionRulesJson,
             takeoverRulesJson = takeoverRulesJson,
             maskingRulesJson = maskingRulesJson,
@@ -336,6 +339,7 @@ internal class MemoryBackupStore(
             BackupPartition.BuiltinTools -> builtinToolsJson = json
             BackupPartition.PyTools -> pyToolsJson = json
             BackupPartition.TextActions -> textActionsJson = json
+            BackupPartition.QuickPrompts -> quickPromptsJson = json
             BackupPartition.ExecutionRules -> executionRulesJson = json
             BackupPartition.TakeoverRules -> takeoverRulesJson = json
             BackupPartition.MaskingRules -> maskingRulesJson = json
@@ -382,6 +386,7 @@ internal class MemoryBackupStore(
         builtinToolsJson = """{"version":2,"enabled":{}}"""
         pyToolsJson = """{"tools":[]}"""
         textActionsJson = """{"actions":[]}"""
+        quickPromptsJson = """{"prompts":[]}"""
         executionRulesJson = """{"rules":[]}"""
         takeoverRulesJson = """{"default_target":"ZAFIRO","rules":[]}"""
         maskingRulesJson = """{"rules":[]}"""
