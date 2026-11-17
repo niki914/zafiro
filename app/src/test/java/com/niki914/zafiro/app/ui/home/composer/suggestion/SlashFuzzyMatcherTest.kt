@@ -171,14 +171,13 @@ class SlashFuzzyMatcherTest {
     }
 
     @Test
-    fun match_exactValidSkillSuppressed() {
-        // If full valid skill is typed without further completions, suppress suggestions
+    fun match_exactMatchPreservedAsTopCandidate() {
         val result = SlashFuzzyMatcher.match("skill:phone-use", sampleSkills)
-        assertTrue(result.isEmpty())
+        assertEquals("phone-use", result.firstOrNull()?.id)
     }
 
     @Test
-    fun match_exactMatchWithLongerCompletionsPreservesLonger() {
+    fun match_exactMatchWithLongerCompletionsRanksExactMatchFirst() {
         val candidatesWithPrefix = listOf(
             SlashSuggestion(
                 id = "git",
@@ -194,7 +193,7 @@ class SlashFuzzyMatcherTest {
             ),
         )
         val result = SlashFuzzyMatcher.match("skill:git", candidatesWithPrefix)
-        assertEquals(listOf("github"), result.map { it.id })
+        assertEquals(listOf("git", "github"), result.map { it.id })
     }
 
     @Test
@@ -268,10 +267,10 @@ class SlashFuzzyMatcherTest {
         val chineseCompactResult = SlashFuzzyMatcher.match("压", candidates)
         assertEquals(listOf("compact"), chineseCompactResult.map { it.id })
 
-        val exactCompactSuppressed = SlashFuzzyMatcher.match("compact", candidates)
-        assertTrue(exactCompactSuppressed.isEmpty())
+        val exactCompact = SlashFuzzyMatcher.match("compact", candidates)
+        assertEquals(listOf("compact"), exactCompact.map { it.id })
 
-        val exactNewSuppressed = SlashFuzzyMatcher.match("new", candidates)
-        assertTrue(exactNewSuppressed.isEmpty())
+        val exactNew = SlashFuzzyMatcher.match("new", candidates)
+        assertEquals(listOf("new"), exactNew.map { it.id })
     }
 }

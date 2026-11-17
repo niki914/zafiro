@@ -13,6 +13,7 @@ import com.niki914.zafiro.app.ui.nav.MaskingRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
 import com.niki914.zafiro.app.ui.nav.EnvContextVariableDetailPage
 import com.niki914.zafiro.app.ui.nav.PromptEditPage
+import com.niki914.zafiro.app.ui.nav.QuickPromptDetailPage
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsProviderPickPage
 import com.niki914.zafiro.app.ui.nav.SkillDetailPage
@@ -63,6 +64,15 @@ fun SettingsDetailPageContent(
         SkillsSettingsContent(
             onOpenSkillDetail = { id, title ->
                 onPush(SkillDetailPage(id, title))
+            },
+        )
+        return
+    }
+
+    if (group == ZafiroSettingsGroup.QuickPrompts) {
+        QuickPromptsSettingsContent(
+            onOpenPromptDetail = { title, index, isCreating ->
+                onPush(QuickPromptDetailPage(title, index, isCreating))
             },
         )
         return
