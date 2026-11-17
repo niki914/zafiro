@@ -29,7 +29,7 @@ fun RowScope.ZafiroDialogButton(
     enabled: Boolean = true,
     isPrimary: Boolean = false,
 ) {
-    when (val themeStyle = resolvedUiStyle(UiStylePart.Button)) {
+    when (val themeStyle = resolvedUiStyle(UiStylePart.Dialog)) {
         ThemeStyle.LiquidGlass -> {
             MaterialTintLiquidButton(
                 text = text,

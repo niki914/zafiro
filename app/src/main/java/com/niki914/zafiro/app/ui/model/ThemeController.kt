@@ -14,10 +14,6 @@ import com.niki914.uikit.base.UiStyleLookup
 import com.niki914.uikit.base.UiStylePart
 import com.niki914.uikit.base.resolveThemeColorScheme
 import com.niki914.zafiro.api.util.runCatchingCancellable
-import com.niki914.zafiro.app.BuildConfig
-import com.niki914.zafiro.app.ui.model.ThemeController.load
-import com.niki914.zafiro.app.ui.model.ThemeController.setMode
-import com.niki914.zafiro.app.ui.model.ThemeController.setSeedColor
 import com.niki914.zafiro.repo.UiStylesCodec
 import com.niki914.zafiro.repo.XRepo
 
@@ -62,31 +58,20 @@ object ThemeController {
     var uiStyleOverrides by mutableStateOf<Map<String, String>>(emptyMap())
         private set
 
-    /**
-     * 调试构建的部件风格。改这一份即可，只留在内存，不写 settings/ui_styles.json。
-     * 正式包不读。删掉某一行后，该部件改跟文件；文件也没有就跟全局风格。
-     */
-    private val debugPreset = listOf(
-        UiStylePart.TopBarPlate to ThemeStyle.LiquidGlass,
-        UiStylePart.TopBarButtons to ThemeStyle.Material3Expressive,
-        UiStylePart.Button to ThemeStyle.Material3Expressive,
-        UiStylePart.Slider to ThemeStyle.Material3Expressive,
-        UiStylePart.Switch to ThemeStyle.Material3Expressive,
-        UiStylePart.PageScroll to ThemeStyle.LiquidGlass,
-        UiStylePart.Dialog to ThemeStyle.Material3Expressive,
-        UiStylePart.Menu to ThemeStyle.Material3Expressive,
-        UiStylePart.TextField to ThemeStyle.Material3Expressive,
-        UiStylePart.Settings to ThemeStyle.Material3Expressive,
-        UiStylePart.Composer to ThemeStyle.Material3Expressive,
-        UiStylePart.Search to ThemeStyle.Material3Expressive,
-        UiStylePart.Loading to ThemeStyle.Material3Expressive,
-    )
+    fun styleOverride(part: UiStylePart): ThemeStyle? =
+        UiStylesCodec.overrideOrNull(uiStyleOverrides, part)
 
-    fun styleOverride(part: UiStylePart): ThemeStyle? {
-        if (BuildConfig.DEBUG) {
-            debugPreset.firstOrNull { it.first == part }?.second?.let { return it }
-        }
-        return UiStylesCodec.overrideOrNull(uiStyleOverrides, part)
+    fun resolvedStyle(part: UiStylePart): ThemeStyle =
+        styleOverride(part) ?: prefs.themeStyle
+
+    /**
+     * 当所有部件的实际生效风格一致时，返回该风格；若存在不同风格（混搭），返回 null（表示自定义）。
+     */
+    fun unifiedThemeStyleOrNull(): ThemeStyle? {
+        val parts = UiStylePart.entries
+        if (parts.isEmpty()) return prefs.themeStyle
+        val first = resolvedStyle(parts.first())
+        return if (parts.all { resolvedStyle(it) == first }) first else null
     }
 
     private val styleLookup = UiStyleLookup { styleOverride(it) }
@@ -133,6 +118,31 @@ object ThemeController {
                     "persist theme style failed ${it.message}"
                 )
             }
+    }
+
+    suspend fun setPartStyle(part: UiStylePart, style: ThemeStyle) {
+        val newOverrides = uiStyleOverrides.toMutableMap()
+        newOverrides[part.storageKey] = style.storageKey
+        uiStyleOverrides = newOverrides
+        persistOverrides(newOverrides)
+    }
+
+    suspend fun setUnifiedThemeStyle(style: ThemeStyle) {
+        setThemeStyle(style)
+        uiStyleOverrides = emptyMap()
+        persistOverrides(emptyMap())
+    }
+
+    private suspend fun persistOverrides(overrides: Map<String, String>) {
+        runCatchingCancellable {
+            val json = UiStylesCodec.encode(overrides)
+            XRepo.writeJson(StoreDescriptorRegistry.UI_STYLES_ID, json)
+        }.onFailure {
+            Logger.w(
+                "niki914_zafiro_ThemeController",
+                "persist ui styles failed ${it.message}"
+            )
+        }
     }
 
     suspend fun setSeedColor(argb: Int?) {

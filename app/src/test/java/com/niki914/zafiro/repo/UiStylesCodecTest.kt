@@ -39,4 +39,15 @@ class UiStylesCodecTest {
             UiStylesCodec.overrideOrNull(parsed, UiStylePart.TopBarButtons),
         )
     }
+
+    @Test
+    fun roundTripEncoding() {
+        val original = mapOf(
+            "button" to "liquid",
+            "switch" to "md3e",
+        )
+        val encoded = UiStylesCodec.encode(original)
+        val parsed = UiStylesCodec.parse(encoded)
+        assertEquals(original, parsed)
+    }
 }
