@@ -8,6 +8,8 @@
     <string name="ui_onboard_startup_demo_button">利用を開始</string>
     <string name="ui_onboard_provider_pick_title">プロバイダーを選択</string>
     <string name="ui_onboard_provider_pick_description">ここからモデル機能の連携を開始します。\nプロバイダーを選択して続行してください。</string>
+    <string name="ui_onboard_provider_pick_byok_hint">BYOK とは？</string>
+    <string name="ui_provider_official_and_relay_summary">公式およびサードパーティ中継に対応</string>
     <string name="ui_onboard_configure_title">モデル連携情報の設定</string>
     <string name="ui_onboard_configure_description">モデル設定を入力すると、すぐに利用を開始できます。</string>
     <string name="ui_onboard_configure_next">次へ</string>
