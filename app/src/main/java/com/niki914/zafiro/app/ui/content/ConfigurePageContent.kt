@@ -3,11 +3,16 @@ package com.niki914.zafiro.app.ui.content
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.dialog.ZafiroConfirmationDialog
+import com.niki914.uikit.dialog.ZafiroInputDialog
 import com.niki914.uikit.infra.component.SettingsDetailFormScaffold
 import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
 import com.niki914.zafiro.app.R
@@ -44,6 +49,10 @@ fun ConfigurePageContent(
     onShowModelCatalogSheet: () -> Unit = {},
     onHideModelCatalogSheet: () -> Unit = {},
     onSelectCatalogModel: (String) -> Unit = {},
+    onShowAddModelDialog: () -> Unit = {},
+    onHideAddModelDialog: () -> Unit = {},
+    onAddAvailableModel: (String) -> Unit = {},
+    onRefreshModelCatalog: () -> Unit = {},
     requestedFocusField: ConfigureEditableField? = null,
     onRequestedFocusHandled: () -> Unit = {},
 ) {
@@ -91,6 +100,7 @@ fun ConfigurePageContent(
             onApiKeyChange = onApiKeyChange,
             onToggleApiKeyVisibility = onToggleApiKeyVisibility,
             onShowModelCatalogSheet = onShowModelCatalogSheet,
+            onShowAddModelDialog = onShowAddModelDialog,
         )
 
         ConfigureProtocolSettingsBlock(
@@ -110,12 +120,38 @@ fun ConfigurePageContent(
         onCancel = onCancelEndpointMismatch,
     )
 
+    var addModelInput by rememberSaveable { mutableStateOf("") }
+    if (uiState.showAddModelDialog) {
+        ZafiroInputDialog(
+            visible = true,
+            onDismissRequest = onHideAddModelDialog,
+            title = stringResource(R.string.ui_onboard_configure_model_add_title),
+            value = addModelInput,
+            onValueChange = { addModelInput = it },
+            placeholder = stringResource(R.string.ui_onboard_configure_model_add_placeholder),
+            positiveButtonText = stringResource(android.R.string.ok),
+            positiveEnabled = addModelInput.trim().isNotBlank(),
+            onPositiveClick = {
+                val trimmed = addModelInput.trim()
+                if (trimmed.isNotBlank()) {
+                    onAddAvailableModel(trimmed)
+                    addModelInput = ""
+                } else {
+                    onHideAddModelDialog()
+                }
+            },
+        )
+    }
+
     ModelCatalogSheet(
         visible = uiState.showModelCatalogSheet,
-        catalog = uiState.modelCatalog,
+        catalog = uiState.availableModels,
         currentModelInput = uiState.modelInput,
+        fetchStatus = uiState.catalogFetchStatus,
         onDismissRequest = onHideModelCatalogSheet,
         onSelect = onSelectCatalogModel,
+        onRefresh = onRefreshModelCatalog,
+        onRequestAddModel = onShowAddModelDialog,
     )
 }
 

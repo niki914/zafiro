@@ -24,6 +24,10 @@
     <string name="ui_onboard_configure_model_placeholder">モデル名を入力</string>
     <string name="ui_onboard_configure_model_example">例：%1$s</string>
     <string name="ui_onboard_configure_model_catalog_open">モデルを選択</string>
+    <string name="ui_onboard_configure_model_add_button">モデルを追加</string>
+    <string name="ui_onboard_configure_model_add_title">利用可能なモデルを追加</string>
+    <string name="ui_onboard_configure_model_add_placeholder">モデルIDを入力、例：gpt-4o</string>
+    <string name="ui_onboard_configure_model_catalog_refresh">モデルカタログを更新</string>
     <string name="ui_onboard_configure_model_catalog_title">モデルを選択</string>
     <string name="ui_onboard_configure_model_catalog_search_placeholder">モデルを検索</string>
     <string name="ui_onboard_configure_model_catalog_empty">一致するモデルがありません</string>
@@ -582,8 +586,10 @@
     <string name="ui_settings_configure_protocol_hint">プロトコル切り替え後、エンドポイントがプロトコルと一致しているか確認してください。</string>
     <string name="ui_settings_configure_thinking_label">思考強度</string>
     <string name="ui_settings_configure_thinking_hint">デフォルトでモデル推奨設定に従います。プロバイダーに拒絶された場合は強度を下げてください。</string>
-    <string name="ui_settings_configure_thinking_start_label">Default</string>
-    <string name="ui_settings_configure_thinking_end_label">Max</string>
+    <string name="ui_home_model_sheet_title">現在の設定</string>
+    <string name="ui_home_model_sheet_section_config">設定</string>
+    <string name="ui_home_model_sheet_section_thinking">思考の強さ</string>
+    <string name="ui_home_model_sheet_section_model">モデル</string>
     <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
     <string name="ui_settings_configure_max_tokens_placeholder">例：200000 または 200k</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">256 以上の有効な数値を入力してください。k/m/b に対応</string>

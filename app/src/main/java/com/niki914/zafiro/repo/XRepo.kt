@@ -969,6 +969,59 @@ class LlmConfigsApi internal constructor(
         return null
     }
 
+    suspend fun updateModel(id: String, model: String) {
+        val targetId = id.trim()
+        val targetModel = model.trim()
+        if (targetId.isBlank() || targetModel.isBlank()) return
+        val updated = repo.updateJsonOrFalse(StoreDescriptorRegistry.LLM_CONFIGS_ID) { json ->
+            val doc = LlmConfigsSettingsCodec.parse(json)
+            val config = doc.configs.firstOrNull { it.id == targetId } ?: return@updateJsonOrFalse null
+            if (config.model == targetModel) return@updateJsonOrFalse null
+            val updatedConfigs = doc.configs.map {
+                if (it.id == targetId) it.copy(model = targetModel, updatedAt = System.currentTimeMillis()) else it
+            }
+            LlmConfigsSettingsCodec.encode(doc.copy(configs = updatedConfigs))
+        }
+        if (updated) {
+            bumpRevision()
+        }
+    }
+
+    suspend fun updateThinkingLevel(id: String, thinkingLevelWire: String) {
+        val targetId = id.trim()
+        val targetWire = thinkingLevelWire.trim()
+        if (targetId.isBlank()) return
+        val updated = repo.updateJsonOrFalse(StoreDescriptorRegistry.LLM_CONFIGS_ID) { json ->
+            val doc = LlmConfigsSettingsCodec.parse(json)
+            val config = doc.configs.firstOrNull { it.id == targetId } ?: return@updateJsonOrFalse null
+            if (config.thinkingLevel == targetWire) return@updateJsonOrFalse null
+            val updatedConfigs = doc.configs.map {
+                if (it.id == targetId) it.copy(thinkingLevel = targetWire, updatedAt = System.currentTimeMillis()) else it
+            }
+            LlmConfigsSettingsCodec.encode(doc.copy(configs = updatedConfigs))
+        }
+        if (updated) {
+            bumpRevision()
+        }
+    }
+
+    suspend fun updateAvailableModels(id: String, availableModels: List<AvailableModelItem>) {
+        val targetId = id.trim()
+        if (targetId.isBlank()) return
+        val updated = repo.updateJsonOrFalse(StoreDescriptorRegistry.LLM_CONFIGS_ID) { json ->
+            val doc = LlmConfigsSettingsCodec.parse(json)
+            val config = doc.configs.firstOrNull { it.id == targetId } ?: return@updateJsonOrFalse null
+            if (config.availableModels == availableModels) return@updateJsonOrFalse null
+            val updatedConfigs = doc.configs.map {
+                if (it.id == targetId) it.copy(availableModels = availableModels, updatedAt = System.currentTimeMillis()) else it
+            }
+            LlmConfigsSettingsCodec.encode(doc.copy(configs = updatedConfigs))
+        }
+        if (updated) {
+            bumpRevision()
+        }
+    }
+
     suspend fun delete(id: String) {
         val deleted = repo.updateJsonOrFalse(
             StoreDescriptorRegistry.LLM_CONFIGS_ID,

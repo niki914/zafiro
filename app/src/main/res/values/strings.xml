@@ -24,6 +24,10 @@
     <string name="ui_onboard_configure_model_placeholder">输入你的模型代号</string>
     <string name="ui_onboard_configure_model_example">如：%1$s</string>
     <string name="ui_onboard_configure_model_catalog_open">选择模型</string>
+    <string name="ui_onboard_configure_model_add_button">添加模型</string>
+    <string name="ui_onboard_configure_model_add_title">添加可用模型</string>
+    <string name="ui_onboard_configure_model_add_placeholder">输入模型代号，例如 gpt-4o</string>
+    <string name="ui_onboard_configure_model_catalog_refresh">刷新模型目录</string>
     <string name="ui_onboard_configure_model_catalog_title">选择模型</string>
     <string name="ui_onboard_configure_model_catalog_search_placeholder">搜索模型</string>
     <string name="ui_onboard_configure_model_catalog_empty">无匹配模型</string>
@@ -582,8 +586,10 @@
     <string name="ui_settings_configure_protocol_hint">切换协议后，请确认端点与协议匹配。</string>
     <string name="ui_settings_configure_thinking_label">思考强度</string>
     <string name="ui_settings_configure_thinking_hint">默认遵循模型配置。若服务商报错请调低强度。</string>
-    <string name="ui_settings_configure_thinking_start_label">Default</string>
-    <string name="ui_settings_configure_thinking_end_label">Max</string>
+    <string name="ui_home_model_sheet_title">当前配置</string>
+    <string name="ui_home_model_sheet_section_config">配置</string>
+    <string name="ui_home_model_sheet_section_thinking">思考强度</string>
+    <string name="ui_home_model_sheet_section_model">模型</string>
     <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
     <string name="ui_settings_configure_max_tokens_placeholder">例如：200000 或 200k</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">请填写不小于 256 的有效数值，支持 k/m/b</string>

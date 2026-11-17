@@ -21,6 +21,10 @@
     <string name="ui_onboard_configure_model_placeholder">Введите ID модели</string>
     <string name="ui_onboard_configure_model_example">Например: %1$s</string>
     <string name="ui_onboard_configure_model_catalog_open">Выбрать модель</string>
+    <string name="ui_onboard_configure_model_add_button">Добавить модель</string>
+    <string name="ui_onboard_configure_model_add_title">Добавить доступную модель</string>
+    <string name="ui_onboard_configure_model_add_placeholder">Введите ID модели, напр. gpt-4o</string>
+    <string name="ui_onboard_configure_model_catalog_refresh">Обновить каталог моделей</string>
     <string name="ui_onboard_configure_model_catalog_title">Выбрать модель</string>
     <string name="ui_onboard_configure_model_catalog_search_placeholder">Поиск моделей</string>
     <string name="ui_onboard_configure_model_catalog_empty">Подходящих моделей нет</string>
@@ -544,8 +548,10 @@
     <string name="ui_settings_configure_protocol_hint">После смены протокола проверьте, что адрес соответствует протоколу.</string>
     <string name="ui_settings_configure_thinking_label">Уровень размышлений</string>
     <string name="ui_settings_configure_thinking_hint">По умолчанию используется поведение модели. Уменьшите уровень, если провайдер отклоняет запрос.</string>
-    <string name="ui_settings_configure_thinking_start_label">Default</string>
-    <string name="ui_settings_configure_thinking_end_label">Max</string>
+    <string name="ui_home_model_sheet_title">Текущая конфигурация</string>
+    <string name="ui_home_model_sheet_section_config">Конфигурация</string>
+    <string name="ui_home_model_sheet_section_thinking">Интенсивность размышлений</string>
+    <string name="ui_home_model_sheet_section_model">Модель</string>
     <string name="ui_settings_configure_max_tokens_label">Максимум токенов</string>
     <string name="ui_settings_configure_max_tokens_placeholder">Например: 200000 или 200k</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">Введите корректное число не меньше 256, поддерживаются k/m/b</string>

@@ -40,7 +40,7 @@ import com.niki914.zafiro.app.ui.helper.ZafiroToast
 import com.niki914.zafiro.app.ui.home.dialog.ScreenControlConsentDialog
 import com.niki914.zafiro.app.ui.home.dialog.ToolPermissionDialog
 import com.niki914.zafiro.app.ui.home.dialog.UpdateAvailableDialog
-import com.niki914.zafiro.app.ui.home.header.HomeConfigPopover
+import com.niki914.zafiro.app.ui.home.header.HomeModelSwitchSheet
 import com.niki914.zafiro.app.ui.home.header.HomeTitleConfigChip
 import com.niki914.zafiro.app.ui.home.header.HomeTopBarContribution
 import com.niki914.zafiro.app.ui.model.home.FileAttachReason
@@ -336,14 +336,21 @@ fun HomePageContent(
 
     val composerFocusRequester = remember { FocusRequester() }
 
-    HomeConfigPopover(
-        uiState = uiState,
-        anchorBounds = titleAnchorBounds,
+    HomeModelSwitchSheet(
+        visible = uiState.isConfigMenuVisible,
+        savedConfigs = uiState.savedConfigs,
+        activeConfig = uiState.displayConfig,
         onDismissRequest = {
             viewModel.sendIntent(HomeChatIntent.DismissConfigMenu)
         },
         onSelectConfig = { configId ->
             viewModel.sendIntent(HomeChatIntent.SelectConfig(configId))
+        },
+        onSelectModel = { configId, modelId ->
+            viewModel.sendIntent(HomeChatIntent.SelectModel(configId, modelId))
+        },
+        onUpdateThinkingLevel = { configId, wireValue ->
+            viewModel.sendIntent(HomeChatIntent.UpdateThinkingLevel(configId, wireValue))
         },
     )
 

@@ -50,6 +50,14 @@ import kotlin.coroutines.resume
 
 internal data class HomeChatConfigDependencies(
     val loadConfigs: suspend () -> LlmConfigsDocument,
+    val setActiveConfig: suspend (String) -> Unit = { XRepo.llmConfigs.setActive(it) },
+    val updateConfigModel: suspend (configId: String, modelId: String) -> Unit = { configId, modelId ->
+        XRepo.llmConfigs.updateModel(configId, modelId)
+    },
+    val updateThinkingLevel: suspend (configId: String, wireValue: String) -> Unit = { configId, wireValue ->
+        XRepo.llmConfigs.updateThinkingLevel(configId, wireValue)
+    },
+    val configsRevisions: Flow<Long> = emptyFlow(),
     val loadSkills: suspend () -> List<RuntimeSkillMetadata> = { emptyList() },
     val skillsRevisions: Flow<Long> = emptyFlow(),
     val loadQuickPrompts: suspend () -> List<RuntimeQuickPrompt> = { emptyList() },
@@ -58,6 +66,10 @@ internal data class HomeChatConfigDependencies(
     companion object {
         val Default = HomeChatConfigDependencies(
             loadConfigs = { XRepo.llmConfigs.document() },
+            setActiveConfig = { XRepo.llmConfigs.setActive(it) },
+            updateConfigModel = { configId, modelId -> XRepo.llmConfigs.updateModel(configId, modelId) },
+            updateThinkingLevel = { configId, wireValue -> XRepo.llmConfigs.updateThinkingLevel(configId, wireValue) },
+            configsRevisions = XRepo.llmConfigs.revision,
             loadSkills = { XRepo.skills.listEnabled() },
             skillsRevisions = XRepo.skills.revision,
             loadQuickPrompts = { XRepo.quickPrompts.list() },
@@ -127,6 +139,11 @@ class HomeChatViewModel internal constructor(
                 refreshSlashSuggestions()
             }
         }
+        viewModelScope.launch {
+            configDependencies.configsRevisions.collect {
+                refreshSavedConfigs()
+            }
+        }
     }
 
     override fun initUiState(): HomeChatUiState = HomeChatUiState()
@@ -174,7 +191,6 @@ class HomeChatViewModel internal constructor(
                 updateState {
                     copy(
                         boundConfigId = intent.id,
-                        isConfigMenuVisible = false,
                     )
                 }
                 currentBoundAgent?.bindConfig(intent.id)
@@ -188,6 +204,62 @@ class HomeChatViewModel internal constructor(
                                 LOG_TAG,
                                 "updateConfigId failed id=$currentId: ${throwable.message}"
                             )
+                        }
+                    }
+                } else {
+                    viewModelScope.launch {
+                        runCatchingCancellable {
+                            configDependencies.setActiveConfig(intent.id)
+                        }.onFailure { throwable ->
+                            Logger.w(LOG_TAG, "setActiveConfig failed: ${throwable.message}")
+                        }
+                    }
+                }
+            }
+
+            is HomeChatIntent.SelectModel -> {
+                val targetConfigId = intent.configId.trim()
+                val targetModelId = intent.modelId.trim()
+                if (targetConfigId.isNotBlank() && targetModelId.isNotBlank()) {
+                    updateState {
+                        val updatedConfigs = savedConfigs.map { config ->
+                            if (config.id == targetConfigId) {
+                                config.copy(modelId = targetModelId)
+                            } else {
+                                config
+                            }
+                        }
+                        copy(savedConfigs = updatedConfigs)
+                    }
+                    viewModelScope.launch {
+                        runCatchingCancellable {
+                            configDependencies.updateConfigModel(targetConfigId, targetModelId)
+                        }.onFailure { throwable ->
+                            Logger.w(LOG_TAG, "updateConfigModel failed: ${throwable.message}")
+                        }
+                    }
+                }
+            }
+
+            is HomeChatIntent.UpdateThinkingLevel -> {
+                val targetConfigId = intent.configId.trim()
+                val targetWire = intent.wireValue.trim()
+                if (targetConfigId.isNotBlank()) {
+                    updateState {
+                        val updatedConfigs = savedConfigs.map { config ->
+                            if (config.id == targetConfigId) {
+                                config.copy(thinkingLevel = targetWire)
+                            } else {
+                                config
+                            }
+                        }
+                        copy(savedConfigs = updatedConfigs)
+                    }
+                    viewModelScope.launch {
+                        runCatchingCancellable {
+                            configDependencies.updateThinkingLevel(targetConfigId, targetWire)
+                        }.onFailure { throwable ->
+                            Logger.w(LOG_TAG, "updateThinkingLevel failed: ${throwable.message}")
                         }
                     }
                 }

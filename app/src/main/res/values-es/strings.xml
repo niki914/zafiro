@@ -24,6 +24,10 @@
     <string name="ui_onboard_configure_model_placeholder">Introduzca el nombre del modelo</string>
     <string name="ui_onboard_configure_model_example">Ejemplo: %1$s</string>
     <string name="ui_onboard_configure_model_catalog_open">Elegir modelo</string>
+    <string name="ui_onboard_configure_model_add_button">Añadir modelo</string>
+    <string name="ui_onboard_configure_model_add_title">Añadir modelo disponible</string>
+    <string name="ui_onboard_configure_model_add_placeholder">Introduzca el ID del modelo, ej. gpt-4o</string>
+    <string name="ui_onboard_configure_model_catalog_refresh">Actualizar catálogo de modelos</string>
     <string name="ui_onboard_configure_model_catalog_title">Elegir modelo</string>
     <string name="ui_onboard_configure_model_catalog_search_placeholder">Buscar modelos</string>
     <string name="ui_onboard_configure_model_catalog_empty">Sin modelos coincidentes</string>
@@ -584,8 +588,10 @@
     <string name="ui_settings_configure_protocol_hint">Tras cambiar el protocolo, asegúrese de que el endpoint sea compatible con dicho protocolo.</string>
     <string name="ui_settings_configure_thinking_label">Esfuerzo de razonamiento</string>
     <string name="ui_settings_configure_thinking_hint">Sigue la configuración predeterminada del modelo. Reduzca la intensidad si el proveedor rechaza la solicitud.</string>
-    <string name="ui_settings_configure_thinking_start_label">Default</string>
-    <string name="ui_settings_configure_thinking_end_label">Max</string>
+    <string name="ui_home_model_sheet_title">Configuración actual</string>
+    <string name="ui_home_model_sheet_section_config">Configuración</string>
+    <string name="ui_home_model_sheet_section_thinking">Intensidad de razonamiento</string>
+    <string name="ui_home_model_sheet_section_model">Modelo</string>
     <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
     <string name="ui_settings_configure_max_tokens_placeholder">Por ejemplo: 200000 o 200k</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">Introduzca un número válido de al menos 256, admite k/m/b</string>
