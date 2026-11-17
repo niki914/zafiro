@@ -117,7 +117,7 @@ fun ComposerSuggestionPanel(
                             backdrop = resolvedBackdrop,
                             shape = { panelShape },
                             highlight = { glassStyle.highlight(isDarkTheme) },
-                            shadow = { glassStyle.shadow(isDarkTheme) },
+                            shadow = null,
                             effects = { glassStyle.applyEffects(this, isDarkTheme) },
                             onDrawSurface = { drawRect(surfaceColor) },
                         )
@@ -143,7 +143,6 @@ fun ComposerSuggestionPanel(
                         ),
                     shape = panelShape,
                     color = colorScheme.surfaceContainerHigh,
-                    shadowElevation = 6.dp,
                 ) {
                     SuggestionList(
                         suggestions = displaySuggestions,
