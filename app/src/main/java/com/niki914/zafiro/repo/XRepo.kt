@@ -107,6 +107,7 @@ object XRepo {
         phoneUseConsentGrantedField.flow.value = false
         mcpService.resetForTest()
         llmConfigs.resetForTest()
+        skills.resetForTest()
     }
 
     internal suspend fun context(): Context {

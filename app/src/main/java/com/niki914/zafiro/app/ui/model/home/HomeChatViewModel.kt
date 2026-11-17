@@ -17,6 +17,8 @@ import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.app.conversation.ConversationBranchTree
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ForkKind
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashCategory
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashSuggestion
 import com.niki914.zafiro.app.ui.model.TextPacer
 import com.niki914.zafiro.app.ui.model.summariesOf
 import com.niki914.zafiro.business.files.FileAttachResult
@@ -24,6 +26,7 @@ import com.niki914.zafiro.business.files.FilesService
 import com.niki914.zafiro.repo.LlmConfigsDocument
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.requireService
+import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
 import kotlinx.coroutines.CancellableContinuation
 import com.niki914.zafiro.api.util.Debouncer
 import com.niki914.zafiro.api.util.debouncer
@@ -31,7 +34,9 @@ import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.api.util.tryOrDefault
 import com.niki914.zafiro.api.util.tryIgnore
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -40,10 +45,14 @@ import kotlin.coroutines.resume
 
 internal data class HomeChatConfigDependencies(
     val loadConfigs: suspend () -> LlmConfigsDocument,
+    val loadSkills: suspend () -> List<RuntimeSkillMetadata> = { emptyList() },
+    val skillsRevisions: Flow<Long> = emptyFlow(),
 ) {
     companion object {
         val Default = HomeChatConfigDependencies(
             loadConfigs = { XRepo.llmConfigs.document() },
+            loadSkills = { XRepo.skills.listEnabled() },
+            skillsRevisions = XRepo.skills.revision,
         )
     }
 }
@@ -98,6 +107,11 @@ class HomeChatViewModel internal constructor(
         restoreStartupState()
         viewModelScope.launch {
             refreshSavedConfigs()
+        }
+        viewModelScope.launch {
+            configDependencies.skillsRevisions.collect {
+                refreshSlashSuggestions()
+            }
         }
     }
 
@@ -167,7 +181,28 @@ class HomeChatViewModel internal constructor(
 
             HomeChatIntent.RefreshConfigs -> {
                 refreshSavedConfigs()
+                refreshSlashSuggestions()
             }
+        }
+    }
+
+    private suspend fun refreshSlashSuggestions() {
+        runCatchingCancellable {
+            val skills = configDependencies.loadSkills()
+            val suggestions = skills.map { skill ->
+                SlashSuggestion(
+                    id = skill.id,
+                    category = SlashCategory.SKILL,
+                    displayText = "/skill:${skill.id}",
+                    replaceToken = "/skill:${skill.id} ",
+                    searchKeys = listOf(skill.name, skill.id),
+                )
+            }
+            updateState {
+                copy(slashSuggestions = suggestions)
+            }
+        }.onFailure { throwable ->
+            Logger.w(LOG_TAG, "refreshSlashSuggestions failed: ${throwable.message}")
         }
     }
 
