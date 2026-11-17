@@ -239,4 +239,39 @@ class SlashFuzzyMatcherTest {
         val result = SlashFuzzyMatcher.match("xyz123", sampleSkills)
         assertTrue(result.isEmpty())
     }
+
+    @Test
+    fun builtinSlashCommand_findMatchesExactAndIgnoresCaseAndWhitespace() {
+        assertEquals(BuiltinSlashCommand.NewSession, BuiltinSlashCommand.find("/new"))
+        assertEquals(BuiltinSlashCommand.NewSession, BuiltinSlashCommand.find("  /new  "))
+        assertEquals(BuiltinSlashCommand.NewSession, BuiltinSlashCommand.find("/NEW"))
+        assertEquals(BuiltinSlashCommand.Compact, BuiltinSlashCommand.find("/compact"))
+        assertEquals(BuiltinSlashCommand.Compact, BuiltinSlashCommand.find("  /compact  "))
+        assertEquals(BuiltinSlashCommand.Compact, BuiltinSlashCommand.find("/COMPACT"))
+        assertNull(BuiltinSlashCommand.find("sentence /new"))
+        assertNull(BuiltinSlashCommand.find("/other"))
+    }
+
+    @Test
+    fun match_builtinCommandsMatchedByPrefixAndKeywords() {
+        val candidates = BuiltinSlashCommand.ALL.map { it.toSuggestion() }
+
+        val newResult = SlashFuzzyMatcher.match("n", candidates)
+        assertEquals(listOf("new"), newResult.map { it.id })
+
+        val compactResult = SlashFuzzyMatcher.match("c", candidates)
+        assertEquals(listOf("compact"), compactResult.map { it.id })
+
+        val chineseNewResult = SlashFuzzyMatcher.match("新", candidates)
+        assertEquals(listOf("new"), chineseNewResult.map { it.id })
+
+        val chineseCompactResult = SlashFuzzyMatcher.match("压", candidates)
+        assertEquals(listOf("compact"), chineseCompactResult.map { it.id })
+
+        val exactCompactSuppressed = SlashFuzzyMatcher.match("compact", candidates)
+        assertTrue(exactCompactSuppressed.isEmpty())
+
+        val exactNewSuppressed = SlashFuzzyMatcher.match("new", candidates)
+        assertTrue(exactNewSuppressed.isEmpty())
+    }
 }
