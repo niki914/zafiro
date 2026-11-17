@@ -35,7 +35,7 @@ object SlashFuzzyMatcher {
 
         val exactMatch = matched.find { candidate ->
             trimmed == candidate.displayText.lowercase().removePrefix("/") ||
-                    trimmed == "skill:${candidate.id.lowercase()}"
+                    trimmed == "${candidate.category.prefix}:${candidate.id.lowercase()}"
         }
 
         return if (exactMatch != null) {

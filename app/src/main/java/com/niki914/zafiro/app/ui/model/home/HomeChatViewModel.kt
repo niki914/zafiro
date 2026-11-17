@@ -17,8 +17,10 @@ import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.app.conversation.ConversationBranchTree
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ForkKind
+import com.niki914.zafiro.app.ui.home.composer.suggestion.BuiltinSlashCommand
 import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashCategory
 import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashSuggestion
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SuggestionScope
 import com.niki914.zafiro.app.ui.model.TextPacer
 import com.niki914.zafiro.app.ui.model.summariesOf
 import com.niki914.zafiro.business.files.FileAttachResult
@@ -188,18 +190,20 @@ class HomeChatViewModel internal constructor(
 
     private suspend fun refreshSlashSuggestions() {
         runCatchingCancellable {
+            val builtinSuggestions = BuiltinSlashCommand.ALL.map { it.toSuggestion() }
             val skills = configDependencies.loadSkills()
-            val suggestions = skills.map { skill ->
+            val skillSuggestions = skills.map { skill ->
                 SlashSuggestion(
                     id = skill.id,
                     category = SlashCategory.SKILL,
                     displayText = "/skill:${skill.id}",
                     replaceToken = "/skill:${skill.id} ",
+                    scope = SuggestionScope.ANYWHERE,
                     searchKeys = listOf(skill.name, skill.id),
                 )
             }
             updateState {
-                copy(slashSuggestions = suggestions)
+                copy(slashSuggestions = builtinSuggestions + skillSuggestions)
             }
         }.onFailure { throwable ->
             Logger.w(LOG_TAG, "refreshSlashSuggestions failed: ${throwable.message}")
@@ -559,6 +563,21 @@ class HomeChatViewModel internal constructor(
             sendEffect(HomeChatEffect.EmptyInputAttempted)
             return
         }
+
+        if (!hasAttachments) {
+            when (BuiltinSlashCommand.find(trimmedInput)) {
+                BuiltinSlashCommand.NewSession -> {
+                    updateState { copy(input = "") }
+                    startNewConversation()
+                    return
+                }
+                BuiltinSlashCommand.Compact -> {
+                    // 透传给 agent.stream()，由 AgentImpl 拦截执行强制压缩
+                }
+                null -> { /* 普通消息，继续正常发送 */ }
+            }
+        }
+
         agent.updateDraft { it.copy(text = trimmedInput) }
         // stream() is synchronous; don't let it consume Pending images before AgentImpl finishes ingest.
         agent.draft.first { draft -> draft.images.none { it is DraftImage.Pending } }

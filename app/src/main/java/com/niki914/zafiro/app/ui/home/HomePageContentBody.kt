@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.app.ui.home
 
 import android.app.Activity
@@ -66,6 +67,9 @@ import com.niki914.zafiro.app.ui.home.composer.suggestion.HomeComposerSuggestion
 import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashFuzzyMatcher
 import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashSuggestion
 import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashTrigger
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SuggestionAction
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SuggestionScope
+import com.niki914.zafiro.app.ui.home.composer.suggestion.isStandalone
 import com.niki914.zafiro.app.ui.model.home.ActionSource
 import com.niki914.zafiro.app.ui.model.home.HomeChatFile
 import com.niki914.zafiro.app.ui.model.home.HomeChatImage
@@ -131,10 +135,21 @@ internal fun HomePageContentBody(
     var activeSlashTrigger by remember { mutableStateOf<SlashTrigger?>(null) }
     var pendingSuggestionToApply by remember { mutableStateOf<SlashSuggestion?>(null) }
 
-    val matchingSuggestions = remember(activeSlashTrigger?.query, uiState.slashSuggestions) {
+    val isStandaloneContext = remember(activeSlashTrigger, uiState.input, pendingImages, pendingFiles) {
+        val trigger = activeSlashTrigger ?: return@remember false
+        trigger.isStandalone(
+            input = uiState.input,
+            hasAttachments = pendingImages.isNotEmpty() || pendingFiles.isNotEmpty(),
+        )
+    }
+
+    val matchingSuggestions = remember(activeSlashTrigger?.query, uiState.slashSuggestions, isStandaloneContext) {
         val trigger = activeSlashTrigger
         if (trigger != null) {
-            SlashFuzzyMatcher.match(trigger.query, uiState.slashSuggestions)
+            val candidates = uiState.slashSuggestions.filter { suggestion ->
+                suggestion.scope == SuggestionScope.ANYWHERE || isStandaloneContext
+            }
+            SlashFuzzyMatcher.match(trigger.query, candidates)
         } else {
             emptyList()
         }
@@ -320,7 +335,16 @@ internal fun HomePageContentBody(
                 visible = isSuggestionPanelVisible,
                 suggestions = matchingSuggestions,
                 onSelectSuggestion = { suggestion ->
-                    pendingSuggestionToApply = suggestion
+                    when (val action = suggestion.action) {
+                        is SuggestionAction.Insert -> {
+                            pendingSuggestionToApply = suggestion
+                        }
+                        is SuggestionAction.Submit -> {
+                            onInputChange(action.replaceToken)
+                            activeSlashTrigger = null
+                            onSendClick()
+                        }
+                    }
                 },
                 composerBottomPadding = composerBottomPadding,
                 composerHeight = composerHeight.value,

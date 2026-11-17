@@ -169,7 +169,7 @@ private fun SuggestionList(
     ) {
         items(
             items = suggestions,
-            key = { it.replaceToken },
+            key = { "${it.category.prefix}:${it.id}" },
         ) { suggestion ->
             ZafiroMenuItem(
                 title = suggestion.displayText,
