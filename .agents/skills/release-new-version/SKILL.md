@@ -24,7 +24,7 @@ CI builds and signs one APK when a tag is pushed to the main repo, stamps channe
 Collect all of this before asking the user anything:
 
 1. **Local version**: read `versionCode` / `versionName` from `app/build.gradle.kts`.
-2. **Latest release baseline**: `gh release view -R niki914/zafiro` (returns the latest release). Parse its tag `v<code>-<name>`.
+2. **Recent release baseline & style reference**: View the latest 4 releases via `gh release list -R niki914/zafiro --limit 4`. Inspect the latest release tag (`v<code>-<name>`) as the baseline, and read the release notes of the latest 4 releases (`gh release view <tag> -R niki914/zafiro`) to strictly align with their tone and sentence structures. **Only inspect the latest 4 releases**.
 3. **Changes since last release**: commits and merged PRs from the last release tag to `origin/main`:
    ```bash
    git log v<code>-<name>..origin/main --oneline --no-merges
@@ -36,24 +36,25 @@ Summarize the changes for the user in plain language before drafting.
 
 ## Phase 2 — Draft release notes (iterate until explicit approval)
 
-Write bilingual notes (**English first, `---`, then Chinese**) from the change list. Apply these rules strictly — they are derived from every historical release:
+Write bilingual notes (**English first, `---`, then Chinese**) from the change list. Apply these rules strictly — they are derived **only from the latest 4 releases**:
 
-1. **Only user-perceivable changes.** New features, visible improvements, refactors with user-facing impact. Never list chores, CI fixes, string cleanups, dependency bumps, internal renames.
-2. **Bug fixes are always vague.** Collapse all fixes into one line: "Fixed several issues and improved overall stability" / "修复了一些问题，优化整体体验". Optionally append one phrase naming the improved area (e.g. "优化了虚拟屏幕执行效率"). Never enumerate specific bugs.
-3. **4–8 numbered entries.** Feature names are brand terms (Phone Use, Skills System, Virtual Display) — keep them consistent with past usage.
-4. **Breaking changes get a blockquote before the list**, in both languages, telling users what to do.
-5. **Milestone items** (e.g. "仓库已开源，欢迎 Star、提 Issue、参与贡献") go as the final entry when applicable.
-6. **Format rules**:
+1. **Derive tone and style only from the latest 4 releases.** Do not reference older releases.
+2. **Only user-perceivable changes.** New features, visible improvements, refactors with user-facing impact. Never list chores, CI fixes, string cleanups, dependency bumps, internal renames.
+3. **Bug fixes are always vague.** Collapse all fixes into one line: "Fixed several issues and improved overall interaction experience" / "修复了一些问题，优化整体交互体验". Optionally append one phrase naming the improved area (e.g. "优化了虚拟屏幕执行效率"). Never enumerate specific bugs.
+4. **4–8 numbered entries.** Feature names are brand terms (Phone Use, Skills System, Virtual Display) — keep them consistent with past usage.
+5. **Breaking changes get a blockquote before the list**, in both languages, telling users what to do.
+6. **Milestone items** (e.g. "仓库已开源，欢迎 Star、提 Issue、参与贡献") go as the final entry when applicable.
+7. **Format rules**:
    - English list first, followed by a blank line, `---`, blank line, then Chinese list.
    - No language headers (no `**English**` or `**中文**` labels).
    - Lists start directly with `1. ...`.
 
 Present the draft. The user will revise it — redraft and repeat until the user explicitly approves. Approval is an explicit statement from the user, not silence.
 
-Few-shot (real entries from past releases):
+Few-shot (real entries from recent releases):
 
-- Good feature entry: `1. Add Virtual Display: support expandable floating window with touch injection`
-- Good vague fix entry: `6. Fixed several issues and improved overall interaction experience`
+- Good feature entry: see the releases
+- Good vague fix entry: `6. Fixed several issues and improved overall interaction experience` / `修复了一些问题，优化整体交互体验`
 - Bad entry (do not write): `fix: hold a still frame across the virtual display morph` — too specific; fold into "Fixed several issues"
 - Bad entry (do not write): `chore: update dependencies` — not user-perceivable, drop entirely
 

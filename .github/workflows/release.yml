@@ -53,35 +53,29 @@ jobs:
       - name: Build signed release APK
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 
-      - name: Resolve version name
-        id: version
-        run: |
-          VN=$(grep -m1 'versionName' app/build.gradle.kts | sed -E 's/.*"(.*)".*/\1/')
-          echo "name=$VN" >> "$GITHUB_OUTPUT"
-
       - name: Stage APK and mapping
         run: |
           cp app/build/outputs/apk/release/app-release.apk \
-             "Zafiro-${{ steps.version.outputs.name }}.apk"
-          zip -j "mapping-${{ steps.version.outputs.name }}.zip" \
+             "zafiro-release.apk"
+          zip -j "mapping.zip" \
             app/build/outputs/mapping/release/mapping.txt
 
       - name: Upload APK artifact
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
-          name: Zafiro-${{ steps.version.outputs.name }}
+          name: zafiro-release
           path: |
-            Zafiro-*.apk
-            mapping-*.zip
+            zafiro-release.apk
+            mapping.zip
           if-no-files-found: error
 
       - name: Stamp github channel
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           python3 tools/apk_channel.py stamp \
-            "Zafiro-${{ steps.version.outputs.name }}.apk" \
-            "Zafiro-${{ steps.version.outputs.name }}.apk" \
+            "zafiro-release.apk" \
+            "zafiro-release.apk" \
             github
 
       - name: Create GitHub Release
@@ -90,7 +84,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ github.ref_name }}" \
-            Zafiro-*.apk \
-            mapping-*.zip \
+            zafiro-release.apk \
+            mapping.zip \
             --title "${{ github.ref_name }}" \
             --generate-notes
