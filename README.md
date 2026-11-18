@@ -34,32 +34,19 @@ Zafiro is an intelligent [BYOK](https://www.ibm.com/think/topics/byok) Agent wit
 
 Zafiro is more than just a chatbot—it can perform tasks across apps through Phone-Use, with full support for Skills, MCP, and memory. It can also run Shell and Python 3 natively and wrap tools on its own to perform tasks such as web search and file downloads, or connect to a remote dev machine via SSH.
 
-<table align="center" width="100%">
-  <tr>
-    <th width="25%" align="center">Phone-Use</th>
-    <th width="25%" align="center">HTML Generation</th>
-    <th width="25%" align="center">External Agents</th>
-    <th width="25%" align="center">Multimodal</th>
-  </tr>
-  <tr>
-    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__phone_control.gif?raw=true" alt="Autonomous mobile GUI navigation and device control via screen pointer" width="90%" /></td>
-    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__html_generation.gif?raw=true" alt="Dynamic code generation and instant local browser preview" width="90%" /></td>
-    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__pi_agent_mcp.gif?raw=true" alt="Android MCP server exposing system capabilities to external agents" width="90%" /></td>
-    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__image_understanding.jpg?raw=true" alt="On-device multimodal vision and image understanding" width="90%" /></td>
-  </tr>
-  <tr>
-    <th width="25%" align="center">Model Providers</th>
-    <th width="25%" align="center">Termux</th>
-    <th width="25%" align="center">Safety Guard</th>
-    <th width="25%" align="center">Session Management</th>
-  </tr>
-  <tr>
-    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__multi_providers.jpg?raw=true" alt="Custom LLM API keys and multi-provider configuration" width="90%" /></td>
-    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__remote_machine_ssh.jpg?raw=true" alt="Integrate remote dev machines via SSH and Termux" width="90%" /></td>
-    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__safety_guard.jpg?raw=true" alt="Human-in-the-loop permission guard and safety interception for sensitive Shell actions" width="90%" /></td>
-    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__conversation_management.jpg?raw=true" alt="Local conversation history management and session branching" width="90%" /></td>
-  </tr>
-</table>
+<p align="center">
+  <video src="https://github.com/user-attachments/assets/58c60ada-bc71-4629-8ffc-86ea34da0144" autoplay loop muted playsinline width="100%"></video>
+</p>
+
+<p align="middle">
+  <img src="https://github.com/niki914/zafiro/blob/main/res/screenshots/1.png?raw=true" width="13%" />
+  <img src="https://github.com/niki914/zafiro/blob/main/res/screenshots/2.png?raw=true" width="13%" />
+  <img src="https://github.com/niki914/zafiro/blob/main/res/screenshots/3.png?raw=true" width="13%" />
+  <img src="https://github.com/niki914/zafiro/blob/main/res/screenshots/4.png?raw=true" width="13%" />
+  <img src="https://github.com/niki914/zafiro/blob/main/res/screenshots/5.png?raw=true" width="13%" />
+  <img src="https://github.com/niki914/zafiro/blob/main/res/screenshots/6.png?raw=true" width="13%" />
+  <img src="https://github.com/niki914/zafiro/blob/main/res/screenshots/7.png?raw=true" width="13%" />
+</p>
 
 ## Installation
 

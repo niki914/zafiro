@@ -34,32 +34,19 @@ Zafiro 是一个运行在 Android 上的智能 [BYOK](https://www.ibm.com/think/
 
 Zafiro 不仅仅是一个聊天机器人——它可以通过 Phone-Use 跨应用执行任务，并完整支持 Skills、MCP 和记忆。它还可以原生运行 Shell 与 Python 3，并自行封装工具来执行网络搜索和文件下载等任务，或通过 SSH 连接到远程开发机。
 
-<table align="center" width="100%">
-  <tr>
-    <th width="25%" align="center">Phone-Use</th>
-    <th width="25%" align="center">网页生成</th>
-    <th width="25%" align="center">外部 Agent</th>
-    <th width="25%" align="center">多模态</th>
-  </tr>
-  <tr>
-    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__phone_control.gif?raw=true" alt="基于屏幕指针的自主移动端 GUI 导航与设备控制" width="90%" /></td>
-    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__html_generation.gif?raw=true" alt="动态代码生成与本地浏览器即时预览" width="90%" /></td>
-    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__pi_agent_mcp.gif?raw=true" alt="向外部 Agent 开放系统能力的 Android MCP 服务器" width="90%" /></td>
-    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__image_understanding.jpg?raw=true" alt="端侧多模态视觉与图像理解" width="90%" /></td>
-  </tr>
-  <tr>
-    <th width="25%" align="center">模型服务商</th>
-    <th width="25%" align="center">Termux</th>
-    <th width="25%" align="center">安全拦截</th>
-    <th width="25%" align="center">会话管理</th>
-  </tr>
-  <tr>
-    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__multi_providers.jpg?raw=true" alt="自定义大模型 API 密钥与多服务商配置" width="90%" /></td>
-    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__remote_machine_ssh.jpg?raw=true" alt="通过 SSH 与 Termux 集成远程开发机" width="90%" /></td>
-    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__safety_guard.jpg?raw=true" alt="敏感 Shell 操作的人机协同权限防护与安全拦截" width="90%" /></td>
-    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__conversation_management.jpg?raw=true" alt="本地会话历史管理与会话分支" width="90%" /></td>
-  </tr>
-</table>
+<p align="center">
+  <video src="https://github.com/user-attachments/assets/58c60ada-bc71-4629-8ffc-86ea34da0144" autoplay loop muted playsinline width="100%"></video>
+</p>
+
+<p align="middle">
+  <img src="https://github.com/niki914/zafiro/blob/main/res/screenshots/1.png?raw=true" width="13%" />
+  <img src="https://github.com/niki914/zafiro/blob/main/res/screenshots/2.png?raw=true" width="13%" />
+  <img src="https://github.com/niki914/zafiro/blob/main/res/screenshots/3.png?raw=true" width="13%" />
+  <img src="https://github.com/niki914/zafiro/blob/main/res/screenshots/4.png?raw=true" width="13%" />
+  <img src="https://github.com/niki914/zafiro/blob/main/res/screenshots/5.png?raw=true" width="13%" />
+  <img src="https://github.com/niki914/zafiro/blob/main/res/screenshots/6.png?raw=true" width="13%" />
+  <img src="https://github.com/niki914/zafiro/blob/main/res/screenshots/7.png?raw=true" width="13%" />
+</p>
 
 ## 安装
 
