@@ -23,8 +23,8 @@ android {
         applicationId = "com.niki914.zafiro"
         minSdk = 26
         targetSdk = 34
-        versionName = "1.11.0"
-        versionCode = 19
+        versionName = "2.0.0"
+        versionCode = 20
         buildConfigField("String", "TELEMETRY_BASE_URL", "\"https://zafiro-telemetry.niki27687.workers.dev\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
