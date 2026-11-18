@@ -55,3 +55,4 @@ pnpm-debug.log*
 /libterm
 media/
 nexus-res/
+*.mp4

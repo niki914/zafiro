@@ -127,6 +127,7 @@ Zafiro Agent 的对话功能是限定在主进程之内的，虽然有一个宿�
 - 若某项功能实现难度高（难度评分超过 6/10）且 ROI 较低，在着手开发前应先与用户协商功能范围
 - 对话有可能被压缩。如果见到以 XML 格式承载的对话摘要类信息说明对话已经被压缩，如任务有沉淀如 PLAN、CR 等文档，需要重读以确保对齐
 - 提交信息和 PR 标题均使用英文，采用 `feat: did something` 这样的格式；标题简洁明了，不带模块名，补充说明写在正文中。PR 使用 gh CLI 完成
+- 仓库 `.gitignore` 刻意配置了 `*.md`，默认不跟踪和提交 Markdown 文件，不出现在 `git status` 中是预期行为，无须用 `git check-ignore`
 - 搜索用 `rg`，不要 `grep -r`。 `rg` 默认读 `.gitignore`，自动排除 `**/build/`；`grep -r` 会扫到 build 与 `.git`
 
 ### 边界
