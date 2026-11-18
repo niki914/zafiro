@@ -177,4 +177,38 @@ class TurnSectionMapperTest {
         val stepTool4 = ui4.sections[0] as TurnSection.Step
         assertTrue("用户手动展开的 Tool 在正文出现后依然保持展开", stepTool4.action.isExpanded)
     }
+
+    @Test
+    fun nonWhitelistedTool_doesNotAutoExpand_evenWithoutSuccessor() {
+        val turn = HomeChatTurn(
+            id = 30L,
+            userText = "tap screen",
+            blocks = listOf(
+                HomeChatBlock.Tool(HomeToolStatus(name = "screen_operation", state = HomeToolState.Running)),
+            ),
+        )
+
+        val ui = turn.toTurnUiModel(isGenerating = true)
+        val step = ui.sections.filterIsInstance<TurnSection.Step>().first()
+
+        assertFalse("非白名单工具即使无后序块且运行中也不自动展开", step.action.isExpanded)
+    }
+
+    @Test
+    fun whitelistedTools_autoExpand_whenWithoutSuccessor() {
+        for (toolName in listOf("shell", "ssh", "execute_python", "load_skill")) {
+            val turn = HomeChatTurn(
+                id = 31L,
+                userText = "run $toolName",
+                blocks = listOf(
+                    HomeChatBlock.Tool(HomeToolStatus(name = toolName, state = HomeToolState.Running)),
+                ),
+            )
+
+            val ui = turn.toTurnUiModel(isGenerating = true)
+            val step = ui.sections.filterIsInstance<TurnSection.Step>().first()
+
+            assertTrue("$toolName 在白名单内，无后序块且运行中时保持自动展开", step.action.isExpanded)
+        }
+    }
 }

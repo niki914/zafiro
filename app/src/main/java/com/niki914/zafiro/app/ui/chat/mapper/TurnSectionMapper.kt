@@ -14,6 +14,13 @@ import com.niki914.zafiro.app.ui.model.home.HomeChatBlock
 import com.niki914.zafiro.app.ui.model.home.HomeChatTurn
 import com.niki914.zafiro.app.ui.model.home.HomeToolState
 
+private val AutoExpandToolNames = setOf(
+    "shell",
+    "ssh",
+    "execute_python",
+    "load_skill",
+)
+
 /**
  * 将平铺的 [HomeChatTurn] 映射为结构化、纯分流的 [TurnUiModel]。
  *
@@ -112,7 +119,8 @@ internal fun HomeChatTurn.toTurnUiModel(
                 val isRunning = block.status.state == HomeToolState.Running
                 val bodyUi = block.status.toActionBodyUi(alwaysShowDetailed = alwaysShowDetailed)
                 val isUserToggled = actionKey in userToggledKeys
-                val defaultExpanded = !hasSuccessor(blockIndex)
+                val isAutoExpandable = block.status.name in AutoExpandToolNames
+                val defaultExpanded = isAutoExpandable && !hasSuccessor(blockIndex)
                 val isExpanded = userToggledKeys[actionKey] ?: defaultExpanded
 
                 currentSteps.add(
