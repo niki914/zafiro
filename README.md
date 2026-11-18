@@ -34,9 +34,7 @@ Zafiro is an intelligent [BYOK](https://www.ibm.com/think/topics/byok) Agent wit
 
 Zafiro is more than just a chatbot—it can perform tasks across apps through Phone-Use, with full support for Skills, MCP, and memory. It can also run Shell and Python 3 natively and wrap tools on its own to perform tasks such as web search and file downloads, or connect to a remote dev machine via SSH.
 
-<p align="center">
-  <video src="https://github.com/user-attachments/assets/58c60ada-bc71-4629-8ffc-86ea34da0144" autoplay loop muted playsinline width="100%"></video>
-</p>
+https://github.com/user-attachments/assets/58c60ada-bc71-4629-8ffc-86ea34da0144
 
 <p align="middle">
   <img src="https://github.com/niki914/zafiro/blob/main/res/screenshots/1.png?raw=true" width="13%" />
