@@ -80,7 +80,7 @@ Zafiro is more than just a chatbot—it can perform tasks across apps through Ph
 
 - **Screen Interaction** - open apps, pick music, order food — all done for you, in the background
 - **Visual Screen** - a mini screen shows every step Zafiro takes
-- **Stability** - leverages a11y trees and screenshots to reliably get the job done
+- **Stability** - leverages a11y trees, screenshots and many other ways to get the job done
 
 ### Tooling
 
@@ -92,13 +92,13 @@ Zafiro is more than just a chatbot—it can perform tasks across apps through Ph
 
 ### Modern UI Design Language
 
-- **[Material 3 Expressive](https://m3.material.io/) & Apple Liquid Glass** - a polished, customized UI
+- **[Material 3 Expressive](https://m3.material.io/) & Apple Liquid Glass** - your customized UI
 - **Multilingual Support** - English, 中文, 日本語, Español, Русский and RTL languages
-- **Background Interaction** - sleek floating bubble and notification tray UI to follow up
+- **Background Interaction** - sleek floating bubble and notification tray UI to follow up on every task
 
 ## Voice Assistant Takeover (Root required)
 
-Through the [LSPosed](https://github.com/lsposed/lsposed) framework, Zafiro can take over your system voice assistant — wake Breeno or XiaoAi, and Zafiro answers under the hood.
+Through the [LSPosed](https://github.com/lsposed/lsposed) framework, Zafiro can take over your system voice assistant — wake Breeno or XiaoAi, and Zafiro answers the questions.
 
 Flexible settings let you decide when to invoke Zafiro and when to fall back to your default assistant.
 
