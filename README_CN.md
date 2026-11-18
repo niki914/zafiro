@@ -34,7 +34,9 @@ Zafiro 是一个运行在 Android 上的智能 [BYOK](https://www.ibm.com/think/
 
 Zafiro 不仅仅是一个聊天机器人——它可以通过 Phone-Use 跨应用执行任务，并完整支持 Skills、MCP 和记忆。它还可以原生运行 Shell 与 Python 3，并自行封装工具来执行网络搜索和文件下载等任务，或通过 SSH 连接到远程开发机。
 
-https://github.com/user-attachments/assets/58c60ada-bc71-4629-8ffc-86ea34da0144
+### Demo
+
+https://github.com/user-attachments/assets/c2c8ffac-1609-4b98-a624-c65b93990435
 
 <p align="middle">
   <img src="https://github.com/niki914/zafiro/blob/main/res/screenshots/1.png?raw=true" width="13%" />
