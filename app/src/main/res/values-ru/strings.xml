@@ -43,10 +43,10 @@
     <string name="ui_virtual_display_recent_apps">Недавние</string>
     <string name="ui_virtual_display_all_apps">Все приложения</string>
     <string name="ui_virtual_display_create_failed">Не удалось создать виртуальный экран. Проверьте разрешения.</string>
-    <string name="ui_virtual_display_waiting_for_app">Ожидание запуска приложения</string>
+    <string name="ui_virtual_display_app_in_use_on_main">Это приложение открыто на основном экране</string>
+    <string name="ui_virtual_display_app_launch_failed">Не удалось запустить приложение на виртуальном экране</string>
     <string name="ui_virtual_display_pick_app">Выберите приложение</string>
     <string name="ui_virtual_display_launching_app">Запуск %1$s…</string>
-    <string name="ui_virtual_display_card_open">Открыть</string>
     <string name="ui_virtual_display_card_terminate">Завершить</string>
     <string name="ui_virtual_display_terminate_title">Завершить виртуальный экран?</string>
     <string name="ui_virtual_display_terminate_message">Виртуальный экран этого диалога и запущенные в нём приложения будут закрыты.</string>

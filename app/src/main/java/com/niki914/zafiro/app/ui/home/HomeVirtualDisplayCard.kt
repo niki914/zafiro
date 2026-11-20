@@ -18,7 +18,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,9 +42,9 @@ import com.niki914.uikit.infra.shape.G2CardShape
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.screen.AppIconBadge
 import com.niki914.zafiro.app.screen.AppIconState
-import com.niki914.zafiro.app.screen.ForegroundVirtualDisplayState
-import com.niki914.zafiro.app.screen.VirtualDisplayStage
 import com.niki914.zafiro.app.screen.rememberAppIconState
+import com.niki914.zafiro.app.ui.model.home.HomeVirtualDisplayStage
+import com.niki914.zafiro.app.ui.model.home.HomeVirtualDisplayUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
@@ -65,17 +64,17 @@ private val AmbientPaletteCache = ConcurrentHashMap<String, List<Color>>()
  */
 @Composable
 internal fun rememberVirtualDisplayAmbientColors(
-    state: ForegroundVirtualDisplayState?,
+    state: HomeVirtualDisplayUiState?,
 ): List<Color> {
     if (state == null) return emptyList()
-    val stage by state.stage.collectAsState()
+    val stage = state.stage
     val isDarkTheme = LocalAppDarkTheme.current
     val fallbackSeed = MaterialTheme.colorScheme.secondaryContainer
     val standbyPalette = remember(fallbackSeed, isDarkTheme) {
         AmbientColorExtractor.fromSeedColor(fallbackSeed, isDarkTheme)
     }
 
-    val runningPackage = (stage as? VirtualDisplayStage.Running)?.packageName
+    val runningPackage = (stage as? HomeVirtualDisplayStage.Running)?.packageName
     val iconState = rememberAppIconState(runningPackage)
     val cacheKey = runningPackage?.let { "$it|$isDarkTheme" }
 
@@ -117,12 +116,12 @@ internal fun rememberVirtualDisplayAmbientColors(
  */
 @Composable
 internal fun HomeVirtualDisplayDock(
-    state: ForegroundVirtualDisplayState,
+    state: HomeVirtualDisplayUiState,
     onOpen: () -> Unit,
     onTerminate: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val stage by state.stage.collectAsState()
+    val stage = state.stage
     val colors = MaterialTheme.colorScheme
     val haptics = LocalHapticFeedback.current
 
@@ -151,7 +150,7 @@ internal fun HomeVirtualDisplayDock(
                 contentAlignment = Alignment.Center,
             ) {
                 when (val current = stage) {
-                    is VirtualDisplayStage.Running -> {
+                    is HomeVirtualDisplayStage.Running -> {
                         AppIconBadge(
                             packageName = current.packageName,
                             size = DockIconSize,
@@ -159,7 +158,7 @@ internal fun HomeVirtualDisplayDock(
                         )
                     }
 
-                    is VirtualDisplayStage.Launching -> {
+                    is HomeVirtualDisplayStage.Launching -> {
                         Box(
                             modifier = Modifier
                                 .size(DockIconSize)
@@ -176,7 +175,7 @@ internal fun HomeVirtualDisplayDock(
                         }
                     }
 
-                    is VirtualDisplayStage.AppPicker -> {
+                    HomeVirtualDisplayStage.AppPicker -> {
                         Box(
                             modifier = Modifier
                                 .size(DockIconSize)
@@ -199,13 +198,13 @@ internal fun HomeVirtualDisplayDock(
 
             Text(
                 text = when (val current = stage) {
-                    is VirtualDisplayStage.Running -> current.appName
-                    is VirtualDisplayStage.Launching -> stringResource(
+                    is HomeVirtualDisplayStage.Running -> current.appName
+                    is HomeVirtualDisplayStage.Launching -> stringResource(
                         R.string.ui_virtual_display_launching_app,
                         current.appName,
                     )
 
-                    is VirtualDisplayStage.AppPicker -> stringResource(
+                    HomeVirtualDisplayStage.AppPicker -> stringResource(
                         R.string.ui_virtual_display_pick_app,
                     )
                 },

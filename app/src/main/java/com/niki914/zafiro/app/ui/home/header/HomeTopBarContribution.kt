@@ -20,7 +20,6 @@ internal fun HomeTopBarContribution(
     onNewConversation: () -> Unit,
     onOpenVirtualDisplay: () -> Unit,
     onOpenSettings: () -> Unit,
-    isGenerating: Boolean,
     titleContent: @Composable () -> Unit,
 ) {
     val newConversationMenuLabel = stringResource(R.string.ui_home_menu_new_conversation)
@@ -33,13 +32,12 @@ internal fun HomeTopBarContribution(
         settingsMenuLabel,
         titleContent,
         isConfigMenuVisible,
-        isGenerating,
     ) {
         PageChromeContribution(
             titleContent = titleContent,
             isTitleOccluded = false,
             actionsVisible = true,
-            topBarLoad = if (isGenerating) TopBarLoad.Indeterminate else TopBarLoad.None,
+            topBarLoad = TopBarLoad.None,
             leftAction = TopBarActionSpec(
                 icon = Icons.Default.History,
                 onClick = {

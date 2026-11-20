@@ -1,15 +1,15 @@
 package com.niki914.uikit.ambient
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
@@ -34,6 +34,7 @@ import kotlin.math.sin
  *   顶部光斑像素分布不发生拉伸跳变。
  * - 使用 `BlendMode.DstIn` 非线性三次缓出蒙版：到达 `fadeHeight` 时光斑透明度硬截止至 0%，
  *   下方 100% 回归宿主的 Material3 / LiquidGlass 原色。
+ * - 支持通过 [animate] 暂停帧循环（如被全屏悬浮窗遮挡时），恢复时从原相位无缝续播。
  */
 @Composable
 fun TopFadeAuroraOverlay(
@@ -41,6 +42,7 @@ fun TopFadeAuroraOverlay(
     modifier: Modifier = Modifier,
     fadeHeight: Dp = 112.dp,
     maxAlpha: Float = 0.86f,
+    animate: Boolean = true,
 ) {
     if (colors.isEmpty()) return
 
@@ -65,35 +67,26 @@ fun TopFadeAuroraOverlay(
         label = "aurora_c3",
     )
 
-    val transition = rememberInfiniteTransition(label = "top_fade_aurora")
-    // 互质周期驱动三组相位，避免光斑轨迹出现机械循环感
-    val phaseA by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = TWO_PI,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 4_200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "aurora_phase_a",
-    )
-    val phaseB by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = TWO_PI,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 6_100, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "aurora_phase_b",
-    )
-    val phaseC by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = TWO_PI,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 7_900, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "aurora_phase_c",
-    )
+    // 互质周期驱动三组相位，避免光斑轨迹出现机械循环感；暂停时停帧并保留当前相位
+    var phaseA by remember { mutableFloatStateOf(0f) }
+    var phaseB by remember { mutableFloatStateOf(0f) }
+    var phaseC by remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(animate) {
+        if (!animate) return@LaunchedEffect
+        var lastFrameNanos = 0L
+        while (true) {
+            withFrameNanos { frameNanos ->
+                if (lastFrameNanos != 0L) {
+                    val deltaMs = ((frameNanos - lastFrameNanos) / 1_000_000f).coerceIn(0f, 100f)
+                    phaseA = (phaseA + deltaMs * (TWO_PI / 4_200f)) % TWO_PI
+                    phaseB = (phaseB + deltaMs * (TWO_PI / 6_100f)) % TWO_PI
+                    phaseC = (phaseC + deltaMs * (TWO_PI / 7_900f)) % TWO_PI
+                }
+                lastFrameNanos = frameNanos
+            }
+        }
+    }
 
     Box(
         modifier = modifier.drawWithCache {

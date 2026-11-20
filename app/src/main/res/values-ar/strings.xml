@@ -48,10 +48,10 @@
     <string name="ui_virtual_display_recent_apps">المستخدمة مؤخراً</string>
     <string name="ui_virtual_display_all_apps">جميع التطبيقات</string>
     <string name="ui_virtual_display_create_failed">فشل إنشاء الشاشة الافتراضية. تحقق من الأذونات.</string>
-    <string name="ui_virtual_display_waiting_for_app">بانتظار تشغيل التطبيق</string>
+    <string name="ui_virtual_display_app_in_use_on_main">هذا التطبيق مفتوح حاليًا على الشاشة الرئيسية</string>
+    <string name="ui_virtual_display_app_launch_failed">فشل تشغيل التطبيق على الشاشة الافتراضية</string>
     <string name="ui_virtual_display_pick_app">اختر تطبيقًا</string>
     <string name="ui_virtual_display_launching_app">جارٍ تشغيل %1$s…</string>
-    <string name="ui_virtual_display_card_open">فتح</string>
     <string name="ui_virtual_display_card_terminate">إنهاء</string>
     <string name="ui_virtual_display_terminate_title">إنهاء الشاشة الافتراضية؟</string>
     <string name="ui_virtual_display_terminate_message">سيؤدي هذا إلى إغلاق الشاشة الافتراضية المرتبطة بهذه المحادثة وإيقاف التطبيقات فيها.</string>

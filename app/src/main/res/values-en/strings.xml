@@ -48,10 +48,10 @@
     <string name="ui_virtual_display_recent_apps">Recently used</string>
     <string name="ui_virtual_display_all_apps">All apps</string>
     <string name="ui_virtual_display_create_failed">Failed to create virtual display. Check permissions.</string>
-    <string name="ui_virtual_display_waiting_for_app">Waiting for app to launch</string>
+    <string name="ui_virtual_display_app_in_use_on_main">This app is currently open on the main screen</string>
+    <string name="ui_virtual_display_app_launch_failed">Failed to launch app on virtual display</string>
     <string name="ui_virtual_display_pick_app">Choose an app</string>
     <string name="ui_virtual_display_launching_app">Launching %1$s…</string>
-    <string name="ui_virtual_display_card_open">Open</string>
     <string name="ui_virtual_display_card_terminate">Terminate</string>
     <string name="ui_virtual_display_terminate_title">Terminate virtual display?</string>
     <string name="ui_virtual_display_terminate_message">This closes the virtual display bound to this conversation and stops apps running in it.</string>

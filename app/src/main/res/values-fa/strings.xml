@@ -48,10 +48,10 @@
     <string name="ui_virtual_display_recent_apps">اخیراً استفاده‌شده</string>
     <string name="ui_virtual_display_all_apps">همه برنامه‌ها</string>
     <string name="ui_virtual_display_create_failed">ایجاد نمایشگر مجازی ناموفق بود. مجوزها را بررسی کنید.</string>
-    <string name="ui_virtual_display_waiting_for_app">در انتظار اجرای برنامه</string>
+    <string name="ui_virtual_display_app_in_use_on_main">این برنامه در حال حاضر در صفحه اصلی باز است</string>
+    <string name="ui_virtual_display_app_launch_failed">اجرای برنامه در نمایشگر مجازی ناموفق بود</string>
     <string name="ui_virtual_display_pick_app">انتخاب برنامه</string>
     <string name="ui_virtual_display_launching_app">در حال اجرای %1$s…</string>
-    <string name="ui_virtual_display_card_open">باز کردن</string>
     <string name="ui_virtual_display_card_terminate">پایان دادن</string>
     <string name="ui_virtual_display_terminate_title">پایان دادن به نمایشگر مجازی؟</string>
     <string name="ui_virtual_display_terminate_message">نمایشگر مجازی متصل به این گفتگو و برنامه‌های در حال اجرا بسته می‌شوند.</string>

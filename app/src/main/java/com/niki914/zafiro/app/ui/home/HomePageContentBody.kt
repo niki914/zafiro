@@ -73,8 +73,8 @@ import com.niki914.zafiro.app.ui.home.composer.suggestion.isStandalone
 import com.niki914.zafiro.app.ui.model.home.ActionSource
 import com.niki914.zafiro.app.ui.model.home.HomeChatFile
 import com.niki914.zafiro.app.ui.model.home.HomeChatImage
-import com.niki914.zafiro.app.screen.ForegroundVirtualDisplayState
 import com.niki914.zafiro.app.ui.model.home.HomeChatUiState
+import com.niki914.zafiro.app.ui.model.home.HomeVirtualDisplayUiState
 import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
 import kotlinx.coroutines.launch
 
@@ -120,7 +120,7 @@ internal fun HomePageContentBody(
     onSwitchTurnBranch: (Long, Int) -> Unit = { _, _ -> },
     alwaysShowDetailed: Boolean = false,
     onToggleActionKey: (key: String, isExpanded: Boolean) -> Unit = { _, _ -> },
-    virtualDisplayState: ForegroundVirtualDisplayState? = null,
+    virtualDisplayState: HomeVirtualDisplayUiState? = null,
     onOpenVirtualDisplay: () -> Unit = {},
     onTerminateVirtualDisplay: () -> Unit = {},
 ) {
@@ -385,6 +385,7 @@ internal fun HomePageContentBody(
                 onSuggestionApplied = { pendingSuggestionToApply = null },
                 onExpandedChange = { isComposerTextExpanded = it },
                 topAmbientColors = virtualDisplayAmbientColors,
+                topAmbientAnimating = !(virtualDisplayState?.isOverlayExpanded ?: false),
                 topContent = virtualDisplayState?.let { vdState ->
                     {
                         HomeVirtualDisplayDock(

@@ -121,8 +121,7 @@ internal fun invalidArguments(message: String): TextToolResult {
     return TextToolResult.failure(code = SCREEN_INVALID_ARGUMENTS, message = message)
 }
 
-internal suspend fun Screens.require(id: ScreenId, callerConversationId: String? = null): Screen? =
-    get(id, callerConversationId)
+internal fun Screens.require(id: ScreenId): Screen? = get(id)
 
 internal fun actToText(result: ActResult): TextToolResult {
     return when (result) {

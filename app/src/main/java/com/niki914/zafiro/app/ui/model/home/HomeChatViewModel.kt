@@ -15,6 +15,9 @@ import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.api.screen.Screens
+import com.niki914.zafiro.app.screen.AppScreens
+import com.niki914.zafiro.app.screen.VirtualDisplayCard
+import com.niki914.zafiro.app.screen.VirtualDisplayStage
 import com.niki914.zafiro.app.conversation.ConversationBranchTree
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ForkKind
@@ -43,6 +46,7 @@ import com.niki914.zafiro.api.util.tryIgnore
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -146,6 +150,7 @@ class HomeChatViewModel internal constructor(
                 refreshSavedConfigs()
             }
         }
+        observeVirtualDisplay()
     }
 
     override fun initUiState(): HomeChatUiState = HomeChatUiState()
@@ -286,13 +291,46 @@ class HomeChatViewModel internal constructor(
         }
     }
 
+    private fun observeVirtualDisplay() {
+        viewModelScope.launch {
+            combine(AppScreens.foregroundState, VirtualDisplayCard.isExpanded) { fg, expanded ->
+                fg to expanded
+            }.collectLatest { (fg, expanded) ->
+                if (fg == null) {
+                    updateState { copy(virtualDisplay = null) }
+                } else {
+                    fg.stage.collect { stage ->
+                        val uiStage = when (stage) {
+                            is VirtualDisplayStage.AppPicker -> HomeVirtualDisplayStage.AppPicker
+                            is VirtualDisplayStage.Launching -> HomeVirtualDisplayStage.Launching(
+                                packageName = stage.packageName,
+                                appName = stage.appName,
+                            )
+                            is VirtualDisplayStage.Running -> HomeVirtualDisplayStage.Running(
+                                packageName = stage.packageName,
+                                appName = stage.appName,
+                            )
+                        }
+                        updateState {
+                            copy(
+                                virtualDisplay = HomeVirtualDisplayUiState(
+                                    stage = uiStage,
+                                    isOverlayExpanded = expanded,
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private suspend fun handleOpenVirtualDisplay() {
         val conversationId = currentState.currentConversationId?.takeIf { it.isNotBlank() }
         if (conversationId == null) {
             sendEffect(HomeChatEffect.VirtualDisplayRequiresConversation)
             return
         }
-        XRepo.setPhoneUseConsentGranted(true)
         val screens = findService<Screens>()
         if (screens != null && screens.hasVirtualScreen(conversationId)) {
             if (screens.isOverlayShowing(conversationId)) {

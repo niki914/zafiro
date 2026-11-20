@@ -55,7 +55,7 @@ sealed class BuiltinSlashCommand(
     data object VirtualDisplay : BuiltinSlashCommand(
         id = "vd",
         command = "/vd",
-        searchKeys = listOf("vd", "vs", "virtual", "screen", "display", "screen", "xuniping", "虚拟屏"),
+        searchKeys = listOf("vd", "vs", "virtual", "screen", "display", "xuniping", "虚拟屏"),
         autoSubmit = true,
     )
 

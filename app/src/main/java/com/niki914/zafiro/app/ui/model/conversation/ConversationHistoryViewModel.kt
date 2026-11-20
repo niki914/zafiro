@@ -18,7 +18,6 @@ import com.niki914.zafiro.app.conversation.ConversationSummary
 import com.niki914.zafiro.repo.PinnedConversation
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.findService
-import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -106,17 +105,13 @@ internal data class ConversationHistoryViewModelDependencies(
     val setConversationPinned: suspend (String, Boolean) -> Unit,
     val searchConversations: suspend (String) -> List<ConversationSearchResult>,
     val destroyAgent: (String) -> Unit = { id ->
-        tryIgnore {
-            requireService<AgentManager>().destroy(
-                id
-            )
-        }
+        findService<AgentManager>()?.let { tryIgnore { it.destroy(id) } }
     },
     val setHasUnread: suspend (String, Boolean) -> Unit = { id, unread ->
         ConversationRepo.setHasUnread(id, unread)
     },
     val observeActiveStates: () -> Flow<Map<String, AgentState>> = {
-        tryOrDefault(MutableStateFlow(emptyMap())) { requireService<AgentManager>().activeStates }
+        findService<AgentManager>()?.activeStates ?: MutableStateFlow(emptyMap())
     },
 ) {
     companion object {
@@ -134,7 +129,7 @@ internal data class ConversationHistoryViewModelDependencies(
             },
             setHasUnread = { id, unread -> ConversationRepo.setHasUnread(id, unread) },
             observeActiveStates = {
-                tryOrDefault(MutableStateFlow(emptyMap())) { requireService<AgentManager>().activeStates }
+                findService<AgentManager>()?.activeStates ?: MutableStateFlow(emptyMap())
             },
         )
     }

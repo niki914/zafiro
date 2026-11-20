@@ -48,10 +48,10 @@
     <string name="ui_virtual_display_recent_apps">最近使用したアプリ</string>
     <string name="ui_virtual_display_all_apps">すべてのアプリ</string>
     <string name="ui_virtual_display_create_failed">仮想ディスプレイの作成に失敗しました。権限を確認してください</string>
-    <string name="ui_virtual_display_waiting_for_app">アプリの起動を待機中</string>
+    <string name="ui_virtual_display_app_in_use_on_main">このアプリはメイン画面で開いています</string>
+    <string name="ui_virtual_display_app_launch_failed">仮想ディスプレイでアプリを起動できませんでした</string>
     <string name="ui_virtual_display_pick_app">アプリを選択</string>
     <string name="ui_virtual_display_launching_app">%1$s を起動中…</string>
-    <string name="ui_virtual_display_card_open">開く</string>
     <string name="ui_virtual_display_card_terminate">終了</string>
     <string name="ui_virtual_display_terminate_title">仮想ディスプレイを終了しますか？</string>
     <string name="ui_virtual_display_terminate_message">この会話に紐付いた仮想ディスプレイと実行中のアプリを終了します。</string>

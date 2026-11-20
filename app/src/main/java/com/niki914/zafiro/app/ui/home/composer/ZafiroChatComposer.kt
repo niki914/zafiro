@@ -99,6 +99,7 @@ fun ZafiroChatComposer(
     onSuggestionApplied: () -> Unit = {},
     onExpandedChange: (Boolean) -> Unit = {},
     topAmbientColors: List<Color> = emptyList(),
+    topAmbientAnimating: Boolean = true,
     topContent: (@Composable () -> Unit)? = null,
 ) {
     var expandedLatch by remember { mutableStateOf(false) }
@@ -316,6 +317,7 @@ fun ZafiroChatComposer(
                 TopFadeAuroraOverlay(
                     colors = topAmbientColors,
                     maxAlpha = auroraMaxAlpha,
+                    animate = topAmbientAnimating,
                     modifier = Modifier.matchParentSize(),
                 )
             }

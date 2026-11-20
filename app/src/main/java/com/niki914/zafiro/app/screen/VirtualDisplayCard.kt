@@ -90,6 +90,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -131,6 +132,8 @@ internal object VirtualDisplayCard {
     private var lifecycleOwner: OverlayLifecycleOwner? = null
     private var onRequestExpandMini: (() -> Unit)? = null
     private val activeBinding = MutableStateFlow<OverlayBinding?>(null)
+    private val _isExpanded = MutableStateFlow(false)
+    val isExpanded: StateFlow<Boolean> = _isExpanded.asStateFlow()
 
     @Volatile
     var isShowing: Boolean = false
@@ -417,6 +420,7 @@ internal object VirtualDisplayCard {
         expandedView = composeView
         runCatchingCancellable {
             manager.addView(composeView, expandedLp)
+            _isExpanded.value = true
             Logger.i(TAG, "VirtualDisplay expanded window added on-demand")
         }.onFailure { error ->
             Logger.e(TAG, "Failed to add expanded window", error)
@@ -425,6 +429,7 @@ internal object VirtualDisplayCard {
     }
 
     private fun removeExpandedWindow() {
+        _isExpanded.value = false
         val view = expandedView ?: return
         expandedView = null
         runCatchingCancellable {

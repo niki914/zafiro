@@ -30,7 +30,6 @@ import androidx.compose.ui.res.stringResource
 import com.niki914.uikit.dialog.LocalHasActiveDialog
 import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.uikit.screen.ReportTitleBarCollapsed
-import com.niki914.zafiro.app.screen.AppScreens
 import com.niki914.uikit.scroll.rememberZafiroOverscrollController
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.api.model.ApprovalDecision
@@ -88,7 +87,6 @@ fun HomePageContent(
     val latestOnActiveConversationChanged by rememberUpdatedState(onActiveConversationChanged)
     val uiState by viewModel.uiStateFlow.collectAsState()
     val latestUiState by rememberUpdatedState(uiState)
-    val virtualDisplayState by AppScreens.foregroundState.collectAsState()
 
     // 附件失败提示：一次性 effect（不占状态）。
     // 三条文案按原因分（D22）：解析不出路径 / 没拿到全局文件访问权 / 读不到文件。
@@ -343,7 +341,6 @@ fun HomePageContent(
             latestViewModel.sendIntent(HomeChatIntent.OpenVirtualDisplay)
         },
         onOpenSettings = latestOnOpenSettings,
-        isGenerating = uiState.isGenerating,
         titleContent = titleContent,
     )
 
@@ -484,7 +481,7 @@ fun HomePageContent(
         onToggleActionKey = { key, isExpanded ->
             viewModel.sendIntent(HomeChatIntent.ToggleActionKey(key, isExpanded))
         },
-        virtualDisplayState = virtualDisplayState,
+        virtualDisplayState = uiState.virtualDisplay,
         onOpenVirtualDisplay = {
             viewModel.sendIntent(HomeChatIntent.OpenVirtualDisplay)
         },

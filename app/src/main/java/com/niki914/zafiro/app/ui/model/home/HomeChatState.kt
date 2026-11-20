@@ -129,6 +129,17 @@ data class HomeChatFile(
     val category: HomeChatFileCategory get() = HomeChatFileCategory.fromPath(path)
 }
 
+sealed interface HomeVirtualDisplayStage {
+    data object AppPicker : HomeVirtualDisplayStage
+    data class Launching(val packageName: String, val appName: String) : HomeVirtualDisplayStage
+    data class Running(val packageName: String, val appName: String) : HomeVirtualDisplayStage
+}
+
+data class HomeVirtualDisplayUiState(
+    val stage: HomeVirtualDisplayStage = HomeVirtualDisplayStage.AppPicker,
+    val isOverlayExpanded: Boolean = false,
+)
+
 data class HomeChatUiState(
     val input: String = "",
     /** 待发送图片（composer 上方图片条）。send 时移入新 turn.images 并清空。 */
@@ -167,6 +178,7 @@ data class HomeChatUiState(
      */
     val contextProgress: Float? = null,
     val slashSuggestions: List<SlashSuggestion> = emptyList(),
+    val virtualDisplay: HomeVirtualDisplayUiState? = null,
     val showTerminateVirtualDisplayDialog: Boolean = false,
 ) {
     val displayConfig: SavedConfigSummary?

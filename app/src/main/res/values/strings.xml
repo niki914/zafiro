@@ -48,10 +48,10 @@
     <string name="ui_virtual_display_recent_apps">最近使用</string>
     <string name="ui_virtual_display_all_apps">全部应用</string>
     <string name="ui_virtual_display_create_failed">虚拟屏创建失败，请检查悬浮窗、无障碍和 Shizuku 权限</string>
-    <string name="ui_virtual_display_waiting_for_app">等待应用启动</string>
+    <string name="ui_virtual_display_app_in_use_on_main">该应用正在主屏运行，请先切换离开主屏后再试</string>
+    <string name="ui_virtual_display_app_launch_failed">在虚拟屏中启动应用失败</string>
     <string name="ui_virtual_display_pick_app">选择应用</string>
     <string name="ui_virtual_display_launching_app">正在启动 %1$s…</string>
-    <string name="ui_virtual_display_card_open">打开</string>
     <string name="ui_virtual_display_card_terminate">终止</string>
     <string name="ui_virtual_display_terminate_title">终止虚拟屏？</string>
     <string name="ui_virtual_display_terminate_message">将立即关闭当前对话绑定的虚拟屏及其运行中的应用。</string>
