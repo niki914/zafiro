@@ -17,6 +17,7 @@ import com.niki914.zafiro.api.model.ToolInvocation
 import com.niki914.zafiro.api.model.ToolOutcome
 import com.niki914.zafiro.api.model.TurnBlock
 import com.niki914.zafiro.api.text.FilesBlock
+import com.niki914.zafiro.api.text.PreviewMarkers
 import com.niki914.zafiro.api.text.SummaryBlock
 import com.niki914.zafiro.business.agent.blockIdAt
 import com.niki914.zafiro.business.agent.turnIdAt
@@ -145,7 +146,7 @@ object ConversationFormatter {
     }
 
     fun previewFromText(text: String): String {
-        val flattened = text.replace(Regex("""\s+"""), " ").trim()
+        val flattened = PreviewMarkers.strip(text).replace(Regex("""\s+"""), " ").trim()
         if (flattened.length <= MAX_PREVIEW_LENGTH) return flattened
         return flattened.take(MAX_PREVIEW_LENGTH) + ELLIPSIS
     }

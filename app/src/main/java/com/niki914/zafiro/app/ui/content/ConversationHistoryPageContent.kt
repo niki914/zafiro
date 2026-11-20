@@ -76,6 +76,7 @@ import com.niki914.uikit.screen.zafiroScreenTopPadding
 import com.niki914.uikit.scroll.ZafiroOverscrollContainer
 import com.niki914.uikit.scroll.rememberZafiroOverscrollController
 import com.niki914.uikit.textfield.ZafiroTextField
+import com.niki914.zafiro.api.text.PreviewMarkers
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ConversationOriginKind
@@ -500,7 +501,12 @@ private fun ConversationHistoryItem(
         }
     }
 
-    val previewText = matchedSnippet ?: conversation.lastMessagePreview
+    val rawPreview = matchedSnippet ?: conversation.lastMessagePreview
+    val previewText = if (searchQuery.isBlank()) {
+        PreviewMarkers.strip(rawPreview)
+    } else {
+        rawPreview
+    }
     val displayPreviewAnnotated = remember(previewText, searchQuery, bodyHighlightStyle) {
         if (searchQuery.isNotBlank() && previewText.isNotBlank()) {
             SearchHighlightHelper.highlight(previewText, searchQuery, bodyHighlightStyle)

@@ -71,14 +71,13 @@ class SearchSnippetHelperTest {
     }
 
     @Test
-    fun extractSnippet_stripsMarkdownFormatting() {
-        val text = "### 标题说明\n\n这是一个**重要提示**，请务必留意"
+    fun extractSnippet_keepsMarkersAroundAPlainQuery() {
+        val text = "前言这是#**重要提示**，请务必留意后面还有很多字用来迫使截断"
 
         val snippet = SearchSnippetHelper.extractSnippet(text, "重要提示")
 
-        assertEquals(false, snippet.contains("*"))
-        assertEquals(false, snippet.contains("#"))
-        assertTrue(snippet.contains("重要提示"))
+        assertTrue(snippet.contains("**重要提示**"))
+        assertTrue(snippet.contains("#"))
     }
 
     @Test
