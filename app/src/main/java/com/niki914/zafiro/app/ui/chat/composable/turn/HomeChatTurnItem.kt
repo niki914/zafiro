@@ -49,7 +49,6 @@ internal fun HomeChatTurnItem(
     onToggleAction: (key: String, nextExpanded: Boolean) -> Unit = { _, _ -> },
     safeZoneMinHeight: Dp = 0.dp,
     userMessageMaxHeight: Dp = Dp.Unspecified,
-    footerContent: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     if (turn.isCompactedDivider) {
@@ -127,7 +126,6 @@ internal fun HomeChatTurnItem(
         onSwitchBranch = onSwitchBranch,
         safeZoneMinHeight = safeZoneMinHeight,
         userMessageMaxHeight = userMessageMaxHeight,
-        footerContent = footerContent,
         modifier = modifier,
     )
 }

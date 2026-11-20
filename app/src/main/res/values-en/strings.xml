@@ -47,8 +47,6 @@
     <string name="ui_home_menu_virtual_display">Virtual display</string>
     <string name="ui_virtual_display_recent_apps">Recently used</string>
     <string name="ui_virtual_display_all_apps">All apps</string>
-    <string name="ui_virtual_display_create_blank_title">Create blank virtual display</string>
-    <string name="ui_virtual_display_create_blank_subtitle">Bind to this conversation and pick an app later</string>
     <string name="ui_virtual_display_create_failed">Failed to create virtual display. Check permissions.</string>
     <string name="ui_virtual_display_waiting_for_app">Waiting for app to launch</string>
     <string name="ui_virtual_display_pick_app">Choose an app</string>

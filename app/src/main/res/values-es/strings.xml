@@ -47,8 +47,6 @@
     <string name="ui_home_menu_virtual_display">Pantalla virtual</string>
     <string name="ui_virtual_display_recent_apps">Usadas recientemente</string>
     <string name="ui_virtual_display_all_apps">Todas las apps</string>
-    <string name="ui_virtual_display_create_blank_title">Crear pantalla virtual vacía</string>
-    <string name="ui_virtual_display_create_blank_subtitle">Vincular a esta conversación y elegir una app después</string>
     <string name="ui_virtual_display_create_failed">No se pudo crear la pantalla virtual. Revisa los permisos.</string>
     <string name="ui_virtual_display_waiting_for_app">Esperando a que se inicie la app</string>
     <string name="ui_virtual_display_pick_app">Elegir una app</string>

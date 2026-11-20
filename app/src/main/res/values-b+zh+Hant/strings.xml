@@ -47,8 +47,6 @@
     <string name="ui_home_menu_virtual_display">虛擬螢幕</string>
     <string name="ui_virtual_display_recent_apps">最近使用</string>
     <string name="ui_virtual_display_all_apps">全部應用</string>
-    <string name="ui_virtual_display_create_blank_title">建立空白虛擬螢幕</string>
-    <string name="ui_virtual_display_create_blank_subtitle">綁定目前對話，稍後可在懸浮窗中選擇應用</string>
     <string name="ui_virtual_display_create_failed">虛擬螢幕建立失敗，請檢查懸浮窗、無障礙與 Shizuku 權限</string>
     <string name="ui_virtual_display_waiting_for_app">等待應用啟動</string>
     <string name="ui_virtual_display_pick_app">選擇應用</string>

@@ -57,6 +57,8 @@ interface Screens {
     fun isOverlayShowing(conversationId: String?): Boolean = false
 
     fun reopenOverlay(conversationId: String?): Boolean = false
+
+    fun expandOverlay(conversationId: String?): Boolean = false
 }
 
 open class ScreenTreeUnavailable(message: String) : RuntimeException(message)

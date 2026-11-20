@@ -16,13 +16,14 @@ import kotlinx.coroutines.launch
 
 internal data class VirtualDisplayUiState(
     val isLoadingApps: Boolean = true,
-    val isCreating: Boolean = false,
+    val creatingPackageName: String? = null,
     val recentApps: List<VirtualDisplayAppItem> = emptyList(),
     val allApps: List<VirtualDisplayAppItem> = emptyList(),
-)
+) {
+    val isCreating: Boolean get() = creatingPackageName != null
+}
 
 internal sealed interface VirtualDisplayIntent {
-    data class CreateBlank(val conversationId: String) : VirtualDisplayIntent
     data class CreateAndLaunch(
         val conversationId: String,
         val packageName: String,
@@ -69,21 +70,16 @@ internal class VirtualDisplayViewModel :
 
     override suspend fun handleIntent(intent: VirtualDisplayIntent) {
         when (intent) {
-            is VirtualDisplayIntent.CreateBlank -> openAndOptionallyLaunch(
-                conversationId = intent.conversationId,
-                packageName = null,
-            )
-
-            is VirtualDisplayIntent.CreateAndLaunch -> openAndOptionallyLaunch(
+            is VirtualDisplayIntent.CreateAndLaunch -> createAndLaunch(
                 conversationId = intent.conversationId,
                 packageName = intent.packageName,
             )
         }
     }
 
-    private suspend fun openAndOptionallyLaunch(
+    private suspend fun createAndLaunch(
         conversationId: String,
-        packageName: String?,
+        packageName: String,
     ) {
         if (currentState.isCreating) return
         val screens = findService<Screens>()
@@ -91,15 +87,13 @@ internal class VirtualDisplayViewModel :
             sendEffect(VirtualDisplayEffect.Failed("SERVICE_UNAVAILABLE"))
             return
         }
-        updateState { copy(isCreating = true) }
+        updateState { copy(creatingPackageName = packageName) }
         try {
             // 手动触发虚拟屏创建默认视为已授权知情同意
             XRepo.setPhoneUseConsentGranted(true)
             when (val result = screens.open(OpenKind.VirtualDisplay, ownerConversationId = conversationId)) {
                 is OpenResult.Opened -> {
-                    if (!packageName.isNullOrBlank()) {
-                        screens.launchApp(result.info.id, packageName)
-                    }
+                    screens.launchApp(result.info.id, packageName)
                     sendEffect(VirtualDisplayEffect.CreatedAndClose)
                 }
 
@@ -113,7 +107,7 @@ internal class VirtualDisplayViewModel :
                 }
             }
         } finally {
-            updateState { copy(isCreating = false) }
+            updateState { copy(creatingPackageName = null) }
         }
     }
 

@@ -151,8 +151,6 @@ internal class VirtualDisplayScreen(
 
     fun preview() = frames.frames
 
-    fun backdropPreview() = frames.backdropFrames
-
     fun setHighQuality(enabled: Boolean) = frames.setHighQuality(enabled)
 
     fun setPaused(isPaused: Boolean) = frames.setPaused(isPaused)

@@ -1,6 +1,5 @@
 package com.niki914.zafiro.app.screen
 
-import android.graphics.Bitmap
 import com.niki914.logging.Logger
 import com.niki914.shizuku.display.VirtualDisplayController
 import com.niki914.shizuku.display.VirtualDisplayPrepareResult
@@ -149,12 +148,11 @@ class PhoneDisplayScreen(
 internal data class ForegroundVirtualDisplayState(
     val screenId: ScreenId,
     val stage: StateFlow<VirtualDisplayStage>,
-    val backdropFrames: StateFlow<Bitmap?>,
     val isOverlayShowing: Boolean,
 )
 
 /**
- * 屏幕目录。主屏一直在。虚拟屏按会话 1:1 并发隔离，打开前向权限中心申请悬浮窗、无障碍和 Shizuku。
+ * 屏幕目录。主屏一直在。虚拟屏按会话 1:1 并发隔离，创建默认静默驻留，仅在用户主动打开悬浮窗时申请悬浮窗权限。
  */
 object AppScreens : Screens {
     private const val TAG = "niki914_zafiro_AppScreens"
@@ -168,7 +166,7 @@ object AppScreens : Screens {
     private val conversationScreens = ConcurrentHashMap<String, ScreenId>()
     @Volatile
     private var foregroundConversationId: String? = null
-    private val userDismissedConversations = ConcurrentHashMap.newKeySet<String>()
+    private val overlayVisibleConversations = ConcurrentHashMap.newKeySet<String>()
     @Volatile
     private var activeOverlayScreenId: ScreenId? = null
 
@@ -191,7 +189,6 @@ object AppScreens : Screens {
             ForegroundVirtualDisplayState(
                 screenId = it.id,
                 stage = it.stage,
-                backdropFrames = it.backdropPreview(),
                 isOverlayShowing = activeOverlayScreenId == it.id && VirtualDisplayCard.isShowing,
             )
         }
@@ -278,12 +275,27 @@ object AppScreens : Screens {
         val key = bindingKey(conversationId) ?: return false
         val screenId = conversationScreens[key] ?: return false
         if (!virtualScreens.containsKey(screenId)) return false
-        userDismissedConversations.remove(key)
         cardScope.launch {
             gate.withLock {
                 val currentScreen = virtualScreens[screenId] ?: return@withLock
+                if (!permissionGranted(Permission.OVERLAY)) return@withLock
+                overlayVisibleConversations.add(key)
                 bindOverlay(currentScreen)
                 refreshForegroundState()
+            }
+        }
+        return true
+    }
+
+    override fun expandOverlay(conversationId: String?): Boolean {
+        val key = bindingKey(conversationId) ?: return false
+        val screenId = conversationScreens[key] ?: return false
+        if (activeOverlayScreenId != screenId || !VirtualDisplayCard.isShowing) return false
+        cardScope.launch {
+            gate.withLock {
+                if (activeOverlayScreenId == screenId && VirtualDisplayCard.isShowing) {
+                    VirtualDisplayCard.expandIfShowing()
+                }
             }
         }
         return true
@@ -298,12 +310,12 @@ object AppScreens : Screens {
                 val targetScreenId = key?.let { conversationScreens[it] }
                 val targetScreen = targetScreenId?.let { virtualScreens[it] }
 
-                val shouldShowOverlay = key != null && targetScreen != null && !userDismissedConversations.contains(key)
+                val shouldShowOverlay = key != null && targetScreen != null && overlayVisibleConversations.contains(key)
                 virtualScreens.values.forEach { s ->
                     s.setPaused(!(shouldShowOverlay && s.id == targetScreenId))
                 }
 
-                if (shouldShowOverlay && targetScreen != null) {
+                if (shouldShowOverlay) {
                     bindOverlay(targetScreen)
                 } else {
                     activeOverlayScreenId = null
@@ -333,7 +345,7 @@ object AppScreens : Screens {
         if (VirtualDisplayCard.isShowing) return
         cardScope.launch {
             gate.withLock {
-                if (!VirtualDisplayCard.isShowing && !userDismissedConversations.contains(key)) {
+                if (!VirtualDisplayCard.isShowing && overlayVisibleConversations.contains(key)) {
                     bindOverlay(screen)
                     refreshForegroundState()
                 }
@@ -351,7 +363,7 @@ object AppScreens : Screens {
             vdWidth = screen.width,
             vdHeight = screen.height,
             onClose = {
-                bindingKey(screen.ownerConversationId)?.let { userDismissedConversations.add(it) }
+                bindingKey(screen.ownerConversationId)?.let { overlayVisibleConversations.remove(it) }
                 screen.setPaused(true)
                 cardScope.launch {
                     gate.withLock {
@@ -402,18 +414,13 @@ object AppScreens : Screens {
         val existingId = conversationScreens[key]
         if (existingId != null && virtualScreens.containsKey(existingId)) {
             val existing = virtualScreens.getValue(existingId)
-            userDismissedConversations.remove(key)
             if (key == bindingKey(foregroundConversationId)) {
-                bindOverlay(existing)
                 refreshForegroundState()
             }
             return OpenResult.Opened(existing.info())
         }
         access.prepare(PhoneScreenAccess.Need.VirtualDisplay)?.let { denied ->
             return OpenResult.Rejected(denied.code)
-        }
-        if (!permissionGranted(Permission.OVERLAY)) {
-            return OpenResult.Rejected("DISPLAY_FAILED")
         }
         when (vdController.prepare()) {
             VirtualDisplayPrepareResult.Ready -> Unit
@@ -436,14 +443,8 @@ object AppScreens : Screens {
             )
             virtualScreens[screen.id] = screen
             conversationScreens[key] = screen.id
-            userDismissedConversations.remove(key)
-
-            val isForeground = key == bindingKey(foregroundConversationId)
-            if (isForeground) {
-                bindOverlay(screen)
-            } else {
-                screen.setPaused(true)
-            }
+            // 新建虚拟屏默认不弹悬浮窗，保持 0 FPS 休眠，等待用户从 Composer 顶槽或 /vs 主动打开
+            screen.setPaused(true)
             refreshForegroundState()
 
             OpenResult.Opened(screen.info())
@@ -460,7 +461,7 @@ object AppScreens : Screens {
         virtualScreens.remove(screen.id)
         bindingKey(screen.ownerConversationId)?.let { key ->
             conversationScreens.remove(key, screen.id)
-            userDismissedConversations.remove(key)
+            overlayVisibleConversations.remove(key)
         }
         if (activeOverlayScreenId == screen.id) {
             activeOverlayScreenId = null

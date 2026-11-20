@@ -295,7 +295,9 @@ class HomeChatViewModel internal constructor(
         XRepo.setPhoneUseConsentGranted(true)
         val screens = findService<Screens>()
         if (screens != null && screens.hasVirtualScreen(conversationId)) {
-            if (!screens.isOverlayShowing(conversationId)) {
+            if (screens.isOverlayShowing(conversationId)) {
+                screens.expandOverlay(conversationId)
+            } else {
                 screens.reopenOverlay(conversationId)
             }
             return

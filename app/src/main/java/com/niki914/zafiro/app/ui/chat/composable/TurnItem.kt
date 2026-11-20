@@ -65,7 +65,6 @@ internal fun TurnItem(
     onSwitchBranch: (Int) -> Unit = {},
     safeZoneMinHeight: Dp = 0.dp,
     userMessageMaxHeight: Dp = Dp.Unspecified,
-    footerContent: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val alwaysVisible = actionsDisplay == MessageActionsDisplay.Always
@@ -182,7 +181,5 @@ internal fun TurnItem(
                 }
             }
         }
-
-        footerContent?.invoke()
     }
 }

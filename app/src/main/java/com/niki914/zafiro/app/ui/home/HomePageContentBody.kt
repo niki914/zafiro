@@ -8,7 +8,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -52,7 +51,6 @@ import com.niki914.zafiro.api.util.tryIgnore
 import com.niki914.zafiro.app.conversation.TurnBranchState
 import com.niki914.zafiro.app.ui.chat.composable.attachment.HomeChatAttachmentRow
 import com.niki914.zafiro.app.ui.chat.composable.bubble.UserBubblePosition
-import com.niki914.zafiro.app.ui.chat.composable.spacing.AssistantToActionSpacing
 import com.niki914.zafiro.app.ui.chat.composable.spacing.ContinuousUserBubbleSpacing
 import com.niki914.zafiro.app.ui.chat.composable.spacing.TurnSeparatorSpacing
 import com.niki914.zafiro.app.ui.chat.composable.turn.HomeChatTurnItem
@@ -140,6 +138,8 @@ internal fun HomePageContentBody(
 
     var activeSlashTrigger by remember { mutableStateOf<SlashTrigger?>(null) }
     var pendingSuggestionToApply by remember { mutableStateOf<SlashSuggestion?>(null) }
+    var isComposerTextExpanded by remember { mutableStateOf(false) }
+    val virtualDisplayAmbientColors = rememberVirtualDisplayAmbientColors(virtualDisplayState)
 
     val isStandaloneContext = remember(activeSlashTrigger, uiState.input, pendingImages, pendingFiles) {
         val trigger = activeSlashTrigger ?: return@remember false
@@ -305,18 +305,6 @@ internal fun HomePageContentBody(
                                         onToggleAction = onToggleActionKey,
                                         safeZoneMinHeight = safeZoneMinHeight,
                                         userMessageMaxHeight = userMessageMaxHeight,
-                                        footerContent = if (isLastTurn && virtualDisplayState != null) {
-                                            {
-                                                AssistantToActionSpacing()
-                                                HomeVirtualDisplayCard(
-                                                    state = virtualDisplayState,
-                                                    onOpen = onOpenVirtualDisplay,
-                                                    onTerminate = onTerminateVirtualDisplay,
-                                                )
-                                            }
-                                        } else {
-                                            null
-                                        },
                                         modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
@@ -367,7 +355,7 @@ internal fun HomePageContentBody(
                 composerBottomPadding = composerBottomPadding,
                 composerHeight = composerHeight.value,
                 hasAttachments = pendingImages.isNotEmpty() || pendingFiles.isNotEmpty(),
-                isComposerExpanded = composerHeight.value > 76.dp || uiState.input.contains('\n'),
+                isComposerExpanded = isComposerTextExpanded,
             )
 
             ZafiroChatComposer(
@@ -395,6 +383,17 @@ internal fun HomePageContentBody(
                 onSlashTriggerChange = { activeSlashTrigger = it },
                 pendingSuggestion = pendingSuggestionToApply,
                 onSuggestionApplied = { pendingSuggestionToApply = null },
+                onExpandedChange = { isComposerTextExpanded = it },
+                topAmbientColors = virtualDisplayAmbientColors,
+                topContent = virtualDisplayState?.let { vdState ->
+                    {
+                        HomeVirtualDisplayDock(
+                            state = vdState,
+                            onOpen = onOpenVirtualDisplay,
+                            onTerminate = onTerminateVirtualDisplay,
+                        )
+                    }
+                },
             )
 
             val scrollToBottomScope = rememberCoroutineScope()

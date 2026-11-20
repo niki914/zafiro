@@ -47,8 +47,6 @@
     <string name="ui_home_menu_virtual_display">نمایشگر مجازی</string>
     <string name="ui_virtual_display_recent_apps">اخیراً استفاده‌شده</string>
     <string name="ui_virtual_display_all_apps">همه برنامه‌ها</string>
-    <string name="ui_virtual_display_create_blank_title">ایجاد نمایشگر مجازی خالی</string>
-    <string name="ui_virtual_display_create_blank_subtitle">اتصال به این گفتگو و انتخاب برنامه بعداً</string>
     <string name="ui_virtual_display_create_failed">ایجاد نمایشگر مجازی ناموفق بود. مجوزها را بررسی کنید.</string>
     <string name="ui_virtual_display_waiting_for_app">در انتظار اجرای برنامه</string>
     <string name="ui_virtual_display_pick_app">انتخاب برنامه</string>

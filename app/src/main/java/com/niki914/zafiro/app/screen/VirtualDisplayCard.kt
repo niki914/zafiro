@@ -129,11 +129,17 @@ internal object VirtualDisplayCard {
     private var miniTouchLayout: VirtualDisplayTouchLayout? = null
     private var expandedView: View? = null
     private var lifecycleOwner: OverlayLifecycleOwner? = null
+    private var onRequestExpandMini: (() -> Unit)? = null
     private val activeBinding = MutableStateFlow<OverlayBinding?>(null)
 
     @Volatile
     var isShowing: Boolean = false
         private set
+
+    fun expandIfShowing() {
+        if (!isShowing || expandedView != null) return
+        onRequestExpandMini?.invoke()
+    }
 
     suspend fun bind(binding: OverlayBinding?): Boolean = withContext(Dispatchers.Main.immediate) {
         if (binding == null) {
@@ -181,6 +187,15 @@ internal object VirtualDisplayCard {
 
         var isMiniFocused by mutableStateOf(false)
         var lastTouchEpoch by mutableStateOf(0L)
+        val requestExpand: () -> Unit = {
+            isMiniFocused = false
+            showExpandedWindow(
+                context = context,
+                manager = manager,
+                owner = owner,
+                bindingFlow = activeBinding,
+            )
+        }
 
         lateinit var root: VirtualDisplayTouchLayout
 
@@ -215,15 +230,7 @@ internal object VirtualDisplayCard {
                                 lastTouchEpoch = SystemClock.uptimeMillis()
                             },
                             onFocusTimeout = { isMiniFocused = false },
-                            onRequestExpand = {
-                                isMiniFocused = false
-                                showExpandedWindow(
-                                    context = context,
-                                    manager = manager,
-                                    owner = owner,
-                                    bindingFlow = activeBinding,
-                                )
-                            },
+                            onRequestExpand = requestExpand,
                             onClose = {
                                 hideOnMain()
                                 current.onClose()
@@ -263,6 +270,7 @@ internal object VirtualDisplayCard {
         windowManager = manager
         miniTouchLayout = root
         lifecycleOwner = owner
+        onRequestExpandMini = requestExpand
         isShowing = true
         true
     }
@@ -437,6 +445,7 @@ internal object VirtualDisplayCard {
         miniTouchLayout = null
         windowManager = null
         lifecycleOwner = null
+        onRequestExpandMini = null
         isShowing = false
         owner?.onPause()
         owner?.onStop()
@@ -795,9 +804,7 @@ private fun ExpandedCardOverlay(
                             }
                             if (standbyAlpha > 0f) {
                                 AppPickerStandbyGlyph(
-                                    modifier = Modifier
-                                        .alpha(standbyAlpha)
-                                        .then(blurModifier),
+                                    modifier = Modifier.alpha(standbyAlpha),
                                 )
                             }
                         }
@@ -808,7 +815,6 @@ private fun ExpandedCardOverlay(
                                 size = 28.dp,
                                 petalSize = 28.dp,
                                 strokeWidth = 2.5.dp,
-                                modifier = if (morphBlurDp > 0.dp) Modifier.blur(morphBlurDp) else Modifier,
                             )
                         }
 
