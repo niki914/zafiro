@@ -264,6 +264,7 @@
     <string name="ui_settings_env_context_key_date">Date</string>
     <string name="ui_settings_env_context_key_time">Time</string>
     <string name="ui_settings_env_context_key_device">Device Status</string>
+    <string name="ui_settings_env_context_key_virtual_display">Virtual display</string>
     <string name="ui_settings_env_context_group_custom">Custom Variables</string>
     <string name="ui_settings_env_context_empty_custom">No custom variables. Tap \'+\' in the top right to add.</string>
     <string name="ui_settings_env_context_variable_title_create">Add Variable</string>
@@ -277,7 +278,7 @@
     <string name="ui_settings_env_context_delete_dialog_title">Delete Variable</string>
     <string name="ui_settings_env_context_delete_dialog_text">Are you sure you want to delete variable \"%1$s\"?</string>
     <string name="ui_settings_env_context_error_key_required">Name cannot be empty</string>
-    <string name="ui_settings_env_context_error_key_reserved">Cannot use reserved names: date, time, device</string>
+    <string name="ui_settings_env_context_error_key_reserved">Cannot use reserved names: date, time, device, virtual_display</string>
     <string name="ui_settings_env_context_error_key_duplicate">Name already exists, please choose another</string>
     <string name="ui_settings_env_context_error_key_invalid_format">Invalid name format. Only letters, numbers, underscores, and dashes are allowed.</string>
     <string name="ui_settings_env_context_error_value_required">Content cannot be empty</string>

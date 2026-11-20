@@ -20,6 +20,7 @@ import com.niki914.zafiro.api.screen.ScreenSnapshot
 import com.niki914.zafiro.api.screen.ScreenTreeUnavailable
 import com.niki914.zafiro.api.screen.ShowResult
 import com.niki914.zafiro.api.screen.ShowTarget
+import com.niki914.zafiro.api.screen.VirtualDisplayContext
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.business.application.ApplicationService
 import com.niki914.zafiro.business.permission.Permission
@@ -59,6 +60,28 @@ internal class VirtualDisplayScreen(
     val stage: StateFlow<VirtualDisplayStage> = _stage.asStateFlow()
 
     fun info(): ScreenInfo = ScreenInfo(id, kind, frames.width, frames.height)
+
+    fun currentContext(): VirtualDisplayContext {
+        return when (val current = _stage.value) {
+            is VirtualDisplayStage.Running -> VirtualDisplayContext(
+                screenId = id,
+                packageName = current.packageName,
+                appName = current.appName,
+            )
+            is VirtualDisplayStage.Launching -> VirtualDisplayContext(
+                screenId = id,
+                packageName = current.packageName,
+                appName = current.appName,
+            )
+            is VirtualDisplayStage.AppPicker -> current.backgroundApp?.let {
+                VirtualDisplayContext(
+                    screenId = id,
+                    packageName = it.packageName,
+                    appName = it.appName,
+                )
+            } ?: VirtualDisplayContext(screenId = id)
+        }
+    }
 
     override suspend fun snapshot(): ScreenSnapshot {
         access.prepare(PhoneScreenAccess.Need.Control)?.let { denied ->

@@ -52,10 +52,10 @@ sealed class BuiltinSlashCommand(
         autoSubmit = false,
     )
 
-    data object VirtualScreen : BuiltinSlashCommand(
-        id = "vs",
-        command = "/vs",
-        searchKeys = listOf("vs", "virtual", "screen", "display", "xuniping", "虚拟屏"),
+    data object VirtualDisplay : BuiltinSlashCommand(
+        id = "vd",
+        command = "/vd",
+        searchKeys = listOf("vd", "vs", "virtual", "screen", "display", "screen", "xuniping", "虚拟屏"),
         autoSubmit = true,
     )
 
@@ -71,7 +71,7 @@ sealed class BuiltinSlashCommand(
 
     companion object {
         val ALL: List<BuiltinSlashCommand>
-            get() = listOf(NewSession, Compact, VirtualScreen)
+            get() = listOf(NewSession, Compact, VirtualDisplay)
 
         fun find(input: String): BuiltinSlashCommand? {
             val trimmed = input.trim()

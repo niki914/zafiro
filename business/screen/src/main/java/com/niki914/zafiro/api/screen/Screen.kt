@@ -29,6 +29,12 @@ sealed interface CloseResult {
     data class Rejected(val code: String) : CloseResult
 }
 
+data class VirtualDisplayContext(
+    val screenId: ScreenId,
+    val packageName: String? = null,
+    val appName: String? = null,
+)
+
 /**
  * 屏的目录。进程内通过 `findService<Screens>()` 取得。
  *
@@ -53,6 +59,8 @@ interface Screens {
     fun onConversationDestroyed(conversationId: String) {}
 
     fun hasVirtualScreen(conversationId: String?): Boolean = false
+
+    fun virtualDisplayContext(conversationId: String?): VirtualDisplayContext? = null
 
     fun isOverlayShowing(conversationId: String?): Boolean = false
 

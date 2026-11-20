@@ -27,6 +27,7 @@ import com.niki914.zafiro.api.screen.Screens
 import com.niki914.zafiro.api.screen.ShowResult
 import com.niki914.zafiro.api.screen.ShowTarget
 import com.niki914.zafiro.api.screen.Target
+import com.niki914.zafiro.api.screen.VirtualDisplayContext
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.app.ui.viewer.InAppPreviewBridge
 import com.niki914.zafiro.business.permission.Permission
@@ -263,6 +264,12 @@ object AppScreens : Screens {
         val key = bindingKey(conversationId) ?: return false
         val screenId = conversationScreens[key] ?: return false
         return virtualScreens.containsKey(screenId)
+    }
+
+    override fun virtualDisplayContext(conversationId: String?): VirtualDisplayContext? {
+        val key = bindingKey(conversationId) ?: return null
+        val screenId = conversationScreens[key] ?: return null
+        return virtualScreens[screenId]?.currentContext()
     }
 
     override fun isOverlayShowing(conversationId: String?): Boolean {

@@ -8,6 +8,8 @@ import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.protocol.RequestSnapshot
 import com.niki914.okia.transport.HttpTimeouts
+import com.niki914.zafiro.api.screen.ScreenId
+import com.niki914.zafiro.api.screen.VirtualDisplayContext
 import com.niki914.zafiro.api.text.SummaryBlock
 import com.niki914.zafiro.settings.model.RuntimeEnvContextConfig
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
@@ -207,5 +209,52 @@ class EnvContextInjectionHookTest {
 
         assertNull(holder.lastWriter)
         assertEquals(initialHistory, holder.history)
+    }
+
+    @Test
+    fun beforeSerialization_injectsVirtualDisplayOnlyInLatestTurnAndHandlesNoApp() = runTest {
+        val shanghaiZone = ZoneId.of("Asia/Shanghai")
+        val turn1Timestamp = ZonedDateTime.of(2026, 11, 15, 14, 0, 0, 0, shanghaiZone)
+            .toInstant()
+            .toEpochMilli()
+        val turn2Timestamp = ZonedDateTime.of(2026, 11, 15, 15, 30, 0, 0, shanghaiZone)
+            .toInstant()
+            .toEpochMilli()
+
+        val config = RuntimeEnvContextConfig(
+            enabled = true,
+            keys = setOf(RuntimeEnvContextConfig.KEY_VIRTUAL_DISPLAY),
+            variables = emptyMap(),
+        )
+
+        val turn1User = Message.User(listOf(ContentBlock.Text("Turn 1")))
+        val committedConversation = Conversation(
+            id = "conv-vd",
+            leafId = "entry-1",
+            history = listOf(
+                MessageEntry(id = "entry-1", timestamp = turn1Timestamp, message = turn1User),
+            ),
+        )
+        val turn2User = Message.User(listOf(ContentBlock.Text("Turn 2")))
+
+        val hook = EnvContextInjectionHook(
+            getLlmConfig = { RuntimeLlmConfig(envContext = config) },
+            getConversation = { committedConversation },
+            virtualDisplayProvider = {
+                VirtualDisplayContext(screenId = ScreenId("vd-2"))
+            },
+            clock = { turn2Timestamp },
+            zoneId = { shanghaiZone },
+        )
+
+        val holder = SerializationHolder(stubSnapshot(), listOf(turn1User, turn2User))
+        hook.beforeSerialization(holder)
+
+        val historicalText = ((holder.history[0] as Message.User).content[0] as ContentBlock.Text).text
+        val activeText = ((holder.history[1] as Message.User).content[0] as ContentBlock.Text).text
+
+        assertFalse(historicalText.contains("Virtual Display:"))
+        assertTrue(activeText.contains("Virtual Display: vd-2, No App Launched"))
+        assertFalse(activeText.contains("Unknown Keys"))
     }
 }

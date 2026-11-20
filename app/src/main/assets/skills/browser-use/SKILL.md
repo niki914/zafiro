@@ -7,7 +7,7 @@ description: Load this skill for tasks that require using a browser or interacti
 
 1. Ensure the `phone-use` skill is loaded.
 2. Verify Chrome (`com.android.chrome`) is installed.
-3. Launch Chrome on a virtual screen (`vd-*`) or the main screen (`phone`).
+3. Launch Chrome on a virtual display (`vd-*`) or the main screen (`phone`).
 
 ## Chrome
 

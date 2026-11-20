@@ -16,9 +16,9 @@ Write actions automatically settle the UI and return the refreshed tree with a n
 Always prioritize non-intrusive execution:
 
 1. **Default to virtual display (`vd-*`)**:
-   - Create a virtual screen using `screens`. It runs the app in the background and displays a floating preview card so the user can observe without interruption.
+   - Open or reuse a virtual display using `screens`. It runs the app in the background and displays a floating preview card so the user can observe without interruption.
    - Launch the target app onto the virtual display with `open` after `find_installed_apps` returns its package name.
-   - **Always teardown**: Release the screen via `screens` when the task finishes or aborts to dismiss the floating card.
+   - **Keep alive**: Leave the virtual display open when the task finishes so subsequent turns or user actions can continue on it. Only release it via `screens` if the user explicitly asks to close it.
 2. **Fallback to physical screen (`phone`)**:
    - Use the main screen only when the user explicitly requests it or when virtual display creation fails.
 

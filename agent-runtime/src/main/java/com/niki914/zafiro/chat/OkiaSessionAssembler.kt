@@ -21,6 +21,7 @@ import com.niki914.okia.protocol.OpenAIChatCompletionCompat
 import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
 import com.niki914.okia.protocol.OpenAIResponsesProtocol
 import com.niki914.okia.tooling.ToolRegistry
+import com.niki914.zafiro.api.screen.Screens
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.chat.agentic.AndroidImageLoader
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
@@ -59,6 +60,7 @@ internal class OkiaSessionAssembler(
     private val toolRegistry: ToolRegistry,
     private val imageLoader: AndroidImageLoader?,
     private val ensureImageSaver: suspend () -> ImageSaver?,
+    private val conversationIdProvider: () -> String? = { null },
 ) {
     internal companion object {
         const val LOG_TAG = "niki914_zafiro_OkiaSessionAssembler"
@@ -117,7 +119,15 @@ internal class OkiaSessionAssembler(
                 ?: findService<DeviceStateProvider>()?.getDeviceState()
                 ?: DeviceStateSnapshot()
         },
-        getConversation = { currentConversation.value }
+        getConversation = { currentConversation.value },
+        virtualDisplayProvider = {
+            val convId = conversationIdProvider() ?: currentConversation.value?.id
+            if (!convId.isNullOrBlank()) {
+                findService<Screens>()?.virtualDisplayContext(convId)
+            } else {
+                null
+            }
+        },
     )
 
     private val maskingHook = MaskingHook(

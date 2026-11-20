@@ -730,7 +730,7 @@ class HomeChatViewModel internal constructor(
                     }
                     // 透传给 agent.stream()，由 AgentImpl 拦截执行强制压缩
                 }
-                BuiltinSlashCommand.VirtualScreen -> {
+                BuiltinSlashCommand.VirtualDisplay -> {
                     clearInputDraft()
                     handleOpenVirtualDisplay()
                     return

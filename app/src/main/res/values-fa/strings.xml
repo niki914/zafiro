@@ -264,6 +264,7 @@
     <string name="ui_settings_env_context_key_date">تاریخ</string>
     <string name="ui_settings_env_context_key_time">زمان</string>
     <string name="ui_settings_env_context_key_device">وضعیت دستگاه</string>
+    <string name="ui_settings_env_context_key_virtual_display">نمایشگر مجازی</string>
     <string name="ui_settings_env_context_group_custom">متغیرهای سفارشی</string>
     <string name="ui_settings_env_context_empty_custom">متغیر سفارشی وجود ندارد. «+» بالای صفحه را برای افزودن بزنید.</string>
     <string name="ui_settings_env_context_variable_title_create">افزودن متغیر</string>
@@ -277,7 +278,7 @@
     <string name="ui_settings_env_context_delete_dialog_title">حذف متغیر</string>
     <string name="ui_settings_env_context_delete_dialog_text">آیا از حذف متغیر «%1$s» مطمئن هستید؟</string>
     <string name="ui_settings_env_context_error_key_required">نام نمی‌تواند خالی باشد</string>
-    <string name="ui_settings_env_context_error_key_reserved">استفاده از نام‌های رزرو شده مجاز نیست: date, time, device</string>
+    <string name="ui_settings_env_context_error_key_reserved">استفاده از نام‌های رزرو شده مجاز نیست: date, time, device, virtual_display</string>
     <string name="ui_settings_env_context_error_key_duplicate">این نام قبلاً استفاده شده است، نام دیگری انتخاب کنید</string>
     <string name="ui_settings_env_context_error_key_invalid_format">قالب نام نامعتبر است. فقط حروف، اعداد، خط تیره و زیرخط مجاز هستند</string>
     <string name="ui_settings_env_context_error_value_required">محتوا نمی‌تواند خالی باشد</string>

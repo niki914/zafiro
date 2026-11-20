@@ -262,6 +262,7 @@
     <string name="ui_settings_env_context_key_date">日期</string>
     <string name="ui_settings_env_context_key_time">时间</string>
     <string name="ui_settings_env_context_key_device">设备状态</string>
+    <string name="ui_settings_env_context_key_virtual_display">虚拟屏</string>
     <string name="ui_settings_env_context_group_custom">自定义变量</string>
     <string name="ui_settings_env_context_empty_custom">暂无自定义变量。点击右上角「+」添加。</string>
     <string name="ui_settings_env_context_variable_title_create">添加变量</string>
@@ -275,7 +276,7 @@
     <string name="ui_settings_env_context_delete_dialog_title">删除变量</string>
     <string name="ui_settings_env_context_delete_dialog_text">确定要删除变量「%1$s」吗？</string>
     <string name="ui_settings_env_context_error_key_required">名称不能为空</string>
-    <string name="ui_settings_env_context_error_key_reserved">不可使用系统保留名称：date、time、device</string>
+    <string name="ui_settings_env_context_error_key_reserved">不可使用系统保留名称：date、time、device、virtual_display</string>
     <string name="ui_settings_env_context_error_key_duplicate">该名称已存在，请更换</string>
     <string name="ui_settings_env_context_error_key_invalid_format">名称格式不合法，仅支持字母、数字、下划线及短横线</string>
     <string name="ui_settings_env_context_error_value_required">内容不能为空</string>

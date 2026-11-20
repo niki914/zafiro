@@ -111,7 +111,7 @@ internal object LlmConfigsSettingsCodec {
 
     private fun parseEnvContext(obj: JsonObject?): RuntimeEnvContextConfig {
         if (obj == null) return RuntimeEnvContextConfig()
-        val enabled = obj.boolean(ENV_ENABLED_KEY, default = false)
+        val enabled = obj.boolean(ENV_ENABLED_KEY, default = true)
         val rawKeys = (obj[ENV_KEYS_KEY] as? JsonArray)?.stringValues().orEmpty()
         val keys = rawKeys
             .map { it.trim() }
@@ -126,7 +126,8 @@ internal object LlmConfigsSettingsCodec {
                 if (trimmed.isNotBlank() &&
                     trimmed != RuntimeEnvContextConfig.KEY_DATE &&
                     trimmed != RuntimeEnvContextConfig.KEY_TIME &&
-                    trimmed != RuntimeEnvContextConfig.KEY_DEVICE
+                    trimmed != RuntimeEnvContextConfig.KEY_DEVICE &&
+                    trimmed != RuntimeEnvContextConfig.KEY_VIRTUAL_DISPLAY
                 ) {
                     trimmed to v.trim()
                 } else null
@@ -147,7 +148,8 @@ internal object LlmConfigsSettingsCodec {
                 if (trimmed.isNotBlank() &&
                     trimmed != RuntimeEnvContextConfig.KEY_DATE &&
                     trimmed != RuntimeEnvContextConfig.KEY_TIME &&
-                    trimmed != RuntimeEnvContextConfig.KEY_DEVICE
+                    trimmed != RuntimeEnvContextConfig.KEY_DEVICE &&
+                    trimmed != RuntimeEnvContextConfig.KEY_VIRTUAL_DISPLAY
                 ) {
                     trimmed to v.trim()
                 } else null

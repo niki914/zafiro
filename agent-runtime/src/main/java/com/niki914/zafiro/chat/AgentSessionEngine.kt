@@ -77,6 +77,7 @@ class AgentSessionEngine {
         toolRegistry = toolSynchronizer.toolRegistry,
         imageLoader = imageManager.imageLoader,
         ensureImageSaver = imageManager::ensureImageSaver,
+        conversationIdProvider = { conversationIdProvider?.invoke() },
     )
     internal val streamPipeline = LlmStreamPipeline()
 
