@@ -126,6 +126,33 @@ class ResidentNotificationBuilderTest {
     }
 
     @Test
+    fun resolveBody_dropsMarkersThenFillsTheSameLimit() {
+        val body = ResidentNotificationBuilder.resolveBody(
+            AgentState.Generating(text = "**核心**" + "字".repeat(200)),
+            context,
+        )
+
+        assertEquals("核心" + "字".repeat(117) + "…", body)
+    }
+
+    @Test
+    fun resolveBody_keepsAsteriskInApprovalCommand() {
+        val body = ResidentNotificationBuilder.resolveBody(
+            AgentState.WaitingApproval(
+                ApprovalRequest.ToolExecution(
+                    toolName = "shell",
+                    command = "ls *.kt",
+                    ruleName = "RULE",
+                    matchedPattern = "",
+                )
+            ),
+            context,
+        )
+
+        assertEquals("ls *.kt", body)
+    }
+
+    @Test
     fun resolveBody_truncatesLongTextWithEllipsis() {
         val long = "字".repeat(200)
         val body = ResidentNotificationBuilder.resolveBody(

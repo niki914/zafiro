@@ -9,6 +9,7 @@ import androidx.core.app.NotificationCompat
 import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.TurnOutcome
+import com.niki914.zafiro.api.text.PreviewMarkers
 import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ToolPresentation
@@ -97,8 +98,8 @@ object ResidentNotificationBuilder {
      */
     fun resolveBody(state: AgentState, context: Context): String? {
         val raw = when (state) {
-            is AgentState.Generating -> state.text
-            is AgentState.Thinking -> state.text
+            is AgentState.Generating -> state.text?.let(PreviewMarkers::strip)
+            is AgentState.Thinking -> state.text?.let(PreviewMarkers::strip)
             is AgentState.ToolRunning ->
                 ToolPresentation.runningText(context, state.toolName, state.label)
 
@@ -113,7 +114,7 @@ object ResidentNotificationBuilder {
                     context.getString(R.string.screen_control_consent_title)
             }
 
-            is AgentState.Idle -> state.lastText
+            is AgentState.Idle -> state.lastText?.let(PreviewMarkers::strip)
             AgentState.Stopping -> null
         }
         val singleLine =
