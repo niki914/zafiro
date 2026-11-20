@@ -5,6 +5,7 @@ import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.isRunning
+import com.niki914.zafiro.api.screen.Screens
 import com.niki914.zafiro.api.util.Debouncer
 import com.niki914.zafiro.api.util.debouncer
 import com.niki914.zafiro.api.util.runCatchingCancellable
@@ -16,6 +17,7 @@ import com.niki914.zafiro.app.conversation.ConversationSearchResult
 import com.niki914.zafiro.app.conversation.ConversationSummary
 import com.niki914.zafiro.repo.PinnedConversation
 import com.niki914.zafiro.repo.XRepo
+import com.niki914.zafiro.service.findService
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -126,7 +128,10 @@ internal data class ConversationHistoryViewModelDependencies(
             forkConversation = { id -> ConversationRepo.forkConversation(id) },
             setConversationPinned = { id, pinned -> XRepo.setConversationPinned(id, pinned) },
             searchConversations = { query -> ConversationSearchRepo.searchConversations(query) },
-            destroyAgent = { id -> tryIgnore { requireService<AgentManager>().destroy(id) } },
+            destroyAgent = { id ->
+                findService<AgentManager>()?.let { tryIgnore { it.destroy(id) } }
+                findService<Screens>()?.onConversationDestroyed(id)
+            },
             setHasUnread = { id, unread -> ConversationRepo.setHasUnread(id, unread) },
             observeActiveStates = {
                 tryOrDefault(MutableStateFlow(emptyMap())) { requireService<AgentManager>().activeStates }

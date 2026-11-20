@@ -1,6 +1,7 @@
 // githooks:ignore-file file-token-limit
 package com.niki914.zafiro.app.screen
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
@@ -116,6 +117,19 @@ import kotlinx.coroutines.withContext
  * - **动态高刷与画质档位**：
  *   小窗态 12.5 FPS / 360p 节能，大窗态升至 60 FPS / 原生 1080p 细腻流畅。
  */
+internal data class OverlayBinding(
+    val screenId: String = "",
+    val frames: StateFlow<Bitmap?>,
+    val status: StateFlow<VirtualDisplayStatus>,
+    val vdWidth: Int = 1080,
+    val vdHeight: Int = 2400,
+    val onClose: () -> Unit = {},
+    val onNavKey: (Int) -> Unit = {},
+    val onQualityChanged: (Boolean) -> Unit = {},
+    val onTouch: (MotionEvent) -> Unit = {},
+)
+
+@SuppressLint("StaticFieldLeak")
 internal object VirtualDisplayCard {
     private const val TAG = "niki914_zafiro_VirtualDisplayCard"
 
@@ -123,22 +137,27 @@ internal object VirtualDisplayCard {
     private var miniTouchLayout: VirtualDisplayTouchLayout? = null
     private var expandedView: View? = null
     private var lifecycleOwner: OverlayLifecycleOwner? = null
+    private val activeBinding = kotlinx.coroutines.flow.MutableStateFlow<OverlayBinding?>(null)
 
     @Volatile
     var isShowing: Boolean = false
         private set
 
+    suspend fun bind(binding: OverlayBinding?): Boolean = withContext(Dispatchers.Main.immediate) {
+        if (binding == null) {
+            hideOnMain()
+            true
+        } else {
+            activeBinding.value = binding
+            isShowing || show(binding)
+        }
+    }
+
     suspend fun show(
-        frames: StateFlow<Bitmap?>,
-        status: StateFlow<VirtualDisplayStatus>,
-        vdWidth: Int = 1080,
-        vdHeight: Int = 2400,
-        onClose: () -> Unit = {},
-        onNavKey: (Int) -> Unit = {},
-        onQualityChanged: (Boolean) -> Unit = {},
-        onTouch: (MotionEvent) -> Unit = {},
+        binding: OverlayBinding,
     ): Boolean = withContext(Dispatchers.Main.immediate) {
         if (isShowing) hideOnMain()
+        activeBinding.value = binding
         val context = applicationContext()
         val manager = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
             ?: return@withContext false
@@ -191,37 +210,34 @@ internal object VirtualDisplayCard {
                     themeStyle = themePrefs.themeStyle,
                     uiStyleLookup = ThemeController.uiStyleLookup(),
                 ) {
-                    MiniPreviewCard(
-                        frames = frames,
-                        status = status,
-                        isFocused = isMiniFocused,
-                        touchEpoch = lastTouchEpoch,
-                        onToggleFocus = {
-                            isMiniFocused = !isMiniFocused
-                            lastTouchEpoch = SystemClock.uptimeMillis()
-                        },
-                        onFocusTimeout = { isMiniFocused = false },
-                        onRequestExpand = {
-                            isMiniFocused = false
-                            showExpandedWindow(
-                                context = context,
-                                manager = manager,
-                                owner = owner,
-                                frames = frames,
-                                status = status,
-                                vdWidth = vdWidth,
-                                vdHeight = vdHeight,
-                                onClose = onClose,
-                                onNavKey = onNavKey,
-                                onQualityChanged = onQualityChanged,
-                                onTouch = onTouch,
-                            )
-                        },
-                        onClose = {
-                            hideOnMain()
-                            onClose()
-                        },
-                    )
+                    val currentBinding by activeBinding.collectAsState()
+                    val current = currentBinding
+                    if (current != null) {
+                        MiniPreviewCard(
+                            frames = current.frames,
+                            status = current.status,
+                            isFocused = isMiniFocused,
+                            touchEpoch = lastTouchEpoch,
+                            onToggleFocus = {
+                                isMiniFocused = !isMiniFocused
+                                lastTouchEpoch = SystemClock.uptimeMillis()
+                            },
+                            onFocusTimeout = { isMiniFocused = false },
+                            onRequestExpand = {
+                                isMiniFocused = false
+                                showExpandedWindow(
+                                    context = context,
+                                    manager = manager,
+                                    owner = owner,
+                                    bindingFlow = activeBinding,
+                                )
+                            },
+                            onClose = {
+                                hideOnMain()
+                                current.onClose()
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -259,24 +275,41 @@ internal object VirtualDisplayCard {
         true
     }
 
+    suspend fun show(
+        frames: StateFlow<Bitmap?>,
+        status: StateFlow<VirtualDisplayStatus>,
+        vdWidth: Int = 1080,
+        vdHeight: Int = 2400,
+        onClose: () -> Unit = {},
+        onNavKey: (Int) -> Unit = {},
+        onQualityChanged: (Boolean) -> Unit = {},
+        onTouch: (MotionEvent) -> Unit = {},
+    ): Boolean = show(
+        OverlayBinding(
+            screenId = "",
+            frames = frames,
+            status = status,
+            vdWidth = vdWidth,
+            vdHeight = vdHeight,
+            onClose = onClose,
+            onNavKey = onNavKey,
+            onQualityChanged = onQualityChanged,
+            onTouch = onTouch,
+        )
+    )
+
     private fun showExpandedWindow(
         context: Context,
         manager: WindowManager,
         owner: OverlayLifecycleOwner,
-        frames: StateFlow<Bitmap?>,
-        status: StateFlow<VirtualDisplayStatus>,
-        vdWidth: Int,
-        vdHeight: Int,
-        onClose: () -> Unit,
-        onNavKey: (Int) -> Unit,
-        onQualityChanged: (Boolean) -> Unit,
-        onTouch: (MotionEvent) -> Unit,
+        bindingFlow: StateFlow<OverlayBinding?>,
     ) {
         if (expandedView != null) return
         val miniLayout = miniTouchLayout ?: return
+        val initialBinding = bindingFlow.value ?: return
 
         // 升至高刷与高清 Profile
-        onQualityChanged(true)
+        initialBinding.onQualityChanged(true)
 
         val density = context.resources.displayMetrics.density
         val screenWidth = context.resources.displayMetrics.widthPixels
@@ -291,7 +324,7 @@ internal object VirtualDisplayCard {
         val targetWidthDp = 290.dp
         val targetWidthPx = (targetWidthDp.value * density).toInt()
 
-        val currentFrame = frames.value
+        val currentFrame = initialBinding.frames.value
         val aspect = if (currentFrame != null && currentFrame.width > 0 && currentFrame.height > 0) {
             currentFrame.height.toFloat() / currentFrame.width.toFloat()
         } else {
@@ -344,53 +377,63 @@ internal object VirtualDisplayCard {
                     themeStyle = themePrefs.themeStyle,
                     uiStyleLookup = ThemeController.uiStyleLookup(),
                 ) {
-                    ExpandedCardOverlay(
-                        dockSide = dockSide,
-                        targetWidth = targetWidthDp,
-                        targetHeight = targetHeightDp,
-                        miniWidth = (miniW / density).dp,
-                        miniHeight = (miniH / density).dp,
-                        frames = frames,
-                        status = status,
-                        vdWidth = vdWidth,
-                        vdHeight = vdHeight,
-                        onFirstFrameReady = {
-                            // 大窗首帧真实绘制完毕，此时无缝隐藏小窗
-                            miniTouchLayout?.visibility = View.INVISIBLE
-                        },
-                        onRequestCollapse = {
-                            // 收起时降采样至低功耗
-                            onQualityChanged(false)
-                        },
-                        onCollapseFinished = {
-                            val finalMiniX = if (dockSide.isRight) {
-                                expandedLp.x + targetWidthPx - miniW
-                            } else {
-                                expandedLp.x
+                    val currentBinding by bindingFlow.collectAsState()
+                    val b = currentBinding
+                    if (b != null) {
+                        DisposableEffect(b.screenId) {
+                            b.onQualityChanged(true)
+                            onDispose {
+                                b.onQualityChanged(false)
                             }
-                            val finalMiniY = expandedLp.y + (targetHeightPx - miniH) / 2
-                            miniLayout.syncPosition(finalMiniX, finalMiniY)
-                            miniLayout.makeVisibleAndNotifyDrawn {
-                                removeExpandedWindow()
-                            }
-                        },
-                        onClose = {
-                            hideOnMain()
-                            onClose()
-                        },
-                        onNavKey = onNavKey,
-                        onDrag = { dxPx, dyPx ->
-                            expandedLp.x = (expandedLp.x + dxPx.toInt()).coerceIn(0, screenWidth - targetWidthPx)
-                            expandedLp.y = (expandedLp.y + dyPx.toInt()).coerceIn(
-                                (32 * density).toInt(),
-                                (screenHeight - targetHeightPx - (32 * density).toInt()).coerceAtLeast((32 * density).toInt()),
-                            )
-                            if (isAttachedToWindow) {
-                                manager.updateViewLayout(this, expandedLp)
-                            }
-                        },
-                        onTouch = onTouch,
-                    )
+                        }
+                        ExpandedCardOverlay(
+                            dockSide = dockSide,
+                            targetWidth = targetWidthDp,
+                            targetHeight = targetHeightDp,
+                            miniWidth = (miniW / density).dp,
+                            miniHeight = (miniH / density).dp,
+                            frames = b.frames,
+                            status = b.status,
+                            vdWidth = b.vdWidth,
+                            vdHeight = b.vdHeight,
+                            onFirstFrameReady = {
+                                // 大窗首帧真实绘制完毕，此时无缝隐藏小窗
+                                miniTouchLayout?.visibility = View.INVISIBLE
+                            },
+                            onRequestCollapse = {
+                                // 收起时降采样至低功耗
+                                b.onQualityChanged(false)
+                            },
+                            onCollapseFinished = {
+                                val finalMiniX = if (dockSide.isRight) {
+                                    expandedLp.x + targetWidthPx - miniW
+                                } else {
+                                    expandedLp.x
+                                }
+                                val finalMiniY = expandedLp.y + (targetHeightPx - miniH) / 2
+                                miniLayout.syncPosition(finalMiniX, finalMiniY)
+                                miniLayout.makeVisibleAndNotifyDrawn {
+                                    removeExpandedWindow()
+                                }
+                            },
+                            onClose = {
+                                hideOnMain()
+                                b.onClose()
+                            },
+                            onNavKey = { keyCode -> b.onNavKey(keyCode) },
+                            onDrag = { dxPx, dyPx ->
+                                expandedLp.x = (expandedLp.x + dxPx.toInt()).coerceIn(0, screenWidth - targetWidthPx)
+                                expandedLp.y = (expandedLp.y + dyPx.toInt()).coerceIn(
+                                    (32 * density).toInt(),
+                                    (screenHeight - targetHeightPx - (32 * density).toInt()).coerceAtLeast((32 * density).toInt()),
+                                )
+                                if (isAttachedToWindow) {
+                                    manager.updateViewLayout(this, expandedLp)
+                                }
+                            },
+                            onTouch = { event -> b.onTouch(event) },
+                        )
+                    }
                 }
             }
         }

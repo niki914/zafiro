@@ -39,6 +39,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 针对物理主屏的屏幕实现。
@@ -150,78 +151,162 @@ object AppScreens : Screens {
     private val gate = Mutex()
     private val cardScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
+    private val virtualScreens = ConcurrentHashMap<ScreenId, VirtualDisplayScreen>()
+    private val conversationScreens = ConcurrentHashMap<String, ScreenId>()
     @Volatile
-    private var virtual: VirtualDisplayScreen? = null
+    private var foregroundConversationId: String? = null
+    private val userDismissedConversations = ConcurrentHashMap.newKeySet<String>()
+    @Volatile
+    private var activeOverlayScreenId: ScreenId? = null
+
     private val vdController: VirtualDisplayController by lazy {
         VirtualDisplayController.create(applicationContext())
     }
 
-    override fun list(): List<ScreenInfo> {
-        val extra = virtual?.info()
-        return if (extra == null) listOf(phone.info()) else listOf(phone.info(), extra)
+    override fun list(callerConversationId: String?): List<ScreenInfo> {
+        val extra = if (callerConversationId != null) {
+            val targetScreenId = conversationScreens[callerConversationId]
+            targetScreenId?.let { virtualScreens[it]?.info() }
+        } else {
+            null
+        }
+        return if (extra != null) {
+            listOf(phone.info(), extra)
+        } else if (callerConversationId == null) {
+            listOf(phone.info()) + virtualScreens.values.map { it.info() }
+        } else {
+            listOf(phone.info())
+        }
     }
 
-    override fun get(id: ScreenId): Screen? {
+    override fun get(id: ScreenId, callerConversationId: String?): Screen? {
         if (id == PhoneScreenId) return phone
-        val screen = virtual
-        return if (screen?.id == id) screen else null
+        val screen = virtualScreens[id] ?: return null
+        if (callerConversationId != null && screen.ownerConversationId != null && screen.ownerConversationId != callerConversationId) {
+            return null
+        }
+        return screen
     }
 
-    override suspend fun open(kind: OpenKind): OpenResult {
+    override suspend fun open(kind: OpenKind, ownerConversationId: String?): OpenResult {
         if (kind != OpenKind.VirtualDisplay) return OpenResult.Unsupported(kind)
-        return gate.withLock { openVirtual() }
+        return gate.withLock { openVirtual(ownerConversationId) }
     }
 
-    override suspend fun close(id: ScreenId): CloseResult {
+    override suspend fun close(id: ScreenId, callerConversationId: String?): CloseResult {
         if (id == PhoneScreenId) return CloseResult.Rejected("PHONE_NOT_CLOSABLE")
         return gate.withLock {
-            val screen = virtual
-            if (screen == null || screen.id != id) return@withLock CloseResult.Rejected("UNKNOWN_SCREEN")
+            val screen = virtualScreens[id] ?: return@withLock CloseResult.Rejected("UNKNOWN_SCREEN")
+            if (callerConversationId != null && screen.ownerConversationId != null && screen.ownerConversationId != callerConversationId) {
+                return@withLock CloseResult.Rejected("PERMISSION_DENIED")
+            }
             dismiss(screen)
             CloseResult.Closed
         }
     }
 
-    /** 无障碍服务重新连上后，把已经开着的预览挂回去。 */
-    fun restoreCard() {
-        val screen = virtual ?: return
-        if (VirtualDisplayCard.isShowing) return
+    /** 响应前台会话切换，将悬浮窗视口热重绑到当前会话的虚拟屏。 */
+    override fun bindForegroundConversation(conversationId: String?) {
         cardScope.launch {
-            if (virtual == null || VirtualDisplayCard.isShowing) return@launch
-            VirtualDisplayCard.show(
-                frames = screen.preview(),
-                status = screen.status,
-                vdWidth = screen.width,
-                vdHeight = screen.height,
-                onClose = {
-                    cardScope.launch {
-                        gate.withLock {
-                            val current = virtual ?: return@withLock
-                            dismiss(current)
-                        }
-                    }
-                },
-                onNavKey = { keyCode ->
-                    cardScope.launch {
-                        runCatchingCancellable {
-                            screen.act(ScreenAction.Key(keyCode))
-                        }.onFailure { error ->
-                            Logger.e(TAG, "onNavKey failed keyCode=$keyCode", error)
-                        }
-                    }
-                },
-                onQualityChanged = { highQuality ->
-                    screen.setHighQuality(highQuality)
-                },
-                onTouch = { event ->
-                    screen.injectTouch(event)
-                },
-            )
+            gate.withLock {
+                foregroundConversationId = conversationId
+                if (conversationId == null) {
+                    virtualScreens.values.forEach { it.setPaused(true) }
+                    activeOverlayScreenId = null
+                    VirtualDisplayCard.hide()
+                    return@withLock
+                }
+                val targetScreenId = conversationScreens[conversationId]
+                val targetScreen = targetScreenId?.let { virtualScreens[it] }
+
+                // 暂停所有后台屏以防耗电，恢复目标前台屏
+                virtualScreens.values.forEach { s ->
+                    s.setPaused(s.id != targetScreenId)
+                }
+
+                if (targetScreen != null && !userDismissedConversations.contains(conversationId)) {
+                    bindOverlay(targetScreen)
+                } else {
+                    activeOverlayScreenId = null
+                    VirtualDisplayCard.hide()
+                }
+            }
         }
     }
 
-    private suspend fun openVirtual(): OpenResult {
-        virtual?.let { return OpenResult.Opened(it.info()) }
+    /** 当会话被销毁时彻底释放该会话持有的虚拟屏 */
+    override fun onConversationDestroyed(conversationId: String) {
+        val targetScreenId = conversationScreens[conversationId] ?: return
+        val screen = virtualScreens[targetScreenId] ?: return
+        cardScope.launch {
+            gate.withLock {
+                dismiss(screen)
+            }
+        }
+    }
+
+    /** 无障碍服务重新连上后，把已经开着的预览挂回去。 */
+    fun restoreCard() {
+        val convId = foregroundConversationId ?: return
+        val targetScreenId = conversationScreens[convId] ?: return
+        val screen = virtualScreens[targetScreenId] ?: return
+        if (VirtualDisplayCard.isShowing) return
+        cardScope.launch {
+            gate.withLock {
+                if (!VirtualDisplayCard.isShowing && !userDismissedConversations.contains(convId)) {
+                    bindOverlay(screen)
+                }
+            }
+        }
+    }
+
+    private suspend fun bindOverlay(screen: VirtualDisplayScreen) {
+        activeOverlayScreenId = screen.id
+        screen.setPaused(false)
+        val binding = OverlayBinding(
+            screenId = screen.id.value,
+            frames = screen.preview(),
+            status = screen.status,
+            vdWidth = screen.width,
+            vdHeight = screen.height,
+            onClose = {
+                // 点击叉叉：仅隐藏悬浮窗视口并标记当前会话已收起，绝不调用 dismiss() 杀死虚拟屏
+                screen.ownerConversationId?.let { userDismissedConversations.add(it) }
+                cardScope.launch {
+                    gate.withLock {
+                        if (activeOverlayScreenId == screen.id) {
+                            activeOverlayScreenId = null
+                            VirtualDisplayCard.hide()
+                        }
+                    }
+                }
+            },
+            onNavKey = { keyCode ->
+                cardScope.launch {
+                    runCatchingCancellable {
+                        screen.act(ScreenAction.Key(keyCode))
+                    }.onFailure { error ->
+                        Logger.e(TAG, "onNavKey failed keyCode=$keyCode", error)
+                    }
+                }
+            },
+            onQualityChanged = { highQuality ->
+                screen.setHighQuality(highQuality)
+            },
+            onTouch = { event ->
+                screen.injectTouch(event)
+            },
+        )
+        VirtualDisplayCard.bind(binding)
+    }
+
+    private suspend fun openVirtual(ownerConversationId: String?): OpenResult {
+        if (ownerConversationId != null) {
+            val existingId = conversationScreens[ownerConversationId]
+            if (existingId != null && virtualScreens.containsKey(existingId)) {
+                return OpenResult.Opened(virtualScreens.getValue(existingId).info())
+            }
+        }
         access.prepare(PhoneScreenAccess.Need.VirtualDisplay)?.let { denied ->
             return OpenResult.Rejected(denied.code)
         }
@@ -238,59 +323,52 @@ object AppScreens : Screens {
             val (width, height, dpi) = virtualDisplaySize(applicationContext())
             val frames = VirtualDisplayFrames.open(vdController, width, height, dpi)
             if (frames == null) {
-                vdController.close()
+                if (virtualScreens.isEmpty()) vdController.close()
                 return@runCatchingCancellable OpenResult.Rejected("DISPLAY_FAILED")
             }
-            val screen = VirtualDisplayScreen(frames, vdController, access)
-            val shown = VirtualDisplayCard.show(
-                frames = screen.preview(),
-                status = screen.status,
-                vdWidth = screen.width,
-                vdHeight = screen.height,
-                onClose = {
-                    cardScope.launch {
-                        gate.withLock {
-                            val current = virtual ?: return@withLock
-                            dismiss(current)
-                        }
-                    }
-                },
-                onNavKey = { keyCode ->
-                    cardScope.launch {
-                        runCatchingCancellable {
-                            screen.act(ScreenAction.Key(keyCode))
-                        }.onFailure { error ->
-                            Logger.e(TAG, "onNavKey failed keyCode=$keyCode", error)
-                        }
-                    }
-                },
-                onQualityChanged = { highQuality ->
-                    screen.setHighQuality(highQuality)
-                },
-                onTouch = { event ->
-                    screen.injectTouch(event)
-                },
+            val screen = VirtualDisplayScreen(
+                frames = frames,
+                controller = vdController,
+                access = access,
+                ownerConversationId = ownerConversationId,
             )
-            if (!shown) {
-                vdController.release(frames.displayId)
-                screen.closeLocal()
-                vdController.close()
-                return@runCatchingCancellable OpenResult.Rejected("DISPLAY_FAILED")
+            virtualScreens[screen.id] = screen
+            if (ownerConversationId != null) {
+                conversationScreens[ownerConversationId] = screen.id
             }
-            virtual = screen
+
+            // 若当前正好处于发起会话且用户未主动叉掉，绑定悬浮窗
+            val isForeground = ownerConversationId == null || ownerConversationId == foregroundConversationId
+            if (isForeground && (ownerConversationId == null || !userDismissedConversations.contains(ownerConversationId))) {
+                bindOverlay(screen)
+            } else {
+                screen.setPaused(true)
+            }
+
             OpenResult.Opened(screen.info())
         }.getOrElse { error ->
             Logger.e(TAG, "openVirtual failed unexpectedly", error)
-            runCatchingCancellable { vdController.close() }
+            if (virtualScreens.isEmpty()) {
+                runCatchingCancellable { vdController.close() }
+            }
             OpenResult.Rejected("UNKNOWN_ERROR")
         }
     }
 
     private suspend fun dismiss(screen: VirtualDisplayScreen) {
-        runCatchingCancellable { VirtualDisplayCard.hide() }
+        virtualScreens.remove(screen.id)
+        screen.ownerConversationId?.let {
+            conversationScreens.remove(it)
+            userDismissedConversations.remove(it)
+        }
+        if (activeOverlayScreenId == screen.id) {
+            activeOverlayScreenId = null
+            runCatchingCancellable { VirtualDisplayCard.hide() }
+        }
         runCatchingCancellable { vdController.release(screen.port.displayId) }
         runCatchingCancellable { screen.closeLocal() }
-        virtual = null
-        runCatchingCancellable { vdController.close() }
+        if (virtualScreens.isEmpty()) {
+            runCatchingCancellable { vdController.close() }
+        }
     }
 }

@@ -172,6 +172,27 @@ class RunCatchingRequireServiceTest(unittest.TestCase):
         self.assertEqual(findings, [])
         self.assertEqual(ignored, 1)
 
+    def test_try_extensions_with_require_service_are_flagged(self):
+        self.assertEqual(
+            rules_hit("val s = tryOrDefault(null) { requireService<Foo>() }\n"),
+            ["run-catching-require-service"],
+        )
+        self.assertEqual(
+            rules_hit("tryIgnore { requireService<Foo>().ping() }\n"),
+            ["run-catching-require-service"],
+        )
+
+    def test_native_try_catch_with_require_service_is_flagged(self):
+        source = "val s = try {\n    requireService<Foo>()\n} catch (e: IllegalStateException) {\n    null\n}\n"
+        self.assertEqual(
+            rules_hit(source),
+            ["run-catching-require-service", "run-catching-require-service"],
+        )
+
+    def test_non_try_lambdas_with_require_service_are_allowed(self):
+        self.assertEqual(rules_hit("val provider = { requireService<Foo>() }\n"), [])
+        self.assertEqual(rules_hit("launch { requireService<Foo>() }\n"), [])
+
 
 class BareCatchTest(unittest.TestCase):
     def test_catch_throwable_is_flagged(self):

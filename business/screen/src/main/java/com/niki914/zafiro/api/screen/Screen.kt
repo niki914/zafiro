@@ -35,13 +35,17 @@ sealed interface CloseResult {
  * `phone` 从目录诞生起就在。`open` 不接受手机。`close` 拒绝关掉手机。
  */
 interface Screens {
-    fun list(): List<ScreenInfo>
+    fun list(callerConversationId: String? = null): List<ScreenInfo>
 
-    fun get(id: ScreenId): Screen?
+    fun get(id: ScreenId, callerConversationId: String? = null): Screen?
 
-    suspend fun open(kind: OpenKind): OpenResult
+    suspend fun open(kind: OpenKind, ownerConversationId: String? = null): OpenResult
 
-    suspend fun close(id: ScreenId): CloseResult
+    suspend fun close(id: ScreenId, callerConversationId: String? = null): CloseResult
+
+    fun bindForegroundConversation(conversationId: String?) {}
+
+    fun onConversationDestroyed(conversationId: String) {}
 }
 
 open class ScreenTreeUnavailable(message: String) : RuntimeException(message)

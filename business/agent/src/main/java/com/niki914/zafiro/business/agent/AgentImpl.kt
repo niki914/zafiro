@@ -62,6 +62,10 @@ class AgentImpl(
     val isPersistent: Boolean = true,
 ) : Agent {
 
+    init {
+        engine.conversationIdProvider = { conversationFlow.value.id?.value }
+    }
+
     private val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
         Logger.e(LOG_TAG, "Uncaught exception in Agent scope: ${throwable.message}", throwable)
     }

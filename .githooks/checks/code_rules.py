@@ -40,7 +40,7 @@ ANDROID_LOG_CALL = re.compile(r"(?<![\w.])Log\.[dviwe]\s*\(")
 PRINT_CALL = re.compile(r"(?<![\w.])(?:println|print)\s*\(|System\.out\b")
 TAG_DECL = re.compile(r'(?i)(?:val|var)\s+(\w+)\s*(?::\s*[\w<>?.]+\s*)?=\s*"([^"]*)"')
 LOGGER_LITERAL_TAG = re.compile(r'Logger\.[dviwe]\s*\(\s*"([^"]*)"')
-RUN_CATCHING_WORD = re.compile(r"\brunCatching(?:Cancellable)?\b")
+RUN_CATCHING_WORD = re.compile(r"\b(?:runCatching\w*|try[A-Z]\w*|try)\b")
 REQUIRE_SERVICE_WORD = re.compile(r"\brequireService\b")
 SCOPE_BOUNDARY = re.compile(r"\b(?:fun|class|interface|object)\b")
 UNCANCELLABLE_RUN_CATCHING = re.compile(
@@ -407,7 +407,7 @@ CODE_RULES: list[tuple[Rule, callable]] = [
             name="run-catching-require-service",
             category=Category.SAFETY,
             severity=Severity.BLOCK,
-            description="使用了 runCatching 包裹 requireService，可选服务应使用 findService",
+            description="使用了异常捕获或容错包装器包裹 requireService，可选服务应使用 findService",
             hint="改用 findService<T>()；确实需要时加 // githooks:ignore run-catching-require-service",
         ),
         hit_run_catching_require_service,

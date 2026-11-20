@@ -14,6 +14,7 @@ import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.api.model.isRunning
+import com.niki914.zafiro.api.screen.Screens
 import com.niki914.zafiro.app.conversation.ConversationBranchTree
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ForkKind
@@ -30,6 +31,7 @@ import com.niki914.zafiro.business.files.FilesService
 import com.niki914.zafiro.repo.LlmConfigsDocument
 import com.niki914.zafiro.repo.RuntimeQuickPrompt
 import com.niki914.zafiro.repo.XRepo
+import com.niki914.zafiro.service.findService
 import com.niki914.zafiro.service.requireService
 import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
 import kotlinx.coroutines.CancellableContinuation
@@ -479,6 +481,7 @@ class HomeChatViewModel internal constructor(
                 userToggledKeys = if (id != currentConversationId) emptyMap() else userToggledKeys,
             )
         }
+        notifyForegroundConversation(id)
         Logger.i(LOG_TAG, "applyConversation done id=$id turnsCount=${target.size}")
         if (isFirstConversationAssignment && !currentState.boundConfigId.isNullOrBlank()) {
             val assignedId = id!!
@@ -733,6 +736,7 @@ class HomeChatViewModel internal constructor(
 
     private suspend fun startNewConversation() {
         Logger.d(LOG_TAG, "start new conversation")
+        notifyForegroundConversation(null)
         val leavingId = agent.conversation.value.id?.value
         detachBoundAgent()
         draftDebouncer.cancel()
@@ -1005,6 +1009,7 @@ class HomeChatViewModel internal constructor(
         }
         groupIds.forEach { branchId ->
             tryIgnore { agentManager.destroy(branchId) }
+            findService<Screens>()?.onConversationDestroyed(branchId)
         }
         conversations.deleteConversation(id)
         if (!deletingCurrent) {
@@ -1051,7 +1056,12 @@ class HomeChatViewModel internal constructor(
         // 在途请求交给其他来源（或按拒绝结算）；本类不再持有来源身份
         approvalApprover.detach()
         detachBoundAgent()
+        notifyForegroundConversation(null)
         super.onCleared()
+    }
+
+    private fun notifyForegroundConversation(conversationId: String?) {
+        findService<Screens>()?.bindForegroundConversation(conversationId)
     }
 
     companion object {

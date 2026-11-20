@@ -44,6 +44,7 @@ internal class VirtualDisplayScreen(
     private val frames: VirtualDisplayFrames,
     private val controller: VirtualDisplayController,
     private val access: PhoneScreenAccess = PhoneScreenAccess(),
+    val ownerConversationId: String? = null,
 ) : A11yDisplayScreen(
     ScreenId("vd-${frames.displayId}"),
     ScreenKind.VirtualDisplay,
@@ -104,6 +105,8 @@ internal class VirtualDisplayScreen(
     fun preview() = frames.frames
 
     fun setHighQuality(enabled: Boolean) = frames.setHighQuality(enabled)
+
+    fun setPaused(isPaused: Boolean) = frames.setPaused(isPaused)
 
     val width: Int get() = frames.width
     val height: Int get() = frames.height
