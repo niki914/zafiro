@@ -1,6 +1,7 @@
 // githooks:ignore-file file-token-limit
 package com.niki914.zafiro.app.screen
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
@@ -25,17 +26,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material3.Icon
@@ -71,11 +71,7 @@ import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
@@ -87,13 +83,14 @@ import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.control.ZafiroLoadingIndicator
 import com.niki914.uikit.infra.shape.G2CardShape
 import com.niki914.zafiro.api.util.runCatchingCancellable
-import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.overlay.OverlayLifecycleOwner
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.remoteview.floatingball.DockSide
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -104,18 +101,28 @@ import kotlinx.coroutines.withContext
  * 核心特征：
  * - **两级窗口分离架构**：
  *   - [Mini Window]：终生固定尺寸 (100dp x 220dp)，专职小窗常态、拖动吸边；
- *   - [Expanded Window]：展开时按需挂载全屏透明窗口 (MATCH_PARENT x MATCH_PARENT)，形变在 Compose 内部完成；
- * - **零系统级 Resize 缺陷**：
- *   彻底绕开底层 SurfaceFlinger 逐帧 Resize 导致的动画 Leash 打断与黑屏闪烁；
- * - **首帧绘制无缝交接 (`makeVisibleAndNotifyDrawn`)**：
- *   展开与收起交接那一刻，利用 OnDrawListener 确保覆盖层真实上屏，杜绝 1 帧空白闪烁；
- * - **独立顶栏 (40dp) 兼作全局拖拽把手**：
- *   将收起/关闭按钮移至顶部独立操作条，视口下移不遮挡应用 Tab，顶栏支持全方向手势拖拽；
- * - **经典三大金刚键**：
- *   返回键换用向左实心三角形（◁），圆圈（Home），方块（Recents），全量走 Screens 契约；
- * - **动态高刷与画质档位**：
- *   小窗态 12.5 FPS / 360p 节能，大窗态升至 60 FPS / 原生 1080p 细腻流畅。
+ *   - [Expanded Window]：展开时按需挂载透明窗口，形变在 Compose 内部完成；
+ * - **唯一阶段来源 ([VirtualDisplayStage])**：
+ *   小窗、大窗与主对话页卡片共享同一阶段流，避免选择器与运行态撕裂；
+ * - **对称模糊形变**：
+ *   运行态采用静图 + 实时画面模糊切换；选择器态与小窗待命图标之间采用对称模糊 + 交叉淡入淡出衔接。
  */
+internal data class OverlayBinding(
+    val screenId: String = "",
+    val frames: StateFlow<Bitmap?>,
+    val stage: StateFlow<VirtualDisplayStage>,
+    val vdWidth: Int = 1080,
+    val vdHeight: Int = 2400,
+    val onClose: () -> Unit = {},
+    val onNavKey: (Int) -> Unit = {},
+    val onEnterAppPicker: () -> Unit = {},
+    val onReturnFromAppPicker: () -> Boolean = { false },
+    val onQualityChanged: (Boolean) -> Unit = {},
+    val onTouch: (MotionEvent) -> Unit = {},
+    val onLaunchApp: (String) -> Unit = {},
+)
+
+@SuppressLint("StaticFieldLeak")
 internal object VirtualDisplayCard {
     private const val TAG = "niki914_zafiro_VirtualDisplayCard"
 
@@ -123,22 +130,35 @@ internal object VirtualDisplayCard {
     private var miniTouchLayout: VirtualDisplayTouchLayout? = null
     private var expandedView: View? = null
     private var lifecycleOwner: OverlayLifecycleOwner? = null
+    private var onRequestExpandMini: (() -> Unit)? = null
+    private val activeBinding = MutableStateFlow<OverlayBinding?>(null)
+    private val _isExpanded = MutableStateFlow(false)
+    val isExpanded: StateFlow<Boolean> = _isExpanded.asStateFlow()
 
     @Volatile
     var isShowing: Boolean = false
         private set
 
+    fun expandIfShowing() {
+        if (!isShowing || expandedView != null) return
+        onRequestExpandMini?.invoke()
+    }
+
+    suspend fun bind(binding: OverlayBinding?): Boolean = withContext(Dispatchers.Main.immediate) {
+        if (binding == null) {
+            hideOnMain()
+            true
+        } else {
+            activeBinding.value = binding
+            isShowing || show(binding)
+        }
+    }
+
     suspend fun show(
-        frames: StateFlow<Bitmap?>,
-        status: StateFlow<VirtualDisplayStatus>,
-        vdWidth: Int = 1080,
-        vdHeight: Int = 2400,
-        onClose: () -> Unit = {},
-        onNavKey: (Int) -> Unit = {},
-        onQualityChanged: (Boolean) -> Unit = {},
-        onTouch: (MotionEvent) -> Unit = {},
+        binding: OverlayBinding,
     ): Boolean = withContext(Dispatchers.Main.immediate) {
         if (isShowing) hideOnMain()
+        activeBinding.value = binding
         val context = applicationContext()
         val manager = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
             ?: return@withContext false
@@ -170,6 +190,15 @@ internal object VirtualDisplayCard {
 
         var isMiniFocused by mutableStateOf(false)
         var lastTouchEpoch by mutableStateOf(0L)
+        val requestExpand: () -> Unit = {
+            isMiniFocused = false
+            showExpandedWindow(
+                context = context,
+                manager = manager,
+                owner = owner,
+                bindingFlow = activeBinding,
+            )
+        }
 
         lateinit var root: VirtualDisplayTouchLayout
 
@@ -191,37 +220,26 @@ internal object VirtualDisplayCard {
                     themeStyle = themePrefs.themeStyle,
                     uiStyleLookup = ThemeController.uiStyleLookup(),
                 ) {
-                    MiniPreviewCard(
-                        frames = frames,
-                        status = status,
-                        isFocused = isMiniFocused,
-                        touchEpoch = lastTouchEpoch,
-                        onToggleFocus = {
-                            isMiniFocused = !isMiniFocused
-                            lastTouchEpoch = SystemClock.uptimeMillis()
-                        },
-                        onFocusTimeout = { isMiniFocused = false },
-                        onRequestExpand = {
-                            isMiniFocused = false
-                            showExpandedWindow(
-                                context = context,
-                                manager = manager,
-                                owner = owner,
-                                frames = frames,
-                                status = status,
-                                vdWidth = vdWidth,
-                                vdHeight = vdHeight,
-                                onClose = onClose,
-                                onNavKey = onNavKey,
-                                onQualityChanged = onQualityChanged,
-                                onTouch = onTouch,
-                            )
-                        },
-                        onClose = {
-                            hideOnMain()
-                            onClose()
-                        },
-                    )
+                    val currentBinding by activeBinding.collectAsState()
+                    val current = currentBinding
+                    if (current != null) {
+                        MiniPreviewCard(
+                            frames = current.frames,
+                            stage = current.stage,
+                            isFocused = isMiniFocused,
+                            touchEpoch = lastTouchEpoch,
+                            onToggleFocus = {
+                                isMiniFocused = !isMiniFocused
+                                lastTouchEpoch = SystemClock.uptimeMillis()
+                            },
+                            onFocusTimeout = { isMiniFocused = false },
+                            onRequestExpand = requestExpand,
+                            onClose = {
+                                hideOnMain()
+                                current.onClose()
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -255,6 +273,7 @@ internal object VirtualDisplayCard {
         windowManager = manager
         miniTouchLayout = root
         lifecycleOwner = owner
+        onRequestExpandMini = requestExpand
         isShowing = true
         true
     }
@@ -263,20 +282,13 @@ internal object VirtualDisplayCard {
         context: Context,
         manager: WindowManager,
         owner: OverlayLifecycleOwner,
-        frames: StateFlow<Bitmap?>,
-        status: StateFlow<VirtualDisplayStatus>,
-        vdWidth: Int,
-        vdHeight: Int,
-        onClose: () -> Unit,
-        onNavKey: (Int) -> Unit,
-        onQualityChanged: (Boolean) -> Unit,
-        onTouch: (MotionEvent) -> Unit,
+        bindingFlow: StateFlow<OverlayBinding?>,
     ) {
         if (expandedView != null) return
         val miniLayout = miniTouchLayout ?: return
+        val initialBinding = bindingFlow.value ?: return
 
-        // 升至高刷与高清 Profile
-        onQualityChanged(true)
+        initialBinding.onQualityChanged(true)
 
         val density = context.resources.displayMetrics.density
         val screenWidth = context.resources.displayMetrics.widthPixels
@@ -291,14 +303,13 @@ internal object VirtualDisplayCard {
         val targetWidthDp = 290.dp
         val targetWidthPx = (targetWidthDp.value * density).toInt()
 
-        val currentFrame = frames.value
+        val currentFrame = initialBinding.frames.value
         val aspect = if (currentFrame != null && currentFrame.width > 0 && currentFrame.height > 0) {
             currentFrame.height.toFloat() / currentFrame.width.toFloat()
         } else {
             screenHeight.toFloat() / screenWidth.toFloat()
         }
 
-        // Top bar (24dp) + Bottom bar (40dp) = 64dp
         val targetHeightDp = ((targetWidthDp * aspect) + 64.dp).coerceIn(360.dp, (screenHeight / density).dp - 64.dp)
         val targetHeightPx = (targetHeightDp.value * density).toInt()
 
@@ -344,53 +355,64 @@ internal object VirtualDisplayCard {
                     themeStyle = themePrefs.themeStyle,
                     uiStyleLookup = ThemeController.uiStyleLookup(),
                 ) {
-                    ExpandedCardOverlay(
-                        dockSide = dockSide,
-                        targetWidth = targetWidthDp,
-                        targetHeight = targetHeightDp,
-                        miniWidth = (miniW / density).dp,
-                        miniHeight = (miniH / density).dp,
-                        frames = frames,
-                        status = status,
-                        vdWidth = vdWidth,
-                        vdHeight = vdHeight,
-                        onFirstFrameReady = {
-                            // 大窗首帧真实绘制完毕，此时无缝隐藏小窗
-                            miniTouchLayout?.visibility = View.INVISIBLE
-                        },
-                        onRequestCollapse = {
-                            // 收起时降采样至低功耗
-                            onQualityChanged(false)
-                        },
-                        onCollapseFinished = {
-                            val finalMiniX = if (dockSide.isRight) {
-                                expandedLp.x + targetWidthPx - miniW
-                            } else {
-                                expandedLp.x
+                    val currentBinding by bindingFlow.collectAsState()
+                    val b = currentBinding
+                    if (b != null) {
+                        DisposableEffect(b.screenId) {
+                            b.onQualityChanged(true)
+                            onDispose {
+                                b.onQualityChanged(false)
                             }
-                            val finalMiniY = expandedLp.y + (targetHeightPx - miniH) / 2
-                            miniLayout.syncPosition(finalMiniX, finalMiniY)
-                            miniLayout.makeVisibleAndNotifyDrawn {
-                                removeExpandedWindow()
-                            }
-                        },
-                        onClose = {
-                            hideOnMain()
-                            onClose()
-                        },
-                        onNavKey = onNavKey,
-                        onDrag = { dxPx, dyPx ->
-                            expandedLp.x = (expandedLp.x + dxPx.toInt()).coerceIn(0, screenWidth - targetWidthPx)
-                            expandedLp.y = (expandedLp.y + dyPx.toInt()).coerceIn(
-                                (32 * density).toInt(),
-                                (screenHeight - targetHeightPx - (32 * density).toInt()).coerceAtLeast((32 * density).toInt()),
-                            )
-                            if (isAttachedToWindow) {
-                                manager.updateViewLayout(this, expandedLp)
-                            }
-                        },
-                        onTouch = onTouch,
-                    )
+                        }
+                        ExpandedCardOverlay(
+                            dockSide = dockSide,
+                            targetWidth = targetWidthDp,
+                            targetHeight = targetHeightDp,
+                            miniWidth = (miniW / density).dp,
+                            miniHeight = (miniH / density).dp,
+                            frames = b.frames,
+                            stage = b.stage,
+                            vdWidth = b.vdWidth,
+                            vdHeight = b.vdHeight,
+                            onFirstFrameReady = {
+                                miniTouchLayout?.visibility = View.INVISIBLE
+                            },
+                            onRequestCollapse = {
+                                b.onQualityChanged(false)
+                            },
+                            onCollapseFinished = {
+                                val finalMiniX = if (dockSide.isRight) {
+                                    expandedLp.x + targetWidthPx - miniW
+                                } else {
+                                    expandedLp.x
+                                }
+                                val finalMiniY = expandedLp.y + (targetHeightPx - miniH) / 2
+                                miniLayout.syncPosition(finalMiniX, finalMiniY)
+                                miniLayout.makeVisibleAndNotifyDrawn {
+                                    removeExpandedWindow()
+                                }
+                            },
+                            onClose = {
+                                hideOnMain()
+                                b.onClose()
+                            },
+                            onNavKey = { keyCode -> b.onNavKey(keyCode) },
+                            onEnterAppPicker = { b.onEnterAppPicker() },
+                            onReturnFromAppPicker = { b.onReturnFromAppPicker() },
+                            onDrag = { dxPx, dyPx ->
+                                expandedLp.x = (expandedLp.x + dxPx.toInt()).coerceIn(0, screenWidth - targetWidthPx)
+                                expandedLp.y = (expandedLp.y + dyPx.toInt()).coerceIn(
+                                    (32 * density).toInt(),
+                                    (screenHeight - targetHeightPx - (32 * density).toInt()).coerceAtLeast((32 * density).toInt()),
+                                )
+                                if (isAttachedToWindow) {
+                                    manager.updateViewLayout(this, expandedLp)
+                                }
+                            },
+                            onTouch = { event -> b.onTouch(event) },
+                            onLaunchApp = { packageName -> b.onLaunchApp(packageName) },
+                        )
+                    }
                 }
             }
         }
@@ -398,6 +420,7 @@ internal object VirtualDisplayCard {
         expandedView = composeView
         runCatchingCancellable {
             manager.addView(composeView, expandedLp)
+            _isExpanded.value = true
             Logger.i(TAG, "VirtualDisplay expanded window added on-demand")
         }.onFailure { error ->
             Logger.e(TAG, "Failed to add expanded window", error)
@@ -406,6 +429,7 @@ internal object VirtualDisplayCard {
     }
 
     private fun removeExpandedWindow() {
+        _isExpanded.value = false
         val view = expandedView ?: return
         expandedView = null
         runCatchingCancellable {
@@ -426,6 +450,7 @@ internal object VirtualDisplayCard {
         miniTouchLayout = null
         windowManager = null
         lifecycleOwner = null
+        onRequestExpandMini = null
         isShowing = false
         owner?.onPause()
         owner?.onStop()
@@ -441,12 +466,36 @@ internal object VirtualDisplayCard {
 }
 
 /**
+ * 小窗选择器态的待命图标视图，同时供大窗展开/收起交接帧复用以保证零闪烁。
+ */
+@Composable
+private fun AppPickerStandbyGlyph(
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        modifier = modifier
+            .size(48.dp)
+            .clip(G2CardShape(14.dp))
+            .background(colors.secondaryContainer),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Apps,
+            contentDescription = "App picker standby",
+            tint = colors.onSecondaryContainer,
+            modifier = Modifier.size(26.dp),
+        )
+    }
+}
+
+/**
  * 小窗常态渲染（Mini PIP 卡片）。
  */
 @Composable
 private fun MiniPreviewCard(
     frames: StateFlow<Bitmap?>,
-    status: StateFlow<VirtualDisplayStatus>,
+    stage: StateFlow<VirtualDisplayStage>,
     isFocused: Boolean,
     touchEpoch: Long,
     onToggleFocus: () -> Unit,
@@ -455,7 +504,7 @@ private fun MiniPreviewCard(
     onClose: () -> Unit,
 ) {
     val frame by frames.collectAsState()
-    val currentStatus by status.collectAsState()
+    val currentStage by stage.collectAsState()
     val colors = MaterialTheme.colorScheme
     val cardShape = G2CardShape(8.dp)
 
@@ -478,28 +527,39 @@ private fun MiniPreviewCard(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        if (frame != null && !frame!!.isRecycled) {
-            val bitmap = remember(frame) { frame!!.asImageBitmap() }
-            Image(
-                bitmap = bitmap,
-                contentDescription = "Screen preview",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.FillBounds,
-            )
-        } else if (currentStatus == VirtualDisplayStatus.Launching) {
-            ZafiroLoadingIndicator(
-                color = colors.primary,
-                size = 24.dp,
-                petalSize = 28.dp,
-                strokeWidth = 2.2.dp,
-            )
-        } else {
-            Icon(
-                painter = painterResource(R.drawable.ic_launcher_monochrome),
-                contentDescription = "Ready standby",
-                tint = colors.primary.copy(alpha = 0.35f),
-                modifier = Modifier.size(40.dp),
-            )
+        when (currentStage) {
+            is VirtualDisplayStage.AppPicker -> {
+                AppPickerStandbyGlyph()
+            }
+
+            is VirtualDisplayStage.Launching -> {
+                ZafiroLoadingIndicator(
+                    color = colors.primary,
+                    size = 24.dp,
+                    petalSize = 28.dp,
+                    strokeWidth = 2.2.dp,
+                )
+            }
+
+            is VirtualDisplayStage.Running -> {
+                val liveFrame = frame?.takeIf { !it.isRecycled }
+                if (liveFrame != null) {
+                    val bitmap = remember(liveFrame) { liveFrame.asImageBitmap() }
+                    Image(
+                        bitmap = bitmap,
+                        contentDescription = "Screen preview",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.FillBounds,
+                    )
+                } else {
+                    ZafiroLoadingIndicator(
+                        color = colors.primary,
+                        size = 24.dp,
+                        petalSize = 28.dp,
+                        strokeWidth = 2.2.dp,
+                    )
+                }
+            }
         }
 
         if (isFocused) {
@@ -554,7 +614,7 @@ private fun ExpandedCardOverlay(
     miniWidth: Dp,
     miniHeight: Dp,
     frames: StateFlow<Bitmap?>,
-    status: StateFlow<VirtualDisplayStatus>,
+    stage: StateFlow<VirtualDisplayStage>,
     vdWidth: Int,
     vdHeight: Int,
     onFirstFrameReady: () -> Unit,
@@ -562,17 +622,19 @@ private fun ExpandedCardOverlay(
     onCollapseFinished: () -> Unit,
     onClose: () -> Unit,
     onNavKey: (Int) -> Unit,
+    onEnterAppPicker: () -> Unit,
+    onReturnFromAppPicker: () -> Boolean,
     onDrag: (Float, Float) -> Unit,
     onTouch: (MotionEvent) -> Unit,
+    onLaunchApp: (String) -> Unit,
 ) {
     val frame by frames.collectAsState()
-    val currentStatus by status.collectAsState()
+    val currentStage by stage.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val transformMatrix = remember { Matrix() }
     var viewWidthPx by remember { mutableIntStateOf(0) }
     var viewHeightPx by remember { mutableIntStateOf(0) }
 
-    // 抓住展开瞬间的那一帧。形变中段用它，避免实时画面跟着窗口缩放撕裂。
     val initialStill = remember { copyStill(frames.value) }
 
     val animProgress = remember { Animatable(0f) }
@@ -592,7 +654,6 @@ private fun ExpandedCardOverlay(
             isClosing = true
             frozenFrameForCollapse = copyStill(frames.value)
             coroutineScope.launch {
-                // 模糊盖住大窗之后再降预览画质，避免收起开头闪一帧粗图。
                 val dropQuality = launch {
                     snapshotFlow { animProgress.value }.first { it <= COLLAPSE_LIVE_UNTIL }
                     onRequestCollapse()
@@ -618,12 +679,8 @@ private fun ExpandedCardOverlay(
         ?.takeIf { !it.isRecycled }
     val wantLive = morphShowsLive(p, isClosing)
     val showingLive = wantLive && liveFrame != null
-    // 静图还在时模糊不退。实时画面接上之后，模糊才跟着退掉。
-    val blurRadiusDp = if (showingLive || !wantLive) {
-        morphBlurRadius(p, isClosing).dp
-    } else {
-        MORPH_BLUR_HOLD.dp
-    }
+    val morphBlurDp = morphBlurRadius(p, isClosing).dp
+    val frameBlurRadiusDp = if (showingLive || !wantLive) morphBlurDp else MORPH_BLUR_HOLD.dp
     val morphSource = when {
         showingLive -> liveFrame
         heldStill != null -> heldStill
@@ -658,7 +715,6 @@ private fun ExpandedCardOverlay(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // --- 1. 独立极简拖拽把手栏 (随 p 动态从 0dp 等比生长至 24dp) ---
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -685,7 +741,27 @@ private fun ExpandedCardOverlay(
                     }
                 }
 
-                // --- 2. 核心视口渲染区域 (纯净独立，等比无形变恒定高宽比) ---
+                val morphBitmap = remember(morphSource) { morphSource?.asImageBitmap() }
+                val isRunningWithFrame = currentStage is VirtualDisplayStage.Running && morphBitmap != null
+                val touchInjectModifier = if (isRunningWithFrame) {
+                    Modifier.pointerInteropFilter { motionEvent ->
+                        if (p >= 0.99f && !isClosing && viewWidthPx > 0 && viewHeightPx > 0) {
+                            val clonedEvent = MotionEvent.obtain(motionEvent)
+                            val scaleX = vdWidth.toFloat() / viewWidthPx.toFloat()
+                            val scaleY = vdHeight.toFloat() / viewHeightPx.toFloat()
+                            transformMatrix.setScale(scaleX, scaleY)
+                            clonedEvent.transform(transformMatrix)
+                            onTouch(clonedEvent)
+                            clonedEvent.recycle()
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                } else {
+                    Modifier
+                }
+
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -694,50 +770,81 @@ private fun ExpandedCardOverlay(
                             viewWidthPx = size.width
                             viewHeightPx = size.height
                         }
-                        .pointerInteropFilter { motionEvent ->
-                            if (p >= 0.99f && viewWidthPx > 0 && viewHeightPx > 0) {
-                                val clonedEvent = MotionEvent.obtain(motionEvent)
-                                val scaleX = vdWidth.toFloat() / viewWidthPx.toFloat()
-                                val scaleY = vdHeight.toFloat() / viewHeightPx.toFloat()
-                                transformMatrix.setScale(scaleX, scaleY)
-                                clonedEvent.transform(transformMatrix)
-                                onTouch(clonedEvent)
-                                clonedEvent.recycle()
-                                true
-                            } else {
-                                false
-                            }
-                        },
+                        .then(touchInjectModifier),
                     contentAlignment = Alignment.Center,
                 ) {
-                    val morphBitmap = remember(morphSource) { morphSource?.asImageBitmap() }
-                    if (morphBitmap != null) {
-                        Image(
-                            bitmap = morphBitmap,
-                            contentDescription = "Screen preview",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .then(if (blurRadiusDp > 0.dp) Modifier.blur(blurRadiusDp) else Modifier),
-                            contentScale = ContentScale.FillBounds,
-                        )
-                    } else if (currentStatus == VirtualDisplayStatus.Launching) {
-                        ZafiroLoadingIndicator(
-                            color = colors.primary,
-                            size = 28.dp,
-                            petalSize = 28.dp,
-                            strokeWidth = 2.5.dp,
-                        )
-                    } else {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_launcher_monochrome),
-                            contentDescription = "Ready standby",
-                            tint = colors.primary.copy(alpha = 0.35f),
-                            modifier = Modifier.size(48.dp),
-                        )
+                    when (currentStage) {
+                        is VirtualDisplayStage.AppPicker -> {
+                            var pickerApps by remember { mutableStateOf<List<VirtualDisplayAppItem>>(emptyList()) }
+                            var isPickerLoading by remember { mutableStateOf(true) }
+                            val recentPackages by RecentVirtualDisplayAppsStore.recentPackages.collectAsState()
+                            LaunchedEffect(Unit) {
+                                RecentVirtualDisplayAppsStore.ensureLoaded()
+                                pickerApps = loadVirtualDisplayAppItems()
+                                isPickerLoading = false
+                            }
+                            val recentApps = remember(recentPackages, pickerApps) {
+                                resolveRecentAppItems(recentPackages, pickerApps)
+                            }
+                            val pickerAlpha = ((p - 0.50f) / 0.40f).coerceIn(0f, 1f)
+                            val standbyAlpha = ((0.60f - p) / 0.40f).coerceIn(0f, 1f)
+                            val blurModifier = if (morphBlurDp > 0.dp) Modifier.blur(morphBlurDp) else Modifier
+
+                            if (pickerAlpha > 0f) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .alpha(pickerAlpha)
+                                        .then(blurModifier),
+                                ) {
+                                    VirtualDisplayAppPicker(
+                                        recentApps = recentApps,
+                                        allApps = pickerApps,
+                                        isLoading = isPickerLoading,
+                                        compact = true,
+                                        enabled = p >= 0.99f && !isClosing,
+                                        onSelectApp = onLaunchApp,
+                                    )
+                                }
+                            }
+                            if (standbyAlpha > 0f) {
+                                AppPickerStandbyGlyph(
+                                    modifier = Modifier.alpha(standbyAlpha),
+                                )
+                            }
+                        }
+
+                        is VirtualDisplayStage.Launching -> {
+                            ZafiroLoadingIndicator(
+                                color = colors.primary,
+                                size = 28.dp,
+                                petalSize = 28.dp,
+                                strokeWidth = 2.5.dp,
+                            )
+                        }
+
+                        is VirtualDisplayStage.Running -> {
+                            if (morphBitmap != null) {
+                                Image(
+                                    bitmap = morphBitmap,
+                                    contentDescription = "Screen preview",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .then(if (frameBlurRadiusDp > 0.dp) Modifier.blur(frameBlurRadiusDp) else Modifier),
+                                    contentScale = ContentScale.FillBounds,
+                                )
+                            } else {
+                                ZafiroLoadingIndicator(
+                                    color = colors.primary,
+                                    size = 28.dp,
+                                    petalSize = 28.dp,
+                                    strokeWidth = 2.5.dp,
+                                )
+                            }
+                        }
                     }
                 }
 
-                // --- 3. 底栏三大件 (随 p 动态从 0dp 等比生长至 40dp) ---
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -750,7 +857,7 @@ private fun ExpandedCardOverlay(
                         Row(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(horizontal = 24.dp)
+                                .padding(horizontal = 16.dp)
                                 .alpha(barContentAlpha),
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically,
@@ -758,17 +865,36 @@ private fun ExpandedCardOverlay(
                             NavKeyButton(
                                 icon = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
-                                onClick = { if (p >= 0.9f) onNavKey(KeyEvent.KEYCODE_BACK) },
+                                onClick = {
+                                    if (p >= 0.9f && !isClosing) {
+                                        if (currentStage is VirtualDisplayStage.AppPicker) {
+                                            if (!onReturnFromAppPicker()) {
+                                                onNavKey(KeyEvent.KEYCODE_BACK)
+                                            }
+                                        } else {
+                                            onNavKey(KeyEvent.KEYCODE_BACK)
+                                        }
+                                    }
+                                },
+                            )
+                            NavKeyButton(
+                                icon = IconNavHome,
+                                contentDescription = "Home",
+                                onClick = {
+                                    if (p >= 0.9f && !isClosing) {
+                                        onEnterAppPicker()
+                                    }
+                                },
                             )
                             NavKeyButton(
                                 icon = IconNavMinimize,
                                 contentDescription = "Collapse",
-                                onClick = { if (p >= 0.9f) startCollapse() },
+                                onClick = { if (p >= 0.9f && !isClosing) startCollapse() },
                             )
                             NavKeyButton(
                                 icon = Icons.Default.Close,
                                 contentDescription = "Close",
-                                onClick = { if (p >= 0.9f) onClose() },
+                                onClick = { if (p >= 0.9f && !isClosing) onClose() },
                             )
                         }
                     }
@@ -877,9 +1003,30 @@ private fun NavKeyButton(
     }
 }
 
-/**
- * 经典极简最小化横杠图标（纯净圆角水平线条，与返回箭头和关闭叉叉保持统一的线条语言）。
- */
+private val IconNavHome: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "NavHome",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.White),
+            strokeLineWidth = 2.2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(12f, 4f)
+            lineTo(20f, 10.5f)
+            lineTo(20f, 20f)
+            lineTo(4f, 20f)
+            lineTo(4f, 10.5f)
+            close()
+        }
+    }.build()
+}
+
 private val IconNavMinimize: ImageVector by lazy {
     ImageVector.Builder(
         name = "NavMinimize",

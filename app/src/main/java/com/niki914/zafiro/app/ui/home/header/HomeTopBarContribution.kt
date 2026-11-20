@@ -18,25 +18,26 @@ internal fun HomeTopBarContribution(
     onDismissConfigMenu: () -> Unit,
     onOpenHistory: () -> Unit,
     onNewConversation: () -> Unit,
+    onOpenVirtualDisplay: () -> Unit,
     onOpenSettings: () -> Unit,
-    isGenerating: Boolean,
     titleContent: @Composable () -> Unit,
 ) {
     val newConversationMenuLabel = stringResource(R.string.ui_home_menu_new_conversation)
+    val virtualDisplayMenuLabel = stringResource(R.string.ui_home_menu_virtual_display)
     val settingsMenuLabel = stringResource(R.string.ui_settings_menu_entry)
 
     val pageChromeContribution = remember(
         newConversationMenuLabel,
+        virtualDisplayMenuLabel,
         settingsMenuLabel,
         titleContent,
         isConfigMenuVisible,
-        isGenerating,
     ) {
         PageChromeContribution(
             titleContent = titleContent,
             isTitleOccluded = false,
             actionsVisible = true,
-            topBarLoad = if (isGenerating) TopBarLoad.Indeterminate else TopBarLoad.None,
+            topBarLoad = TopBarLoad.None,
             leftAction = TopBarActionSpec(
                 icon = Icons.Default.History,
                 onClick = {
@@ -56,6 +57,16 @@ internal fun HomeTopBarContribution(
                             onDismissConfigMenu()
                         }
                         onNewConversation()
+                    },
+                ),
+                PageChromeMenuItem(
+                    key = "virtual_display",
+                    title = virtualDisplayMenuLabel,
+                    onClick = {
+                        if (isConfigMenuVisible) {
+                            onDismissConfigMenu()
+                        }
+                        onOpenVirtualDisplay()
                     },
                 ),
                 PageChromeMenuItem(

@@ -19,6 +19,7 @@ import com.niki914.zafiro.api.screen.SemanticType
 import com.niki914.zafiro.api.screen.ShowResult
 import com.niki914.zafiro.api.screen.ShowTarget
 import com.niki914.zafiro.api.screen.Target
+import com.niki914.zafiro.chat.agentic.AgentTenantContext
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.RawJsonBuiltinTool
@@ -107,6 +108,23 @@ class ScreenToolsTest {
         val result = invokeOperation("""{"screen":"missing","operation":"read"}""")
 
         assertEquals(SCREEN_UNKNOWN, result.code)
+        assertEquals(0, screen.snapshots)
+    }
+
+    @Test
+    fun screenBelongingToAnotherSessionIsRejectedWithGuidance() = runTest {
+        screens.screenOwnerConversationId = "conv-source"
+        val result = kotlinx.coroutines.withContext(
+            AgentTenantContext(
+                tenantId = "test-tenant",
+                conversationId = "conv-forked",
+            ),
+        ) {
+            invokeOperation("""{"screen":"phone","operation":"read"}""")
+        }
+
+        assertEquals(SCREEN_UNAVAILABLE_IN_SESSION, result.code)
+        assertTrue(result.message?.contains("operation='open'") == true)
         assertEquals(0, screen.snapshots)
     }
 
@@ -266,22 +284,31 @@ class ScreenToolsTest {
         }
     }
 
-    private class RecordingScreens(private val screen: RecordingScreen) : Screens {
+    private class RecordingScreens(
+        private val screen: RecordingScreen,
+        var screenOwnerConversationId: String? = null,
+    ) : Screens {
         var opened: OpenKind? = null
 
-        override fun list(): List<ScreenInfo> {
+        override fun list(callerConversationId: String?): List<ScreenInfo> {
             return listOf(ScreenInfo(screen.id, screen.kind, 100, 200))
         }
 
-        override fun get(id: ScreenId): Screen? = if (id == screen.id) screen else null
+        override fun get(id: ScreenId, callerConversationId: String?): Screen? {
+            if (id != screen.id) return null
+            if (screenOwnerConversationId != null && callerConversationId != null && screenOwnerConversationId != callerConversationId) {
+                return null
+            }
+            return screen
+        }
 
-        override suspend fun open(kind: OpenKind): OpenResult {
+        override suspend fun open(kind: OpenKind, ownerConversationId: String?): OpenResult {
             opened = kind
             return OpenResult.Opened(
                 ScreenInfo(ScreenId("vd-1"), ScreenKind.VirtualDisplay, 1080, 2400),
             )
         }
 
-        override suspend fun close(id: ScreenId): CloseResult = CloseResult.Closed
+        override suspend fun close(id: ScreenId, callerConversationId: String?): CloseResult = CloseResult.Closed
     }
 }

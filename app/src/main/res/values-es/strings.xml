@@ -44,6 +44,18 @@
     <!-- Home -->
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">Nueva conversación</string>
+    <string name="ui_home_menu_virtual_display">Pantalla virtual</string>
+    <string name="ui_virtual_display_recent_apps">Usadas recientemente</string>
+    <string name="ui_virtual_display_all_apps">Todas las apps</string>
+    <string name="ui_virtual_display_create_failed">No se pudo crear la pantalla virtual. Revisa los permisos.</string>
+    <string name="ui_virtual_display_app_in_use_on_main">Esta app está abierta en la pantalla principal</string>
+    <string name="ui_virtual_display_app_launch_failed">No se pudo iniciar la app en la pantalla virtual</string>
+    <string name="ui_virtual_display_pick_app">Elegir una app</string>
+    <string name="ui_virtual_display_launching_app">Iniciando %1$s…</string>
+    <string name="ui_virtual_display_card_terminate">Finalizar</string>
+    <string name="ui_virtual_display_terminate_title">¿Finalizar pantalla virtual?</string>
+    <string name="ui_virtual_display_terminate_message">Esto cerrará la pantalla virtual vinculada a esta conversación y detendrá las apps en ejecución.</string>
+    <string name="ui_virtual_display_requires_conversation">Inicia una conversación primero</string>
     <string name="ui_home_input_placeholder">Escriba un mensaje…</string>
     <string name="ui_home_conversation_compacted">Conversación compactada</string>
     <string name="ui_home_conversation_compacting">Compactando</string>
@@ -252,6 +264,7 @@
     <string name="ui_settings_env_context_key_date">Fecha</string>
     <string name="ui_settings_env_context_key_time">Hora</string>
     <string name="ui_settings_env_context_key_device">Estado del dispositivo</string>
+    <string name="ui_settings_env_context_key_virtual_display">Pantalla virtual</string>
     <string name="ui_settings_env_context_group_custom">Variables personalizadas</string>
     <string name="ui_settings_env_context_empty_custom">No hay variables personalizadas. Toque «+» arriba a la derecha para añadir una.</string>
     <string name="ui_settings_env_context_variable_title_create">Añadir variable</string>
@@ -265,7 +278,7 @@
     <string name="ui_settings_env_context_delete_dialog_title">Eliminar variable</string>
     <string name="ui_settings_env_context_delete_dialog_text">¿Seguro que desea eliminar la variable «%1$s»?</string>
     <string name="ui_settings_env_context_error_key_required">El nombre no puede estar vacío</string>
-    <string name="ui_settings_env_context_error_key_reserved">No se pueden usar nombres reservados: date, time, device</string>
+    <string name="ui_settings_env_context_error_key_reserved">No se pueden usar nombres reservados: date, time, device, virtual_display</string>
     <string name="ui_settings_env_context_error_key_duplicate">Este nombre ya existe, elija otro</string>
     <string name="ui_settings_env_context_error_key_invalid_format">Formato inválido. Solo se admiten caracteres alfanuméricos, guiones y guiones bajos</string>
     <string name="ui_settings_env_context_error_value_required">El contenido no puede estar vacío</string>

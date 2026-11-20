@@ -44,6 +44,18 @@
     <!-- Home -->
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">新對話</string>
+    <string name="ui_home_menu_virtual_display">虛擬螢幕</string>
+    <string name="ui_virtual_display_recent_apps">最近使用</string>
+    <string name="ui_virtual_display_all_apps">全部應用</string>
+    <string name="ui_virtual_display_create_failed">虛擬螢幕建立失敗，請檢查懸浮窗、無障礙與 Shizuku 權限</string>
+    <string name="ui_virtual_display_app_in_use_on_main">該應用正在主螢幕執行，請先離開主螢幕後再試</string>
+    <string name="ui_virtual_display_app_launch_failed">在虛擬螢幕中啟動應用失敗</string>
+    <string name="ui_virtual_display_pick_app">選擇應用</string>
+    <string name="ui_virtual_display_launching_app">正在啟動 %1$s…</string>
+    <string name="ui_virtual_display_card_terminate">終止</string>
+    <string name="ui_virtual_display_terminate_title">終止虛擬螢幕？</string>
+    <string name="ui_virtual_display_terminate_message">將立即關閉目前對話綁定的虛擬螢幕及其執行中的應用。</string>
+    <string name="ui_virtual_display_requires_conversation">請先建立對話</string>
     <string name="ui_home_input_placeholder">輸入訊息…</string>
     <string name="ui_home_conversation_compacted">對話已壓縮</string>
     <string name="ui_home_conversation_compacting">正在壓縮</string>
@@ -250,6 +262,7 @@
     <string name="ui_settings_env_context_key_date">日期</string>
     <string name="ui_settings_env_context_key_time">時間</string>
     <string name="ui_settings_env_context_key_device">設備狀態</string>
+    <string name="ui_settings_env_context_key_virtual_display">虛擬螢幕</string>
     <string name="ui_settings_env_context_group_custom">自訂變數</string>
     <string name="ui_settings_env_context_empty_custom">暫無自訂變數。點擊右上角「+」新增。</string>
     <string name="ui_settings_env_context_variable_title_create">新增變數</string>
@@ -263,7 +276,7 @@
     <string name="ui_settings_env_context_delete_dialog_title">刪除變數</string>
     <string name="ui_settings_env_context_delete_dialog_text">確定要刪除變數「%1$s」嗎？</string>
     <string name="ui_settings_env_context_error_key_required">名稱不能為空</string>
-    <string name="ui_settings_env_context_error_key_reserved">不可使用系統保留名稱：date、time、device</string>
+    <string name="ui_settings_env_context_error_key_reserved">不可使用系統保留名稱：date、time、device、virtual_display</string>
     <string name="ui_settings_env_context_error_key_duplicate">該名稱已存在，請更換</string>
     <string name="ui_settings_env_context_error_key_invalid_format">名稱格式不合規，僅支援字母、數字、底線及連字號</string>
     <string name="ui_settings_env_context_error_value_required">內容不能為空</string>

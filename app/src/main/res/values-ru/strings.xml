@@ -39,6 +39,18 @@
     <string name="ui_onboard_done_enter_home">Открыть Zafiro</string>
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">Новый диалог</string>
+    <string name="ui_home_menu_virtual_display">Виртуальный экран</string>
+    <string name="ui_virtual_display_recent_apps">Недавние</string>
+    <string name="ui_virtual_display_all_apps">Все приложения</string>
+    <string name="ui_virtual_display_create_failed">Не удалось создать виртуальный экран. Проверьте разрешения.</string>
+    <string name="ui_virtual_display_app_in_use_on_main">Это приложение открыто на основном экране</string>
+    <string name="ui_virtual_display_app_launch_failed">Не удалось запустить приложение на виртуальном экране</string>
+    <string name="ui_virtual_display_pick_app">Выберите приложение</string>
+    <string name="ui_virtual_display_launching_app">Запуск %1$s…</string>
+    <string name="ui_virtual_display_card_terminate">Завершить</string>
+    <string name="ui_virtual_display_terminate_title">Завершить виртуальный экран?</string>
+    <string name="ui_virtual_display_terminate_message">Виртуальный экран этого диалога и запущенные в нём приложения будут закрыты.</string>
+    <string name="ui_virtual_display_requires_conversation">Сначала начните диалог</string>
     <string name="ui_home_input_placeholder">Введите сообщение…</string>
     <string name="ui_home_conversation_compacted">Диалог сжат</string>
     <string name="ui_home_conversation_compacting">Сжатие</string>
@@ -240,6 +252,7 @@
     <string name="ui_settings_env_context_key_date">Дата</string>
     <string name="ui_settings_env_context_key_time">Время</string>
     <string name="ui_settings_env_context_key_device">Состояние устройства</string>
+    <string name="ui_settings_env_context_key_virtual_display">Виртуальный экран</string>
     <string name="ui_settings_env_context_group_custom">Пользовательские переменные</string>
     <string name="ui_settings_env_context_empty_custom">Нет пользовательских переменных. Нажмите «+» вверху справа, чтобы добавить.</string>
     <string name="ui_settings_env_context_variable_title_create">Добавить переменную</string>
@@ -253,7 +266,7 @@
     <string name="ui_settings_env_context_delete_dialog_title">Удалить переменную</string>
     <string name="ui_settings_env_context_delete_dialog_text">Удалить переменную «%1$s»?</string>
     <string name="ui_settings_env_context_error_key_required">Имя не может быть пустым</string>
-    <string name="ui_settings_env_context_error_key_reserved">Нельзя использовать зарезервированные имена: date, time, device</string>
+    <string name="ui_settings_env_context_error_key_reserved">Нельзя использовать зарезервированные имена: date, time, device, virtual_display</string>
     <string name="ui_settings_env_context_error_key_duplicate">Это имя уже существует, выберите другое</string>
     <string name="ui_settings_env_context_error_key_invalid_format">Неверный формат имени. Разрешены только буквы, цифры, дефисы и подчеркивания</string>
     <string name="ui_settings_env_context_error_value_required">Содержимое не может быть пустым</string>

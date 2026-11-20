@@ -74,6 +74,7 @@ import com.niki914.zafiro.app.ui.model.home.ActionSource
 import com.niki914.zafiro.app.ui.model.home.HomeChatFile
 import com.niki914.zafiro.app.ui.model.home.HomeChatImage
 import com.niki914.zafiro.app.ui.model.home.HomeChatUiState
+import com.niki914.zafiro.app.ui.model.home.HomeVirtualDisplayUiState
 import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
 import kotlinx.coroutines.launch
 
@@ -119,6 +120,9 @@ internal fun HomePageContentBody(
     onSwitchTurnBranch: (Long, Int) -> Unit = { _, _ -> },
     alwaysShowDetailed: Boolean = false,
     onToggleActionKey: (key: String, isExpanded: Boolean) -> Unit = { _, _ -> },
+    virtualDisplayState: HomeVirtualDisplayUiState? = null,
+    onOpenVirtualDisplay: () -> Unit = {},
+    onTerminateVirtualDisplay: () -> Unit = {},
 ) {
     // 底部避让总高：composer 底距 + 实测高度 + 统一视觉间距。列表贴底留白与箭头
     // 位置同源；键盘关闭时（composerBottomPadding == composerGap）即为
@@ -134,6 +138,8 @@ internal fun HomePageContentBody(
 
     var activeSlashTrigger by remember { mutableStateOf<SlashTrigger?>(null) }
     var pendingSuggestionToApply by remember { mutableStateOf<SlashSuggestion?>(null) }
+    var isComposerTextExpanded by remember { mutableStateOf(false) }
+    val virtualDisplayAmbientColors = rememberVirtualDisplayAmbientColors(virtualDisplayState)
 
     val isStandaloneContext = remember(activeSlashTrigger, uiState.input, pendingImages, pendingFiles) {
         val trigger = activeSlashTrigger ?: return@remember false
@@ -277,7 +283,7 @@ internal fun HomePageContentBody(
                                     HomeChatTurnItem(
                                         turn = turn,
                                         userBubblePosition = position,
-                                        isLastTurn = index == uiState.turns.lastIndex,
+                                        isLastTurn = isLastTurn,
                                         actionsDisplay = actionsDisplay,
                                         userGroupTailTurnId = tailTurn.id,
                                         userGroupTappable = tailTurn.blocks.isNotEmpty() || tailIndex == uiState.turns.lastIndex,
@@ -349,7 +355,7 @@ internal fun HomePageContentBody(
                 composerBottomPadding = composerBottomPadding,
                 composerHeight = composerHeight.value,
                 hasAttachments = pendingImages.isNotEmpty() || pendingFiles.isNotEmpty(),
-                isComposerExpanded = composerHeight.value > 76.dp || uiState.input.contains('\n'),
+                isComposerExpanded = isComposerTextExpanded,
             )
 
             ZafiroChatComposer(
@@ -377,6 +383,18 @@ internal fun HomePageContentBody(
                 onSlashTriggerChange = { activeSlashTrigger = it },
                 pendingSuggestion = pendingSuggestionToApply,
                 onSuggestionApplied = { pendingSuggestionToApply = null },
+                onExpandedChange = { isComposerTextExpanded = it },
+                topAmbientColors = virtualDisplayAmbientColors,
+                topAmbientAnimating = !(virtualDisplayState?.isOverlayExpanded ?: false),
+                topContent = virtualDisplayState?.let { vdState ->
+                    {
+                        HomeVirtualDisplayDock(
+                            state = vdState,
+                            onOpen = onOpenVirtualDisplay,
+                            onTerminate = onTerminateVirtualDisplay,
+                        )
+                    }
+                },
             )
 
             val scrollToBottomScope = rememberCoroutineScope()

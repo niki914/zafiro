@@ -382,7 +382,8 @@ class EnvContextSettingsViewModel :
         private fun isReservedKey(key: String): Boolean {
             return key.equals(RuntimeEnvContextConfig.KEY_DATE, ignoreCase = true) ||
                     key.equals(RuntimeEnvContextConfig.KEY_TIME, ignoreCase = true) ||
-                    key.equals(RuntimeEnvContextConfig.KEY_DEVICE, ignoreCase = true)
+                    key.equals(RuntimeEnvContextConfig.KEY_DEVICE, ignoreCase = true) ||
+                    key.equals(RuntimeEnvContextConfig.KEY_VIRTUAL_DISPLAY, ignoreCase = true)
         }
     }
 }

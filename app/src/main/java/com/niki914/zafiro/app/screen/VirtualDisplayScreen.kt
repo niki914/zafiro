@@ -20,21 +20,25 @@ import com.niki914.zafiro.api.screen.ScreenSnapshot
 import com.niki914.zafiro.api.screen.ScreenTreeUnavailable
 import com.niki914.zafiro.api.screen.ShowResult
 import com.niki914.zafiro.api.screen.ShowTarget
+import com.niki914.zafiro.api.screen.VirtualDisplayContext
+import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.business.application.ApplicationService
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionState
+import com.niki914.zafiro.chat.agentic.device.AppInfoProvider
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * 虚拟屏运行状态（待命、启动中）。
+ * 虚拟屏唯一视图阶段：大窗、小窗与主对话页卡片共同订阅，避免状态位分散撕裂。
  */
-internal enum class VirtualDisplayStatus {
-    Idle,
-    Launching,
+internal sealed interface VirtualDisplayStage {
+    data class AppPicker(val backgroundApp: Running? = null) : VirtualDisplayStage
+    data class Launching(val packageName: String, val appName: String) : VirtualDisplayStage
+    data class Running(val packageName: String, val appName: String) : VirtualDisplayStage
 }
 
 /**
@@ -44,16 +48,40 @@ internal class VirtualDisplayScreen(
     private val frames: VirtualDisplayFrames,
     private val controller: VirtualDisplayController,
     private val access: PhoneScreenAccess = PhoneScreenAccess(),
+    @Volatile
+    var ownerConversationId: String? = null,
 ) : A11yDisplayScreen(
     ScreenId("vd-${frames.displayId}"),
     ScreenKind.VirtualDisplay,
     A11yDisplayPort(frames.displayId),
     DisplayNodeTable(),
 ) {
-    private val _status = MutableStateFlow(VirtualDisplayStatus.Idle)
-    val status: StateFlow<VirtualDisplayStatus> = _status.asStateFlow()
+    private val _stage = MutableStateFlow<VirtualDisplayStage>(VirtualDisplayStage.AppPicker())
+    val stage: StateFlow<VirtualDisplayStage> = _stage.asStateFlow()
 
     fun info(): ScreenInfo = ScreenInfo(id, kind, frames.width, frames.height)
+
+    fun currentContext(): VirtualDisplayContext {
+        return when (val current = _stage.value) {
+            is VirtualDisplayStage.Running -> VirtualDisplayContext(
+                screenId = id,
+                packageName = current.packageName,
+                appName = current.appName,
+            )
+            is VirtualDisplayStage.Launching -> VirtualDisplayContext(
+                screenId = id,
+                packageName = current.packageName,
+                appName = current.appName,
+            )
+            is VirtualDisplayStage.AppPicker -> current.backgroundApp?.let {
+                VirtualDisplayContext(
+                    screenId = id,
+                    packageName = it.packageName,
+                    appName = it.appName,
+                )
+            } ?: VirtualDisplayContext(screenId = id)
+        }
+    }
 
     override suspend fun snapshot(): ScreenSnapshot {
         access.prepare(PhoneScreenAccess.Need.Control)?.let { denied ->
@@ -80,30 +108,75 @@ internal class VirtualDisplayScreen(
         access.prepare(PhoneScreenAccess.Need.OpenApp)?.let { denied ->
             return ShowResult.Failed(denied.code)
         }
-        _status.value = VirtualDisplayStatus.Launching
-        val result = when (target) {
+        return when (target) {
             is ShowTarget.PackageName -> launch(target.packageName)
             is ShowTarget.Uri -> ShowResult.Unsupported("uri")
             is ShowTarget.InAppPreview -> ShowResult.Unsupported("in_app_preview")
         }
-        if (result !is ShowResult.Shown) {
-            _status.value = VirtualDisplayStatus.Idle
+    }
+
+    fun enterAppPicker() {
+        val current = _stage.value
+        val background = when (current) {
+            is VirtualDisplayStage.Running -> current
+            is VirtualDisplayStage.AppPicker -> current.backgroundApp
+            is VirtualDisplayStage.Launching -> null
         }
-        return result
+        _stage.value = VirtualDisplayStage.AppPicker(backgroundApp = background)
+    }
+
+    fun returnFromAppPicker(): Boolean {
+        val current = _stage.value as? VirtualDisplayStage.AppPicker ?: return false
+        val target = current.backgroundApp ?: return false
+        _stage.value = target
+        return true
     }
 
     private suspend fun launch(packageName: String): ShowResult {
+        val previous = _stage.value
+        val resolvedName = runCatchingCancellable {
+            AppInfoProvider.cache().findByPackageName(packageName)?.appName
+        }.getOrNull()?.takeIf { it.isNotBlank() } ?: packageName
+        _stage.value = VirtualDisplayStage.Launching(
+            packageName = packageName,
+            appName = resolvedName,
+        )
         return when (controller.startApp(port.displayId, packageName)) {
-            StartAppResult.Ok -> ShowResult.Shown(packageName)
-            StartAppResult.InUseOnMain -> ShowResult.Failed("IN_USE_ON_MAIN")
-            StartAppResult.NotFound -> ShowResult.Failed("APP_NOT_FOUND")
-            StartAppResult.Failed -> ShowResult.Failed("START_FAILED")
+            StartAppResult.Ok -> {
+                _stage.value = VirtualDisplayStage.Running(
+                    packageName = packageName,
+                    appName = resolvedName,
+                )
+                RecentVirtualDisplayAppsStore.record(packageName)
+                ShowResult.Shown(packageName)
+            }
+            StartAppResult.InUseOnMain -> {
+                restoreStageAfterLaunchFailure(previous)
+                ShowResult.Failed("IN_USE_ON_MAIN")
+            }
+            StartAppResult.NotFound -> {
+                restoreStageAfterLaunchFailure(previous)
+                ShowResult.Failed("APP_NOT_FOUND")
+            }
+            StartAppResult.Failed -> {
+                restoreStageAfterLaunchFailure(previous)
+                ShowResult.Failed("START_FAILED")
+            }
+        }
+    }
+
+    private fun restoreStageAfterLaunchFailure(previous: VirtualDisplayStage) {
+        _stage.value = when (previous) {
+            is VirtualDisplayStage.Launching -> VirtualDisplayStage.AppPicker()
+            else -> previous
         }
     }
 
     fun preview() = frames.frames
 
     fun setHighQuality(enabled: Boolean) = frames.setHighQuality(enabled)
+
+    fun setPaused(isPaused: Boolean) = frames.setPaused(isPaused)
 
     val width: Int get() = frames.width
     val height: Int get() = frames.height

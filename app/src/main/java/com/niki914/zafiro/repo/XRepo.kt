@@ -897,7 +897,8 @@ class LlmConfigsApi internal constructor(
                     if (trimmed.isNotBlank() &&
                         trimmed != RuntimeEnvContextConfig.KEY_DATE &&
                         trimmed != RuntimeEnvContextConfig.KEY_TIME &&
-                        trimmed != RuntimeEnvContextConfig.KEY_DEVICE
+                        trimmed != RuntimeEnvContextConfig.KEY_DEVICE &&
+                        trimmed != RuntimeEnvContextConfig.KEY_VIRTUAL_DISPLAY
                     ) {
                         trimmed to v.trim()
                     } else null

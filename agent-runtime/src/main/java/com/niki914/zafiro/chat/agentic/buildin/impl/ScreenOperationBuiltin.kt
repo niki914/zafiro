@@ -9,6 +9,7 @@ import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.TextResultBuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
 import com.niki914.zafiro.api.screen.ScreenTreeUnavailable
+import com.niki914.zafiro.chat.agentic.currentAgentConversationId
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonObject
 
@@ -36,7 +37,9 @@ class ScreenOperationBuiltin : TextResultBuiltinTool() {
         val id = args.screenId() ?: return invalidArguments("screen is required.")
         val operation = args.text("operation") ?: return invalidArguments("operation is required.")
         val screens = screenDirectory() ?: return missingService()
-        val screen = screens.require(id) ?: return unknownScreen(id)
+        val callerConvId = currentAgentConversationId()
+        val (screen, failure) = resolveScreenOrFailure(screens, id, callerConvId)
+        if (failure != null || screen == null) return failure ?: unknownScreen(id)
         return dispatch(screen, operation, args)
     }
 

@@ -5,6 +5,7 @@ import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.isRunning
+import com.niki914.zafiro.api.screen.Screens
 import com.niki914.zafiro.api.util.Debouncer
 import com.niki914.zafiro.api.util.debouncer
 import com.niki914.zafiro.api.util.runCatchingCancellable
@@ -16,7 +17,7 @@ import com.niki914.zafiro.app.conversation.ConversationSearchResult
 import com.niki914.zafiro.app.conversation.ConversationSummary
 import com.niki914.zafiro.repo.PinnedConversation
 import com.niki914.zafiro.repo.XRepo
-import com.niki914.zafiro.service.requireService
+import com.niki914.zafiro.service.findService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -104,17 +105,13 @@ internal data class ConversationHistoryViewModelDependencies(
     val setConversationPinned: suspend (String, Boolean) -> Unit,
     val searchConversations: suspend (String) -> List<ConversationSearchResult>,
     val destroyAgent: (String) -> Unit = { id ->
-        tryIgnore {
-            requireService<AgentManager>().destroy(
-                id
-            )
-        }
+        findService<AgentManager>()?.let { tryIgnore { it.destroy(id) } }
     },
     val setHasUnread: suspend (String, Boolean) -> Unit = { id, unread ->
         ConversationRepo.setHasUnread(id, unread)
     },
     val observeActiveStates: () -> Flow<Map<String, AgentState>> = {
-        tryOrDefault(MutableStateFlow(emptyMap())) { requireService<AgentManager>().activeStates }
+        findService<AgentManager>()?.activeStates ?: MutableStateFlow(emptyMap())
     },
 ) {
     companion object {
@@ -126,10 +123,13 @@ internal data class ConversationHistoryViewModelDependencies(
             forkConversation = { id -> ConversationRepo.forkConversation(id) },
             setConversationPinned = { id, pinned -> XRepo.setConversationPinned(id, pinned) },
             searchConversations = { query -> ConversationSearchRepo.searchConversations(query) },
-            destroyAgent = { id -> tryIgnore { requireService<AgentManager>().destroy(id) } },
+            destroyAgent = { id ->
+                findService<AgentManager>()?.let { tryIgnore { it.destroy(id) } }
+                findService<Screens>()?.onConversationDestroyed(id)
+            },
             setHasUnread = { id, unread -> ConversationRepo.setHasUnread(id, unread) },
             observeActiveStates = {
-                tryOrDefault(MutableStateFlow(emptyMap())) { requireService<AgentManager>().activeStates }
+                findService<AgentManager>()?.activeStates ?: MutableStateFlow(emptyMap())
             },
         )
     }

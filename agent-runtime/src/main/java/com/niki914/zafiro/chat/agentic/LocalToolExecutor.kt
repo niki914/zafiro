@@ -41,6 +41,7 @@ class LocalToolExecutor(
     private val inlineCustomPyTools: MutableMap<String, LocalTool.Py> = mutableMapOf(),
     private val onCustomPyToolWritten: suspend (LocalTool.Py) -> Unit = {},
     private val tenantId: String = "",
+    private val conversationIdProvider: (() -> String?)? = null,
     private val agentControlProvider: (() -> AgentControl?)? = null,
 ) : ToolExecutor {
 
@@ -52,8 +53,13 @@ class LocalToolExecutor(
 
     override suspend fun execute(call: ToolCallContext): ToolCallOutcome {
         val control = agentControlProvider?.invoke()
-        val context = if (tenantId.isNotBlank() || control != null) {
-            AgentTenantContext(tenantId = tenantId, agentControl = control)
+        val convId = conversationIdProvider?.invoke()
+        val context = if (tenantId.isNotBlank() || convId != null || control != null) {
+            AgentTenantContext(
+                tenantId = tenantId,
+                conversationId = convId,
+                agentControl = control,
+            )
         } else {
             null
         }

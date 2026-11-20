@@ -34,6 +34,7 @@ import com.niki914.zafiro.app.ui.nav.StartupPage
 import com.niki914.zafiro.app.ui.nav.TakeoverRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.TextActionDetailPage
 import com.niki914.zafiro.app.ui.nav.ViewerPage
+import com.niki914.zafiro.app.ui.nav.VirtualDisplayPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.route.BuiltinToolGroupDetailRoute
 import com.niki914.zafiro.app.ui.route.ConfigurePageRoute
@@ -62,6 +63,7 @@ import com.niki914.zafiro.app.ui.route.StartupPageRoute
 import com.niki914.zafiro.app.ui.route.TakeoverRuleDetailRoute
 import com.niki914.zafiro.app.ui.route.TextActionDetailRoute
 import com.niki914.zafiro.app.ui.route.ViewerPageRoute
+import com.niki914.zafiro.app.ui.route.VirtualDisplayPageRoute
 
 @Composable
 fun ZafiroPageContent(
@@ -222,6 +224,11 @@ fun ZafiroPageContent(
         FloatingBallSettingsPage -> FloatingBallSettingsPageRoute()
 
         is ViewerPage -> ViewerPageRoute(
+            page = page,
+            onBack = onPop,
+        )
+
+        is VirtualDisplayPage -> VirtualDisplayPageRoute(
             page = page,
             onBack = onPop,
         )

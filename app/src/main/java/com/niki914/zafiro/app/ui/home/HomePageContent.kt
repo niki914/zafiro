@@ -26,7 +26,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import com.niki914.uikit.dialog.LocalHasActiveDialog
+import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.uikit.screen.ReportTitleBarCollapsed
 import com.niki914.uikit.scroll.rememberZafiroOverscrollController
 import com.niki914.uikit.infra.nav.pageViewModel
@@ -71,11 +73,13 @@ fun HomePageContent(
     onConversationSelectionConsumed: (String) -> Unit,
     onActiveConversationChanged: (String?) -> Unit,
     onOpenHistory: () -> Unit,
+    onOpenVirtualDisplay: (String) -> Unit = {},
     onOpenSettings: () -> Unit,
 ) {
     val viewModel = pageViewModel<HomeChatViewModel>()
     val latestViewModel by rememberUpdatedState(viewModel)
     val latestOnOpenHistory by rememberUpdatedState(onOpenHistory)
+    val latestOnOpenVirtualDisplay by rememberUpdatedState(onOpenVirtualDisplay)
     val latestOnOpenSettings by rememberUpdatedState(onOpenSettings)
     val latestOnConversationSelectionConsumed by rememberUpdatedState(
         onConversationSelectionConsumed
@@ -99,6 +103,9 @@ fun HomePageContent(
 
                 HomeChatEffect.EmptyInputAttempted -> ZafiroToast.show(R.string.ui_toast_empty_input)
                 HomeChatEffect.NoCompactableHistory -> ZafiroToast.show(R.string.ui_toast_no_compactable_history)
+                HomeChatEffect.VirtualDisplayRequiresConversation ->
+                    ZafiroToast.show(R.string.ui_virtual_display_requires_conversation)
+                is HomeChatEffect.OpenVirtualDisplayPage -> latestOnOpenVirtualDisplay(effect.conversationId)
             }
         }
     }
@@ -330,8 +337,10 @@ fun HomePageContent(
             pendingViewportAnchor = null
             latestViewModel.sendIntent(HomeChatIntent.NewConversation)
         },
+        onOpenVirtualDisplay = {
+            latestViewModel.sendIntent(HomeChatIntent.OpenVirtualDisplay)
+        },
         onOpenSettings = latestOnOpenSettings,
-        isGenerating = uiState.isGenerating,
         titleContent = titleContent,
     )
 
@@ -471,6 +480,30 @@ fun HomePageContent(
         alwaysShowDetailed = alwaysShowDetailedToolOutput,
         onToggleActionKey = { key, isExpanded ->
             viewModel.sendIntent(HomeChatIntent.ToggleActionKey(key, isExpanded))
+        },
+        virtualDisplayState = uiState.virtualDisplay,
+        onOpenVirtualDisplay = {
+            viewModel.sendIntent(HomeChatIntent.OpenVirtualDisplay)
+        },
+        onTerminateVirtualDisplay = {
+            viewModel.sendIntent(HomeChatIntent.RequestTerminateVirtualDisplay)
+        },
+    )
+
+    ZafiroConfirmationDialog(
+        visible = uiState.showTerminateVirtualDisplayDialog,
+        onDismissRequest = {
+            viewModel.sendIntent(HomeChatIntent.DismissTerminateVirtualDisplay)
+        },
+        title = stringResource(R.string.ui_virtual_display_terminate_title),
+        text = stringResource(R.string.ui_virtual_display_terminate_message),
+        negativeButtonText = stringResource(R.string.dialog_cancel),
+        positiveButtonText = stringResource(R.string.ui_virtual_display_card_terminate),
+        onNegativeClick = {
+            viewModel.sendIntent(HomeChatIntent.DismissTerminateVirtualDisplay)
+        },
+        onPositiveClick = {
+            viewModel.sendIntent(HomeChatIntent.ConfirmTerminateVirtualDisplay)
         },
     )
 

@@ -5,6 +5,7 @@ import com.niki914.zafiro.api.screen.OpenKind
 import com.niki914.zafiro.api.screen.OpenResult
 import com.niki914.zafiro.api.screen.ScreenInfo
 import com.niki914.zafiro.api.screen.Screens
+import com.niki914.zafiro.chat.agentic.currentAgentConversationId
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.TextResultBuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
@@ -32,10 +33,11 @@ class ScreensBuiltin : TextResultBuiltinTool() {
             )
         val operation = args.text("operation") ?: return invalidArguments("operation is required.")
         val screens = screenDirectory() ?: return missingService()
+        val callerConvId = currentAgentConversationId()
         return when (operation) {
-            "list" -> TextToolResult.success(screens.list().joinToString("\n") { it.encode() })
-            "open" -> open(screens, args.text("kind"))
-            "close" -> close(screens, args)
+            "list" -> TextToolResult.success(screens.list(callerConvId).joinToString("\n") { it.encode() })
+            "open" -> open(screens, args.text("kind"), callerConvId)
+            "close" -> close(screens, args, callerConvId)
             else -> TextToolResult.failure(
                 code = SCREEN_INVALID_OPERATION,
                 message = "Unknown operation '$operation'.",
@@ -43,13 +45,13 @@ class ScreensBuiltin : TextResultBuiltinTool() {
         }
     }
 
-    private suspend fun open(screens: Screens, kind: String?): TextToolResult {
+    private suspend fun open(screens: Screens, kind: String?, callerConversationId: String?): TextToolResult {
         val openKind = when (kind) {
             "virtual_display" -> OpenKind.VirtualDisplay
             "browser" -> OpenKind.Browser
             else -> return invalidArguments("kind must be virtual_display or browser.")
         }
-        return when (val opened = screens.open(openKind)) {
+        return when (val opened = screens.open(openKind, callerConversationId)) {
             is OpenResult.Opened -> TextToolResult.success(opened.info.encode())
             is OpenResult.Unsupported -> TextToolResult.failure(
                 code = SCREEN_UNSUPPORTED,
@@ -62,9 +64,9 @@ class ScreensBuiltin : TextResultBuiltinTool() {
         }
     }
 
-    private suspend fun close(screens: Screens, args: JsonObject): TextToolResult {
+    private suspend fun close(screens: Screens, args: JsonObject, callerConversationId: String?): TextToolResult {
         val id = args.screenId() ?: return invalidArguments("screen is required.")
-        return when (val closed = screens.close(id)) {
+        return when (val closed = screens.close(id, callerConversationId)) {
             CloseResult.Closed -> TextToolResult.success(id.value)
             is CloseResult.Rejected -> TextToolResult.failure(
                 code = closed.code,

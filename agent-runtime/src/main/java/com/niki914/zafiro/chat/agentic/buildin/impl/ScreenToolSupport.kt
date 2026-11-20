@@ -21,6 +21,7 @@ import kotlinx.serialization.json.contentOrNull
 
 internal const val SCREEN_SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
 internal const val SCREEN_UNKNOWN = "UNKNOWN_SCREEN"
+internal const val SCREEN_UNAVAILABLE_IN_SESSION = "SCREEN_UNAVAILABLE_IN_SESSION"
 internal const val SCREEN_UNSUPPORTED = "UNSUPPORTED_ON_SCREEN"
 internal const val SCREEN_INVALID_ARGUMENTS = "INVALID_ARGUMENTS"
 internal const val SCREEN_INVALID_JSON = "INVALID_ARGUMENTS_JSON"
@@ -93,11 +94,34 @@ internal fun unknownScreen(id: ScreenId): TextToolResult {
     )
 }
 
+internal fun screenUnavailableInSession(id: ScreenId): TextToolResult {
+    return TextToolResult.failure(
+        code = SCREEN_UNAVAILABLE_IN_SESSION,
+        message = "Screen '${id.value}' is unavailable in the current session. Call screens(operation='open', kind='virtual_display') to create a new virtual display.",
+    )
+}
+
+internal fun resolveScreenOrFailure(
+    screens: Screens,
+    id: ScreenId,
+    callerConversationId: String?,
+): Pair<Screen?, TextToolResult?> {
+    val accessible = screens.get(id, callerConversationId)
+    if (accessible != null) return accessible to null
+    val existsAnywhere = screens.get(id) != null
+    val failure = if (existsAnywhere) {
+        screenUnavailableInSession(id)
+    } else {
+        unknownScreen(id)
+    }
+    return null to failure
+}
+
 internal fun invalidArguments(message: String): TextToolResult {
     return TextToolResult.failure(code = SCREEN_INVALID_ARGUMENTS, message = message)
 }
 
-internal suspend fun Screens.require(id: ScreenId): Screen? = get(id)
+internal fun Screens.require(id: ScreenId): Screen? = get(id)
 
 internal fun actToText(result: ActResult): TextToolResult {
     return when (result) {

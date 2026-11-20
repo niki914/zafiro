@@ -2,6 +2,7 @@ package com.niki914.zafiro.chat.agentic.buildin.impl
 
 import com.niki914.zafiro.api.screen.PhoneScreenId
 import com.niki914.zafiro.api.screen.ShowTarget
+import com.niki914.zafiro.chat.agentic.currentAgentConversationId
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.TextResultBuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
@@ -38,7 +39,9 @@ class OpenBuiltin : TextResultBuiltinTool() {
                     ?: return invalidArguments(
                         "Provide exactly one of package_name or uri for kind='global'.",
                     )
-                val screen = screens.require(screenId) ?: return unknownScreen(screenId)
+                val callerConvId = currentAgentConversationId()
+                val (screen, failure) = resolveScreenOrFailure(screens, screenId, callerConvId)
+                if (failure != null || screen == null) return failure ?: unknownScreen(screenId)
                 showToText(screen.show(target))
             }
 

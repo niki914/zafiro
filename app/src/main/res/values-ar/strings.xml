@@ -44,6 +44,18 @@
     <!-- Home -->
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">محادثة جديدة</string>
+    <string name="ui_home_menu_virtual_display">شاشة افتراضية</string>
+    <string name="ui_virtual_display_recent_apps">المستخدمة مؤخراً</string>
+    <string name="ui_virtual_display_all_apps">جميع التطبيقات</string>
+    <string name="ui_virtual_display_create_failed">فشل إنشاء الشاشة الافتراضية. تحقق من الأذونات.</string>
+    <string name="ui_virtual_display_app_in_use_on_main">هذا التطبيق مفتوح حاليًا على الشاشة الرئيسية</string>
+    <string name="ui_virtual_display_app_launch_failed">فشل تشغيل التطبيق على الشاشة الافتراضية</string>
+    <string name="ui_virtual_display_pick_app">اختر تطبيقًا</string>
+    <string name="ui_virtual_display_launching_app">جارٍ تشغيل %1$s…</string>
+    <string name="ui_virtual_display_card_terminate">إنهاء</string>
+    <string name="ui_virtual_display_terminate_title">إنهاء الشاشة الافتراضية؟</string>
+    <string name="ui_virtual_display_terminate_message">سيؤدي هذا إلى إغلاق الشاشة الافتراضية المرتبطة بهذه المحادثة وإيقاف التطبيقات فيها.</string>
+    <string name="ui_virtual_display_requires_conversation">يرجى بدء محادثة أولاً</string>
     <string name="ui_home_input_placeholder">اكتب رسالة…</string>
     <string name="ui_home_conversation_compacted">تم ضغط المحادثة</string>
     <string name="ui_home_conversation_compacting">جارٍ الضغط</string>
@@ -260,6 +272,7 @@
     <string name="ui_settings_env_context_key_date">التاريخ</string>
     <string name="ui_settings_env_context_key_time">الوقت</string>
     <string name="ui_settings_env_context_key_device">حالة الجهاز</string>
+    <string name="ui_settings_env_context_key_virtual_display">شاشة افتراضية</string>
     <string name="ui_settings_env_context_group_custom">متغيرات مخصصة</string>
     <string name="ui_settings_env_context_empty_custom">لا توجد متغيرات مخصصة. اضغط «+» في الأعلى للإضافة.</string>
     <string name="ui_settings_env_context_variable_title_create">إضافة متغير</string>
@@ -273,7 +286,7 @@
     <string name="ui_settings_env_context_delete_dialog_title">حذف المتغير</string>
     <string name="ui_settings_env_context_delete_dialog_text">هل تريد بالتأكيد حذف المتغير «%1$s»؟</string>
     <string name="ui_settings_env_context_error_key_required">لا يمكن أن يكون الاسم فارغًا</string>
-    <string name="ui_settings_env_context_error_key_reserved">لا يمكن استخدام الأسماء المحجوزة: date, time, device</string>
+    <string name="ui_settings_env_context_error_key_reserved">لا يمكن استخدام الأسماء المحجوزة: date, time, device, virtual_display</string>
     <string name="ui_settings_env_context_error_key_duplicate">هذا الاسم مستخدم بالفعل، يرجى اختيار اسم آخر</string>
     <string name="ui_settings_env_context_error_key_invalid_format">صيغة الاسم غير صالحة. يُسمح فقط بالأحرف والأرقام والشرطات والشرطات السفلية</string>
     <string name="ui_settings_env_context_error_value_required">لا يمكن أن يكون المحتوى فارغًا</string>

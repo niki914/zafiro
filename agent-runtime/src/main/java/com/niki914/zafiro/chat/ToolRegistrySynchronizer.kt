@@ -18,6 +18,7 @@ import com.niki914.zafiro.chat.agentic.LocalToolExecutor
  */
 internal class ToolRegistrySynchronizer(
     private val tenantId: String = "",
+    private val conversationIdProvider: (() -> String?)? = null,
     private val agentControlProvider: (() -> AgentControl?)? = null,
     private val currentTools: () -> ResolvedTools?,
 ) {
@@ -34,6 +35,7 @@ internal class ToolRegistrySynchronizer(
         inlineCustomPyTools = inlineCustomPyTools,
         onCustomPyToolWritten = { tool -> registerCustomPyToolNow(tool) },
         tenantId = tenantId,
+        conversationIdProvider = conversationIdProvider,
         agentControlProvider = agentControlProvider,
     )
 

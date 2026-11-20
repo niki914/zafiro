@@ -9,6 +9,7 @@ import android.media.ImageReader
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.SystemClock
+import androidx.core.graphics.createBitmap
 import com.niki914.logging.Logger
 import com.niki914.shizuku.display.VirtualDisplayController
 import com.niki914.zafiro.api.util.runCatchingCancellable
@@ -34,6 +35,9 @@ internal class VirtualDisplayFrames private constructor(
     @Volatile
     private var highQuality: Boolean = false
 
+    @Volatile
+    private var paused: Boolean = false
+
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val previews = MutableStateFlow<Bitmap?>(null)
     val frames: StateFlow<Bitmap?> = previews.asStateFlow()
@@ -48,6 +52,17 @@ internal class VirtualDisplayFrames private constructor(
     fun setHighQuality(enabled: Boolean) {
         if (highQuality != enabled) {
             highQuality = enabled
+        }
+    }
+
+    fun setPaused(isPaused: Boolean) {
+        if (released) return
+        handler.post {
+            if (released || paused == isPaused) return@post
+            paused = isPaused
+            if (!isPaused) {
+                scheduleNext()
+            }
         }
     }
 
@@ -67,7 +82,7 @@ internal class VirtualDisplayFrames private constructor(
     }
 
     private fun scheduleNext() {
-        if (pending || released) return
+        if (pending || released || paused) return
         pending = true
         val interval = if (highQuality) FRAME_INTERVAL_HIGH_QUALITY_MS else FRAME_INTERVAL_LOW_POWER_MS
         val wait = lastProcessedAt + interval - SystemClock.uptimeMillis()
@@ -80,7 +95,7 @@ internal class VirtualDisplayFrames private constructor(
     }
 
     private fun drawLatest() {
-        if (released) return
+        if (released || paused) return
         val image = runCatchingCancellable {
             reader.acquireLatestImage()
         }.onFailure { error ->
@@ -92,7 +107,7 @@ internal class VirtualDisplayFrames private constructor(
             val strideWidth = plane.rowStride / plane.pixelStride
             var bitmap = fullFrame
             if (bitmap == null || bitmap.width != strideWidth || bitmap.height != height) {
-                bitmap = Bitmap.createBitmap(strideWidth, height, Bitmap.Config.ARGB_8888)
+                bitmap = createBitmap(strideWidth, height)
                 fullFrame = bitmap
             }
             val buffer = plane.buffer
@@ -106,13 +121,12 @@ internal class VirtualDisplayFrames private constructor(
                 bitmap.copyPixelsFromBuffer(tempBuffer)
             }
             val targetMaxWidth = if (highQuality) width else minOf(PREVIEW_MINI_MAX_WIDTH, width)
-            val previewW = targetMaxWidth
-            val previewH = maxOf(1, height * previewW / width)
-            val preview = Bitmap.createBitmap(previewW, previewH, Bitmap.Config.ARGB_8888)
+            val previewH = maxOf(1, height * targetMaxWidth / width)
+            val preview = createBitmap(targetMaxWidth, previewH)
             Canvas(preview).drawBitmap(
                 bitmap,
                 Rect(0, 0, width, height),
-                Rect(0, 0, previewW, previewH),
+                Rect(0, 0, targetMaxWidth, previewH),
                 paint,
             )
             previews.value = preview

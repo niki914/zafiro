@@ -29,6 +29,7 @@ private const val MASTER_TOGGLE_ROW_ID = "env_context.master_toggle"
 private const val BUILTIN_DATE_ROW_ID = "env_context.builtin.date"
 private const val BUILTIN_TIME_ROW_ID = "env_context.builtin.time"
 private const val BUILTIN_DEVICE_ROW_ID = "env_context.builtin.device"
+private const val BUILTIN_VIRTUAL_DISPLAY_ROW_ID = "env_context.builtin.virtual_display"
 private const val CUSTOM_VAR_ROW_ID_PREFIX = "env_context.var."
 
 @Composable
@@ -84,6 +85,7 @@ private fun EnvContextSettingsContentBody(
                         BUILTIN_DATE_ROW_ID -> onKeyToggle(RuntimeEnvContextConfig.KEY_DATE, action.checked)
                         BUILTIN_TIME_ROW_ID -> onKeyToggle(RuntimeEnvContextConfig.KEY_TIME, action.checked)
                         BUILTIN_DEVICE_ROW_ID -> onKeyToggle(RuntimeEnvContextConfig.KEY_DEVICE, action.checked)
+                        BUILTIN_VIRTUAL_DISPLAY_ROW_ID -> onKeyToggle(RuntimeEnvContextConfig.KEY_VIRTUAL_DISPLAY, action.checked)
                         else -> {
                             if (action.id.startsWith(CUSTOM_VAR_ROW_ID_PREFIX)) {
                                 val key = action.id.removePrefix(CUSTOM_VAR_ROW_ID_PREFIX)
@@ -146,6 +148,13 @@ private fun envContextSettingsSpec(
                 title = stringResource(R.string.ui_settings_env_context_key_device),
                 summary = null,
                 checked = uiState.keys.contains(RuntimeEnvContextConfig.KEY_DEVICE),
+                enabled = uiState.enabled && !uiState.isLoading,
+            ),
+            SettingsRowSpec.Toggle(
+                id = BUILTIN_VIRTUAL_DISPLAY_ROW_ID,
+                title = stringResource(R.string.ui_settings_env_context_key_virtual_display),
+                summary = null,
+                checked = uiState.keys.contains(RuntimeEnvContextConfig.KEY_VIRTUAL_DISPLAY),
                 enabled = uiState.enabled && !uiState.isLoading,
             ),
         ),

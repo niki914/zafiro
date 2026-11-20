@@ -120,6 +120,12 @@ class AppInfoCache(
         }
     }
 
+    suspend fun listAll(): List<AppInfo> {
+        ensureInitialized()
+        return appsByPackageName.values
+            .sortedWith(compareBy<AppInfo> { it.isSystemApp }.thenBy { it.appName.lowercase() })
+    }
+
     /** 补上第一次扫描。已经加载过则返回。 */
     internal suspend fun warmUp() {
         ensureInitialized()

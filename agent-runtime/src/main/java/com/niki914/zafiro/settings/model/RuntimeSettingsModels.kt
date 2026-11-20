@@ -47,7 +47,7 @@ data class RuntimeLlmConfig(
 )
 
 data class RuntimeEnvContextConfig(
-    val enabled: Boolean = false,
+    val enabled: Boolean = true,
     val keys: Set<String> = DEFAULT_KEYS,
     val variables: Map<String, String> = emptyMap(),
 ) {
@@ -55,7 +55,8 @@ data class RuntimeEnvContextConfig(
         const val KEY_DATE = "date"
         const val KEY_TIME = "time"
         const val KEY_DEVICE = "device"
-        val DEFAULT_KEYS = setOf(KEY_DATE, KEY_TIME, KEY_DEVICE)
+        const val KEY_VIRTUAL_DISPLAY = "virtual_display"
+        val DEFAULT_KEYS = setOf(KEY_DATE, KEY_TIME, KEY_DEVICE, KEY_VIRTUAL_DISPLAY)
     }
 }
 
