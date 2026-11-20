@@ -26,8 +26,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import com.niki914.uikit.dialog.LocalHasActiveDialog
+import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.uikit.screen.ReportTitleBarCollapsed
+import com.niki914.zafiro.app.screen.AppScreens
 import com.niki914.uikit.scroll.rememberZafiroOverscrollController
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.api.model.ApprovalDecision
@@ -71,11 +74,13 @@ fun HomePageContent(
     onConversationSelectionConsumed: (String) -> Unit,
     onActiveConversationChanged: (String?) -> Unit,
     onOpenHistory: () -> Unit,
+    onOpenVirtualDisplay: (String) -> Unit = {},
     onOpenSettings: () -> Unit,
 ) {
     val viewModel = pageViewModel<HomeChatViewModel>()
     val latestViewModel by rememberUpdatedState(viewModel)
     val latestOnOpenHistory by rememberUpdatedState(onOpenHistory)
+    val latestOnOpenVirtualDisplay by rememberUpdatedState(onOpenVirtualDisplay)
     val latestOnOpenSettings by rememberUpdatedState(onOpenSettings)
     val latestOnConversationSelectionConsumed by rememberUpdatedState(
         onConversationSelectionConsumed
@@ -83,6 +88,7 @@ fun HomePageContent(
     val latestOnActiveConversationChanged by rememberUpdatedState(onActiveConversationChanged)
     val uiState by viewModel.uiStateFlow.collectAsState()
     val latestUiState by rememberUpdatedState(uiState)
+    val virtualDisplayState by AppScreens.foregroundState.collectAsState()
 
     // 附件失败提示：一次性 effect（不占状态）。
     // 三条文案按原因分（D22）：解析不出路径 / 没拿到全局文件访问权 / 读不到文件。
@@ -99,6 +105,9 @@ fun HomePageContent(
 
                 HomeChatEffect.EmptyInputAttempted -> ZafiroToast.show(R.string.ui_toast_empty_input)
                 HomeChatEffect.NoCompactableHistory -> ZafiroToast.show(R.string.ui_toast_no_compactable_history)
+                HomeChatEffect.VirtualDisplayRequiresConversation ->
+                    ZafiroToast.show(R.string.ui_virtual_display_requires_conversation)
+                is HomeChatEffect.OpenVirtualDisplayPage -> latestOnOpenVirtualDisplay(effect.conversationId)
             }
         }
     }
@@ -330,6 +339,9 @@ fun HomePageContent(
             pendingViewportAnchor = null
             latestViewModel.sendIntent(HomeChatIntent.NewConversation)
         },
+        onOpenVirtualDisplay = {
+            latestViewModel.sendIntent(HomeChatIntent.OpenVirtualDisplay)
+        },
         onOpenSettings = latestOnOpenSettings,
         isGenerating = uiState.isGenerating,
         titleContent = titleContent,
@@ -471,6 +483,30 @@ fun HomePageContent(
         alwaysShowDetailed = alwaysShowDetailedToolOutput,
         onToggleActionKey = { key, isExpanded ->
             viewModel.sendIntent(HomeChatIntent.ToggleActionKey(key, isExpanded))
+        },
+        virtualDisplayState = virtualDisplayState,
+        onOpenVirtualDisplay = {
+            viewModel.sendIntent(HomeChatIntent.OpenVirtualDisplay)
+        },
+        onTerminateVirtualDisplay = {
+            viewModel.sendIntent(HomeChatIntent.RequestTerminateVirtualDisplay)
+        },
+    )
+
+    ZafiroConfirmationDialog(
+        visible = uiState.showTerminateVirtualDisplayDialog,
+        onDismissRequest = {
+            viewModel.sendIntent(HomeChatIntent.DismissTerminateVirtualDisplay)
+        },
+        title = stringResource(R.string.ui_virtual_display_terminate_title),
+        text = stringResource(R.string.ui_virtual_display_terminate_message),
+        negativeButtonText = stringResource(R.string.dialog_cancel),
+        positiveButtonText = stringResource(R.string.ui_virtual_display_card_terminate),
+        onNegativeClick = {
+            viewModel.sendIntent(HomeChatIntent.DismissTerminateVirtualDisplay)
+        },
+        onPositiveClick = {
+            viewModel.sendIntent(HomeChatIntent.ConfirmTerminateVirtualDisplay)
         },
     )
 

@@ -44,6 +44,20 @@
     <!-- Home -->
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">新对话</string>
+    <string name="ui_home_menu_virtual_display">虚拟屏</string>
+    <string name="ui_virtual_display_recent_apps">最近使用</string>
+    <string name="ui_virtual_display_all_apps">全部应用</string>
+    <string name="ui_virtual_display_create_blank_title">创建空白虚拟屏</string>
+    <string name="ui_virtual_display_create_blank_subtitle">绑定当前对话，稍后可在悬浮窗中选择应用</string>
+    <string name="ui_virtual_display_create_failed">虚拟屏创建失败，请检查悬浮窗、无障碍和 Shizuku 权限</string>
+    <string name="ui_virtual_display_waiting_for_app">等待应用启动</string>
+    <string name="ui_virtual_display_pick_app">选择应用</string>
+    <string name="ui_virtual_display_launching_app">正在启动 %1$s…</string>
+    <string name="ui_virtual_display_card_open">打开</string>
+    <string name="ui_virtual_display_card_terminate">终止</string>
+    <string name="ui_virtual_display_terminate_title">终止虚拟屏？</string>
+    <string name="ui_virtual_display_terminate_message">将立即关闭当前对话绑定的虚拟屏及其运行中的应用。</string>
+    <string name="ui_virtual_display_requires_conversation">请先创建会话</string>
     <string name="ui_home_input_placeholder">输入消息…</string>
     <string name="ui_home_conversation_compacted">对话已压缩</string>
     <string name="ui_home_conversation_compacting">正在压缩</string>

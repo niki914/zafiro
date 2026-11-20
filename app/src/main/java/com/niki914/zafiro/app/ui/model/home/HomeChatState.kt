@@ -167,6 +167,7 @@ data class HomeChatUiState(
      */
     val contextProgress: Float? = null,
     val slashSuggestions: List<SlashSuggestion> = emptyList(),
+    val showTerminateVirtualDisplayDialog: Boolean = false,
 ) {
     val displayConfig: SavedConfigSummary?
         get() {
@@ -193,6 +194,7 @@ fun HomeChatUiState.withClearedTransient() = copy(
     expandedActionSource = null,
     activeThinkingKey = null,
     isConfigMenuVisible = false,
+    showTerminateVirtualDisplayDialog = false,
 )
 
 sealed interface HomeChatIntent {
@@ -241,6 +243,10 @@ sealed interface HomeChatIntent {
     data class SelectModel(val configId: String, val modelId: String) : HomeChatIntent
     data class UpdateThinkingLevel(val configId: String, val wireValue: String) : HomeChatIntent
     data object RefreshConfigs : HomeChatIntent
+    data object OpenVirtualDisplay : HomeChatIntent
+    data object RequestTerminateVirtualDisplay : HomeChatIntent
+    data object DismissTerminateVirtualDisplay : HomeChatIntent
+    data object ConfirmTerminateVirtualDisplay : HomeChatIntent
 }
 
 /**
@@ -251,6 +257,8 @@ sealed interface HomeChatEffect {
     data class FileAttachFailed(val reason: FileAttachReason) : HomeChatEffect
     data object EmptyInputAttempted : HomeChatEffect
     data object NoCompactableHistory : HomeChatEffect
+    data object VirtualDisplayRequiresConversation : HomeChatEffect
+    data class OpenVirtualDisplayPage(val conversationId: String) : HomeChatEffect
 }
 
 /**

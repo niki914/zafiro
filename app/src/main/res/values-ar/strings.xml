@@ -44,6 +44,20 @@
     <!-- Home -->
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">محادثة جديدة</string>
+    <string name="ui_home_menu_virtual_display">شاشة افتراضية</string>
+    <string name="ui_virtual_display_recent_apps">المستخدمة مؤخراً</string>
+    <string name="ui_virtual_display_all_apps">جميع التطبيقات</string>
+    <string name="ui_virtual_display_create_blank_title">إنشاء شاشة افتراضية فارغة</string>
+    <string name="ui_virtual_display_create_blank_subtitle">ربطها بهذه المحادثة واختيار تطبيق لاحقاً</string>
+    <string name="ui_virtual_display_create_failed">فشل إنشاء الشاشة الافتراضية. تحقق من الأذونات.</string>
+    <string name="ui_virtual_display_waiting_for_app">بانتظار تشغيل التطبيق</string>
+    <string name="ui_virtual_display_pick_app">اختر تطبيقًا</string>
+    <string name="ui_virtual_display_launching_app">جارٍ تشغيل %1$s…</string>
+    <string name="ui_virtual_display_card_open">فتح</string>
+    <string name="ui_virtual_display_card_terminate">إنهاء</string>
+    <string name="ui_virtual_display_terminate_title">إنهاء الشاشة الافتراضية؟</string>
+    <string name="ui_virtual_display_terminate_message">سيؤدي هذا إلى إغلاق الشاشة الافتراضية المرتبطة بهذه المحادثة وإيقاف التطبيقات فيها.</string>
+    <string name="ui_virtual_display_requires_conversation">يرجى بدء محادثة أولاً</string>
     <string name="ui_home_input_placeholder">اكتب رسالة…</string>
     <string name="ui_home_conversation_compacted">تم ضغط المحادثة</string>
     <string name="ui_home_conversation_compacting">جارٍ الضغط</string>

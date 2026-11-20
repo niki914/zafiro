@@ -9,6 +9,7 @@ import android.media.ImageReader
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.SystemClock
+import androidx.core.graphics.createBitmap
 import com.niki914.logging.Logger
 import com.niki914.shizuku.display.VirtualDisplayController
 import com.niki914.zafiro.api.util.runCatchingCancellable
@@ -17,7 +18,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.nio.Buffer
 import java.nio.ByteBuffer
-import androidx.core.graphics.createBitmap
 
 /**
  * 应用进程里的画面缓冲。模型截图不读这里，悬浮卡片读这里。
@@ -42,8 +42,12 @@ internal class VirtualDisplayFrames private constructor(
     private val previews = MutableStateFlow<Bitmap?>(null)
     val frames: StateFlow<Bitmap?> = previews.asStateFlow()
 
+    private val backdrops = MutableStateFlow<Bitmap?>(null)
+    val backdropFrames: StateFlow<Bitmap?> = backdrops.asStateFlow()
+
     private var fullFrame: Bitmap? = null
     private var lastProcessedAt = 0L
+    private var lastBackdropAt = 0L
     private var pending = false
 
     @Volatile
@@ -79,6 +83,7 @@ internal class VirtualDisplayFrames private constructor(
         thread.quitSafely()
         fullFrame = null
         previews.value = null
+        backdrops.value = null
     }
 
     private fun scheduleNext() {
@@ -130,6 +135,21 @@ internal class VirtualDisplayFrames private constructor(
                 paint,
             )
             previews.value = preview
+
+            val now = SystemClock.uptimeMillis()
+            if (backdrops.value == null || now - lastBackdropAt >= BACKDROP_INTERVAL_MS) {
+                lastBackdropAt = now
+                val backdropW = minOf(BACKDROP_MAX_WIDTH, width)
+                val backdropH = maxOf(1, height * backdropW / width)
+                val backdrop = createBitmap(backdropW, backdropH)
+                Canvas(backdrop).drawBitmap(
+                    bitmap,
+                    Rect(0, 0, width, height),
+                    Rect(0, 0, backdropW, backdropH),
+                    paint,
+                )
+                backdrops.value = backdrop
+            }
         } catch (error: Exception) { // githooks:ignore bare-catch 保护渲染线程不被底层图形异常击垮
             Logger.w(TAG, "drawLatest failed", error)
         } finally {
@@ -142,6 +162,8 @@ internal class VirtualDisplayFrames private constructor(
         private const val FRAME_INTERVAL_LOW_POWER_MS = 80L
         private const val FRAME_INTERVAL_HIGH_QUALITY_MS = 16L
         private const val PREVIEW_MINI_MAX_WIDTH = 360
+        private const val BACKDROP_MAX_WIDTH = 48
+        private const val BACKDROP_INTERVAL_MS = 120L
 
         suspend fun open(
             controller: VirtualDisplayController,

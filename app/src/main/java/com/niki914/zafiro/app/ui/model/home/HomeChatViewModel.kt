@@ -271,7 +271,42 @@ class HomeChatViewModel internal constructor(
                 refreshSavedConfigs()
                 refreshSlashSuggestions()
             }
+
+            HomeChatIntent.OpenVirtualDisplay -> handleOpenVirtualDisplay()
+
+            HomeChatIntent.RequestTerminateVirtualDisplay -> {
+                updateState { copy(showTerminateVirtualDisplayDialog = true) }
+            }
+
+            HomeChatIntent.DismissTerminateVirtualDisplay -> {
+                updateState { copy(showTerminateVirtualDisplayDialog = false) }
+            }
+
+            HomeChatIntent.ConfirmTerminateVirtualDisplay -> confirmTerminateVirtualDisplay()
         }
+    }
+
+    private suspend fun handleOpenVirtualDisplay() {
+        val conversationId = currentState.currentConversationId?.takeIf { it.isNotBlank() }
+        if (conversationId == null) {
+            sendEffect(HomeChatEffect.VirtualDisplayRequiresConversation)
+            return
+        }
+        XRepo.setPhoneUseConsentGranted(true)
+        val screens = findService<Screens>()
+        if (screens != null && screens.hasVirtualScreen(conversationId)) {
+            if (!screens.isOverlayShowing(conversationId)) {
+                screens.reopenOverlay(conversationId)
+            }
+            return
+        }
+        sendEffect(HomeChatEffect.OpenVirtualDisplayPage(conversationId))
+    }
+
+    private suspend fun confirmTerminateVirtualDisplay() {
+        updateState { copy(showTerminateVirtualDisplayDialog = false) }
+        val conversationId = currentState.currentConversationId?.takeIf { it.isNotBlank() } ?: return
+        findService<Screens>()?.closeForConversation(conversationId)
     }
 
     private suspend fun refreshSlashSuggestions() {
@@ -654,6 +689,19 @@ class HomeChatViewModel internal constructor(
             .onFailure { Logger.w(LOG_TAG, "camera temp file delete failed path=$path") }
     }
 
+    private fun clearInputDraft() {
+        draftDebouncer.cancel()
+        agent.updateDraft { it.copy(text = "") }
+        viewModelScope.launch {
+            runCatchingCancellable {
+                conversations.setDraftText("")
+            }.onFailure { t ->
+                Logger.w(LOG_TAG, "clear draft failed: ${t.message}")
+            }
+        }
+        updateState { copy(input = "") }
+    }
+
     private suspend fun sendCurrentInput() {
         val trimmedInput = currentState.input.trim()
         val hasAttachments =
@@ -666,7 +714,7 @@ class HomeChatViewModel internal constructor(
         if (!hasAttachments) {
             when (BuiltinSlashCommand.find(trimmedInput)) {
                 BuiltinSlashCommand.NewSession -> {
-                    updateState { copy(input = "") }
+                    clearInputDraft()
                     startNewConversation()
                     return
                 }
@@ -679,6 +727,11 @@ class HomeChatViewModel internal constructor(
                         return
                     }
                     // 透传给 agent.stream()，由 AgentImpl 拦截执行强制压缩
+                }
+                BuiltinSlashCommand.VirtualScreen -> {
+                    clearInputDraft()
+                    handleOpenVirtualDisplay()
+                    return
                 }
                 null -> { /* 普通消息，继续正常发送 */ }
             }
@@ -697,18 +750,10 @@ class HomeChatViewModel internal constructor(
             }
             return
         }
-        draftDebouncer.cancel()
-        viewModelScope.launch {
-            runCatchingCancellable {
-                conversations.setDraftText("")
-            }.onFailure { t ->
-                Logger.w(LOG_TAG, "clear draft failed: ${t.message}")
-            }
-        }
+        clearInputDraft()
         // 输入框以本类为准：发起即清空，不从 draft 读回
         updateState {
             copy(
-                input = "",
                 pendingImages = emptyList(),
                 pendingFiles = emptyList(),
                 activeThinkingKey = null,
@@ -748,6 +793,7 @@ class HomeChatViewModel internal constructor(
                 input = currentInput,
                 savedConfigs = currentState.savedConfigs,
                 globalActiveConfigId = currentState.globalActiveConfigId,
+                slashSuggestions = currentState.slashSuggestions,
                 boundConfigId = null,
                 isLoadingConversation = true,
             )
@@ -808,7 +854,14 @@ class HomeChatViewModel internal constructor(
                     t,
                 )
                 tryIgnore { conversations.setLastOpenedConversationId("") }
-                updateState { HomeChatUiState(input = currentState.input).withClearedTransient() }
+                updateState {
+                    HomeChatUiState(
+                        input = currentState.input,
+                        savedConfigs = currentState.savedConfigs,
+                        globalActiveConfigId = currentState.globalActiveConfigId,
+                        slashSuggestions = currentState.slashSuggestions,
+                    ).withClearedTransient()
+                }
             }
         }
     }

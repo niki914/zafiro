@@ -44,6 +44,20 @@
     <!-- Home -->
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">گفتگوی تازه</string>
+    <string name="ui_home_menu_virtual_display">نمایشگر مجازی</string>
+    <string name="ui_virtual_display_recent_apps">اخیراً استفاده‌شده</string>
+    <string name="ui_virtual_display_all_apps">همه برنامه‌ها</string>
+    <string name="ui_virtual_display_create_blank_title">ایجاد نمایشگر مجازی خالی</string>
+    <string name="ui_virtual_display_create_blank_subtitle">اتصال به این گفتگو و انتخاب برنامه بعداً</string>
+    <string name="ui_virtual_display_create_failed">ایجاد نمایشگر مجازی ناموفق بود. مجوزها را بررسی کنید.</string>
+    <string name="ui_virtual_display_waiting_for_app">در انتظار اجرای برنامه</string>
+    <string name="ui_virtual_display_pick_app">انتخاب برنامه</string>
+    <string name="ui_virtual_display_launching_app">در حال اجرای %1$s…</string>
+    <string name="ui_virtual_display_card_open">باز کردن</string>
+    <string name="ui_virtual_display_card_terminate">پایان دادن</string>
+    <string name="ui_virtual_display_terminate_title">پایان دادن به نمایشگر مجازی؟</string>
+    <string name="ui_virtual_display_terminate_message">نمایشگر مجازی متصل به این گفتگو و برنامه‌های در حال اجرا بسته می‌شوند.</string>
+    <string name="ui_virtual_display_requires_conversation">لطفاً ابتدا یک گفتگو شروع کنید</string>
     <string name="ui_home_input_placeholder">پیام بنویسید…</string>
     <string name="ui_home_conversation_compacted">گفتگو فشرده شد</string>
     <string name="ui_home_conversation_compacting">در حال فشرده‌سازی</string>

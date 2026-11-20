@@ -39,6 +39,7 @@ fun ZafiroButton(
                 enabled = enabled,
                 containerColor = containerColor,
                 contentColor = contentColor,
+                buttonHeight = buttonHeight,
                 leadingIcon = leadingIcon,
             )
         }

@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -51,6 +52,7 @@ import com.niki914.zafiro.api.util.tryIgnore
 import com.niki914.zafiro.app.conversation.TurnBranchState
 import com.niki914.zafiro.app.ui.chat.composable.attachment.HomeChatAttachmentRow
 import com.niki914.zafiro.app.ui.chat.composable.bubble.UserBubblePosition
+import com.niki914.zafiro.app.ui.chat.composable.spacing.AssistantToActionSpacing
 import com.niki914.zafiro.app.ui.chat.composable.spacing.ContinuousUserBubbleSpacing
 import com.niki914.zafiro.app.ui.chat.composable.spacing.TurnSeparatorSpacing
 import com.niki914.zafiro.app.ui.chat.composable.turn.HomeChatTurnItem
@@ -73,6 +75,7 @@ import com.niki914.zafiro.app.ui.home.composer.suggestion.isStandalone
 import com.niki914.zafiro.app.ui.model.home.ActionSource
 import com.niki914.zafiro.app.ui.model.home.HomeChatFile
 import com.niki914.zafiro.app.ui.model.home.HomeChatImage
+import com.niki914.zafiro.app.screen.ForegroundVirtualDisplayState
 import com.niki914.zafiro.app.ui.model.home.HomeChatUiState
 import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
 import kotlinx.coroutines.launch
@@ -119,6 +122,9 @@ internal fun HomePageContentBody(
     onSwitchTurnBranch: (Long, Int) -> Unit = { _, _ -> },
     alwaysShowDetailed: Boolean = false,
     onToggleActionKey: (key: String, isExpanded: Boolean) -> Unit = { _, _ -> },
+    virtualDisplayState: ForegroundVirtualDisplayState? = null,
+    onOpenVirtualDisplay: () -> Unit = {},
+    onTerminateVirtualDisplay: () -> Unit = {},
 ) {
     // 底部避让总高：composer 底距 + 实测高度 + 统一视觉间距。列表贴底留白与箭头
     // 位置同源；键盘关闭时（composerBottomPadding == composerGap）即为
@@ -277,7 +283,7 @@ internal fun HomePageContentBody(
                                     HomeChatTurnItem(
                                         turn = turn,
                                         userBubblePosition = position,
-                                        isLastTurn = index == uiState.turns.lastIndex,
+                                        isLastTurn = isLastTurn,
                                         actionsDisplay = actionsDisplay,
                                         userGroupTailTurnId = tailTurn.id,
                                         userGroupTappable = tailTurn.blocks.isNotEmpty() || tailIndex == uiState.turns.lastIndex,
@@ -299,6 +305,18 @@ internal fun HomePageContentBody(
                                         onToggleAction = onToggleActionKey,
                                         safeZoneMinHeight = safeZoneMinHeight,
                                         userMessageMaxHeight = userMessageMaxHeight,
+                                        footerContent = if (isLastTurn && virtualDisplayState != null) {
+                                            {
+                                                AssistantToActionSpacing()
+                                                HomeVirtualDisplayCard(
+                                                    state = virtualDisplayState,
+                                                    onOpen = onOpenVirtualDisplay,
+                                                    onTerminate = onTerminateVirtualDisplay,
+                                                )
+                                            }
+                                        } else {
+                                            null
+                                        },
                                         modifier = Modifier.fillMaxWidth(),
                                     )
                                 }

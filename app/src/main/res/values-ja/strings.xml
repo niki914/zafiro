@@ -44,6 +44,20 @@
     <!-- Home -->
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">新しい会話</string>
+    <string name="ui_home_menu_virtual_display">仮想ディスプレイ</string>
+    <string name="ui_virtual_display_recent_apps">最近使用したアプリ</string>
+    <string name="ui_virtual_display_all_apps">すべてのアプリ</string>
+    <string name="ui_virtual_display_create_blank_title">空の仮想ディスプレイを作成</string>
+    <string name="ui_virtual_display_create_blank_subtitle">現在の会話に紐付け、後でアプリを選択します</string>
+    <string name="ui_virtual_display_create_failed">仮想ディスプレイの作成に失敗しました。権限を確認してください</string>
+    <string name="ui_virtual_display_waiting_for_app">アプリの起動を待機中</string>
+    <string name="ui_virtual_display_pick_app">アプリを選択</string>
+    <string name="ui_virtual_display_launching_app">%1$s を起動中…</string>
+    <string name="ui_virtual_display_card_open">開く</string>
+    <string name="ui_virtual_display_card_terminate">終了</string>
+    <string name="ui_virtual_display_terminate_title">仮想ディスプレイを終了しますか？</string>
+    <string name="ui_virtual_display_terminate_message">この会話に紐付いた仮想ディスプレイと実行中のアプリを終了します。</string>
+    <string name="ui_virtual_display_requires_conversation">先に会話を開始してください</string>
     <string name="ui_home_input_placeholder">メッセージを入力…</string>
     <string name="ui_home_conversation_compacted">会話が圧縮されました</string>
     <string name="ui_home_conversation_compacting">圧縮中</string>

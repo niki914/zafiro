@@ -44,6 +44,20 @@
     <!-- Home -->
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">Nueva conversación</string>
+    <string name="ui_home_menu_virtual_display">Pantalla virtual</string>
+    <string name="ui_virtual_display_recent_apps">Usadas recientemente</string>
+    <string name="ui_virtual_display_all_apps">Todas las apps</string>
+    <string name="ui_virtual_display_create_blank_title">Crear pantalla virtual vacía</string>
+    <string name="ui_virtual_display_create_blank_subtitle">Vincular a esta conversación y elegir una app después</string>
+    <string name="ui_virtual_display_create_failed">No se pudo crear la pantalla virtual. Revisa los permisos.</string>
+    <string name="ui_virtual_display_waiting_for_app">Esperando a que se inicie la app</string>
+    <string name="ui_virtual_display_pick_app">Elegir una app</string>
+    <string name="ui_virtual_display_launching_app">Iniciando %1$s…</string>
+    <string name="ui_virtual_display_card_open">Abrir</string>
+    <string name="ui_virtual_display_card_terminate">Finalizar</string>
+    <string name="ui_virtual_display_terminate_title">¿Finalizar pantalla virtual?</string>
+    <string name="ui_virtual_display_terminate_message">Esto cerrará la pantalla virtual vinculada a esta conversación y detendrá las apps en ejecución.</string>
+    <string name="ui_virtual_display_requires_conversation">Inicia una conversación primero</string>
     <string name="ui_home_input_placeholder">Escriba un mensaje…</string>
     <string name="ui_home_conversation_compacted">Conversación compactada</string>
     <string name="ui_home_conversation_compacting">Compactando</string>

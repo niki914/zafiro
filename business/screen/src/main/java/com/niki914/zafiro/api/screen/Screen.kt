@@ -43,9 +43,20 @@ interface Screens {
 
     suspend fun close(id: ScreenId, callerConversationId: String? = null): CloseResult
 
+    suspend fun closeForConversation(conversationId: String): CloseResult =
+        CloseResult.Rejected("UNKNOWN_SCREEN")
+
+    fun launchApp(id: ScreenId, packageName: String) {}
+
     fun bindForegroundConversation(conversationId: String?) {}
 
     fun onConversationDestroyed(conversationId: String) {}
+
+    fun hasVirtualScreen(conversationId: String?): Boolean = false
+
+    fun isOverlayShowing(conversationId: String?): Boolean = false
+
+    fun reopenOverlay(conversationId: String?): Boolean = false
 }
 
 open class ScreenTreeUnavailable(message: String) : RuntimeException(message)

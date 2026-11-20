@@ -369,3 +369,13 @@ data class ViewerPage(
     override val rightAction: TopBarActionSpec? = null
 }
 
+data class VirtualDisplayPage(
+    val conversationId: String,
+) : ZafiroPage {
+    override val routeKey: String = "virtual-display:$conversationId"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_home_menu_virtual_display)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? = null
+}
+

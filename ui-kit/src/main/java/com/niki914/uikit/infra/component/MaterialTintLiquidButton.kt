@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
@@ -25,6 +26,7 @@ fun MaterialTintLiquidButton(
     enabled: Boolean = true,
     containerColor: Color = MaterialTheme.colorScheme.primary,
     contentColor: Color = MaterialTheme.colorScheme.onPrimary,
+    buttonHeight: Dp = 56.dp,
     leadingIcon: (@Composable () -> Unit)? = null,
 ) {
     val backdrop = rememberLayerBackdrop()
@@ -35,7 +37,7 @@ fun MaterialTintLiquidButton(
         modifier = modifier
             .fillMaxWidth()
             // 槽位比胶囊高 8dp，与 TintLiquidButton 一致：给按下的液态形变留量
-            .heightIn(min = 64.dp),
+            .heightIn(min = buttonHeight + 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         LiquidButton(
@@ -45,6 +47,7 @@ fun MaterialTintLiquidButton(
             isInteractive = enabled,
             tint = if (enabled) containerColor else disabledContainerColor,
             surfaceColor = if (enabled) liquidButtonSurfaceColor(containerColor) else Color.Transparent,
+            height = buttonHeight,
         ) {
             val resolvedContentColor = if (enabled) contentColor else disabledContentColor
             CompositionLocalProvider(LocalContentColor provides resolvedContentColor) {
