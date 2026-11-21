@@ -29,7 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.emptyBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.base.LocalThemeStyle
@@ -101,7 +101,7 @@ fun ComposerSuggestionPanel(
         when (themeStyle) {
             ThemeStyle.LiquidGlass -> {
                 val glassStyle = LiquidGlassPresets.Popover
-                val resolvedBackdrop = LocalScreenBackdrop.current ?: rememberLayerBackdrop()
+                val resolvedBackdrop = LocalScreenBackdrop.current ?: remember { emptyBackdrop() }
                 val surfaceColor = glassStyle.surfaceColor(isDarkTheme, colorScheme)
 
                 Box(

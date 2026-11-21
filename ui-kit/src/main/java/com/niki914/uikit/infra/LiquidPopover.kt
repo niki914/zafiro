@@ -50,6 +50,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -68,7 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import com.kyant.backdrop.Backdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.emptyBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
@@ -177,8 +178,7 @@ internal fun LiquidPopoverSurface(
     val interactiveHighlight = remember(animationScope) {
         InteractiveHighlight(animationScope = animationScope)
     }
-    val fallbackBackdrop = rememberLayerBackdrop()
-    val resolvedBackdrop = backdrop ?: LocalScreenBackdrop.current ?: fallbackBackdrop
+    val resolvedBackdrop = backdrop ?: LocalScreenBackdrop.current ?: remember { emptyBackdrop() }
     val isDarkTheme = LocalAppDarkTheme.current
     val density = LocalDensity.current
     val statusBarTopPx = WindowInsets.statusBars.getTop(density).toFloat()
@@ -390,27 +390,33 @@ internal fun LiquidPopoverSurface(
             val anchorHeightPx =
                 if (anchor.height > 0f) anchor.height else with(density) { 48.dp.toPx() }
 
-            // 尺寸与圆角在锚点与菜单之间平滑演变（悬浮球同款 Morph 算法）
-            val currentWidthPx = lerp(anchorWidthPx, targetWidthPx, progress)
-            val currentHeightPx = lerp(anchorHeightPx, targetHeightPx, progress)
-            val currentRadiusPx =
-                lerp(anchorHeightPx / 2f, with(density) { 20.dp.toPx() }, progress)
-
             // 绝对锚点贴齐：BottomEnd 与 BottomStart 自动适配 LTR/RTL 贴边展开方向
             val rawLeft = when (alignment) {
-                PopoverAlignment.BottomEnd -> if (isLtr) anchor.right - currentWidthPx else anchor.left
-                PopoverAlignment.BottomCenter -> anchor.center.x - currentWidthPx / 2f
-                PopoverAlignment.BottomStart -> if (isLtr) anchor.left else anchor.right - currentWidthPx
+                PopoverAlignment.BottomEnd -> if (isLtr) anchor.right - targetWidthPx else anchor.left
+                PopoverAlignment.BottomCenter -> anchor.center.x - targetWidthPx / 2f
+                PopoverAlignment.BottomStart -> if (isLtr) anchor.left else anchor.right - targetWidthPx
             }
-            val currentLeft = rawLeft.coerceIn(0f, (constraints.maxWidth - currentWidthPx).coerceAtLeast(0f))
+            val targetLeft = rawLeft.coerceIn(0f, (constraints.maxWidth - targetWidthPx).coerceAtLeast(0f))
+            val targetTop = anchor.top
 
-            val currentTop = anchor.top
+            // 展开锚点原点：从对应锚点角向外展开，固定 FBO 尺寸由 GPU 硬件矩阵负责缩放
+            val originX = when (alignment) {
+                PopoverAlignment.BottomEnd -> if (isLtr) 1f else 0f
+                PopoverAlignment.BottomCenter -> 0.5f
+                PopoverAlignment.BottomStart -> if (isLtr) 0f else 1f
+            }
+            val originY = 0f
+            val transformOrigin = TransformOrigin(originX, originY)
 
-            // 构造展开态形态卡片
+            val initialScaleX = if (targetWidthPx > 0f) (anchorWidthPx / targetWidthPx).coerceIn(0.01f, 1f) else 1f
+            val initialScaleY = if (targetHeightPx > 0f) (anchorHeightPx / targetHeightPx).coerceIn(0.01f, 1f) else 1f
+
+            val targetWidthDp = with(density) { targetWidthPx.toDp() }
+            val targetHeightDp = with(density) { targetHeightPx.toDp() }
+
+            // 构造展开态形态卡片（固定尺寸，避免展开动画过程中为中间动态尺寸分配几十个离屏 FBO 撑爆 GPU Cache）
             val cardMeasurables = subcompose("menu_surface_card") {
-                val panelShape = G2FieldShape(with(density) { currentRadiusPx.toDp() })
-                val contentAlpha =
-                    if (progress > 0.25f) ((progress - 0.25f) / 0.75f).coerceIn(0f, 1f) else 0f
+                val panelShape = G2FieldShape(20.dp)
 
                 // 默认颜色与 ActionBarButton 保持 100% 一致（透明白/灰色），支持自定义传入
                 val resolvedSurfaceColor = containerColor
@@ -419,9 +425,16 @@ internal fun LiquidPopoverSurface(
                 Box(
                     modifier = Modifier
                         .size(
-                            width = with(density) { currentWidthPx.toDp() },
-                            height = with(density) { currentHeightPx.toDp() },
+                            width = targetWidthDp,
+                            height = targetHeightDp,
                         )
+                        .graphicsLayer {
+                            val p = animProgress.value
+                            scaleX = lerp(initialScaleX, 1f, p)
+                            scaleY = lerp(initialScaleY, 1f, p)
+                            alpha = if (p > 0.05f) p.coerceIn(0f, 1f) else 0f
+                            this.transformOrigin = transformOrigin
+                        }
                         .drawBackdrop(
                             backdrop = resolvedBackdrop,
                             shape = { panelShape },
@@ -458,11 +471,14 @@ internal fun LiquidPopoverSurface(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .graphicsLayer { alpha = contentAlpha },
+                            .graphicsLayer {
+                                val p = animProgress.value
+                                alpha = if (p > 0.25f) ((p - 0.25f) / 0.75f).coerceIn(0f, 1f) else 0f
+                            },
                     ) {
                         Column(
                             modifier = Modifier
-                                .width(with(density) { targetWidthPx.toDp() })
+                                .width(targetWidthDp)
                                 .then(
                                     if (scrollable) {
                                         Modifier.verticalScroll(rememberScrollState())
@@ -482,7 +498,7 @@ internal fun LiquidPopoverSurface(
             )
 
             layout(constraints.maxWidth, constraints.maxHeight) {
-                cardPlaceable.place(currentLeft.toInt(), currentTop.toInt())
+                cardPlaceable.place(targetLeft.toInt(), targetTop.toInt())
             }
         }
     }

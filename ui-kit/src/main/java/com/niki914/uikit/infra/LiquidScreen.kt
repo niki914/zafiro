@@ -167,6 +167,11 @@ fun LiquidScreen(
 
         val sheetProgress = sheetProgressState.progress
         val sheetBlurRadius = 15f * sheetProgress
+        val sheetBlurModifier = if (sheetBlurRadius > 0f) {
+            Modifier.blur(sheetBlurRadius.dp)
+        } else {
+            Modifier
+        }
 
         Box(
             modifier = modifier.fillMaxSize(),
@@ -175,7 +180,7 @@ fun LiquidScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .blur(sheetBlurRadius.dp),
+                    .then(sheetBlurModifier),
             ) {
                 // Layer 1: page content
                 CompositionLocalProvider(
