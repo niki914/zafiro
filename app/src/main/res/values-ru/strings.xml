@@ -514,6 +514,9 @@
     <string name="ui_settings_general_language_follow_system">Как в системе</string>
     <string name="ui_settings_markdown_scale_title">Масштаб Markdown</string>
     <string name="ui_settings_markdown_scale_default">По умолчанию</string>
+    <string name="ui_settings_model_chooser_style_title">Стиль выбора модели</string>
+    <string name="ui_settings_model_chooser_style_detailed">Подробный</string>
+    <string name="ui_settings_model_chooser_style_compact">Компактный</string>
     <string name="ui_settings_general_load_last_conversation">Открывать последний диалог при запуске</string>
     <string name="ui_settings_general_idle_timeout">Тайм-аут ожидания</string>
     <string name="ui_settings_general_idle_timeout_summary">Прерывать ответ, если сервер слишком долго молчит</string>

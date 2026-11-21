@@ -471,6 +471,14 @@ class SettingsDomainCodecsTest {
     }
 
     @Test
+    fun appStateModelChooserStyleFallback() {
+        assertEquals("detailed", AppStateSettingsCodec.parse("""{"model_chooser_style":"unknown"}""").modelChooserStyle)
+        assertEquals("detailed", AppStateSettingsCodec.parse("""{"model_chooser_style":""}""").modelChooserStyle)
+        assertEquals("compact", AppStateSettingsCodec.parse("""{"model_chooser_style":"compact"}""").modelChooserStyle)
+        assertEquals("detailed", AppStateSettingsCodec.parse("""{"model_chooser_style":"detailed"}""").modelChooserStyle)
+    }
+
+    @Test
     fun appStateRoundTripKeepsLanguageAndLoadLastConversation() {
         val state = AppStateSettings(
             onboardingCompleted = true,

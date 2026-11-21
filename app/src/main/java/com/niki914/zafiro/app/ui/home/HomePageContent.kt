@@ -42,9 +42,11 @@ import com.niki914.zafiro.app.ui.helper.ZafiroToast
 import com.niki914.zafiro.app.ui.home.dialog.ScreenControlConsentDialog
 import com.niki914.zafiro.app.ui.home.dialog.ToolPermissionDialog
 import com.niki914.zafiro.app.ui.home.dialog.UpdateAvailableDialog
+import com.niki914.zafiro.app.ui.home.header.HomeConfigPopover
 import com.niki914.zafiro.app.ui.home.header.HomeModelSwitchSheet
 import com.niki914.zafiro.app.ui.home.header.HomeTitleConfigChip
 import com.niki914.zafiro.app.ui.home.header.HomeTopBarContribution
+import com.niki914.zafiro.app.ui.model.ModelChooserStyle
 import com.niki914.zafiro.app.ui.model.home.FileAttachReason
 import com.niki914.zafiro.app.ui.model.home.HomeChatEffect
 import com.niki914.zafiro.app.ui.model.home.HomeChatIntent
@@ -346,23 +348,39 @@ fun HomePageContent(
 
     val composerFocusRequester = remember { FocusRequester() }
 
-    HomeModelSwitchSheet(
-        visible = uiState.isConfigMenuVisible,
-        savedConfigs = uiState.savedConfigs,
-        activeConfig = uiState.displayConfig,
-        onDismissRequest = {
-            viewModel.sendIntent(HomeChatIntent.DismissConfigMenu)
-        },
-        onSelectConfig = { configId ->
-            viewModel.sendIntent(HomeChatIntent.SelectConfig(configId))
-        },
-        onSelectModel = { configId, modelId ->
-            viewModel.sendIntent(HomeChatIntent.SelectModel(configId, modelId))
-        },
-        onUpdateThinkingLevel = { configId, wireValue ->
-            viewModel.sendIntent(HomeChatIntent.UpdateThinkingLevel(configId, wireValue))
-        },
-    )
+    val modelChooserStyle by XRepo.modelChooserStyleSetting.collectAsState()
+
+    if (modelChooserStyle == ModelChooserStyle.Compact.storageKey) {
+        HomeConfigPopover(
+            uiState = uiState,
+            anchorBounds = titleAnchorBounds,
+            onDismissRequest = {
+                viewModel.sendIntent(HomeChatIntent.DismissConfigMenu)
+            },
+            onSelectConfig = { configId ->
+                viewModel.sendIntent(HomeChatIntent.SelectConfig(configId))
+                viewModel.sendIntent(HomeChatIntent.DismissConfigMenu)
+            },
+        )
+    } else {
+        HomeModelSwitchSheet(
+            visible = uiState.isConfigMenuVisible,
+            savedConfigs = uiState.savedConfigs,
+            activeConfig = uiState.displayConfig,
+            onDismissRequest = {
+                viewModel.sendIntent(HomeChatIntent.DismissConfigMenu)
+            },
+            onSelectConfig = { configId ->
+                viewModel.sendIntent(HomeChatIntent.SelectConfig(configId))
+            },
+            onSelectModel = { configId, modelId ->
+                viewModel.sendIntent(HomeChatIntent.SelectModel(configId, modelId))
+            },
+            onUpdateThinkingLevel = { configId, wireValue ->
+                viewModel.sendIntent(HomeChatIntent.UpdateThinkingLevel(configId, wireValue))
+            },
+        )
+    }
 
     val hasActiveDialog = LocalHasActiveDialog.current
     // 冷启动键盘焦点：仅进程内首次进入 Home、无草稿输入、不在加载中且当前无弹窗时抢焦点。

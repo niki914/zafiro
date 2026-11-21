@@ -42,6 +42,9 @@ internal data class AppStateSettings(
     /** Markdown 字体排版缩放比例；基准为 1.0f (100%)。 */
     @SerialName("markdown_scale")
     val markdownScale: Float = 1.0f,
+    /** 首页模型选择器风格；detailed/compact。 */
+    @SerialName("model_chooser_style")
+    val modelChooserStyle: String = "detailed",
     /** 流式空闲超时秒数；0 = 不超时。 */
     @SerialName("llm_idle_timeout_seconds")
     val llmIdleTimeoutSeconds: Long = 60L,
@@ -131,9 +134,14 @@ internal object AppStateSettingsCodec {
                     "liquid", "md3", "md3e" -> fixed.themeStyle
                     else -> ThemeStyle.default().storageKey
                 }
+                val sanitizedModelChooserStyle = when (fixed.modelChooserStyle) {
+                    "detailed", "compact" -> fixed.modelChooserStyle
+                    else -> "detailed"
+                }
                 fixed.copy(
                     themeStyle = sanitizedThemeStyle,
                     markdownScale = fixed.markdownScale.coerceIn(0.6f, 1.4f),
+                    modelChooserStyle = sanitizedModelChooserStyle,
                     repetitionSensitivity = RepetitionSensitivity.fromWire(
                         fixed.repetitionSensitivity
                     ).wireValue,

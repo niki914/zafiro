@@ -596,6 +596,19 @@ object XRepo {
 
     suspend fun setMarkdownScale(value: Float) = markdownScaleField.set(value)
 
+    /** 首页模型选择器风格的进程内热更新通道：detailed/compact，默认 detailed。 */
+    private val modelChooserStyleField = ReactiveAppStateField(
+        default = "detailed",
+        select = { modelChooserStyle },
+        update = { copy(modelChooserStyle = it) },
+    )
+    val modelChooserStyleSetting: MutableStateFlow<String>
+        get() = modelChooserStyleField.flow
+
+    suspend fun modelChooserStyle(): String = modelChooserStyleField.get()
+
+    suspend fun setModelChooserStyle(value: String) = modelChooserStyleField.set(value)
+
     /**
      * 回填型设置 flow 的统一冷启动回填：flow 初值是猜的默认值，必须有人调一次
      * 读盘才能对齐真值。MainActivity.onCreate 同步调用。

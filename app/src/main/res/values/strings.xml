@@ -558,6 +558,9 @@
     <string name="ui_settings_general_language_follow_system">跟随系统</string>
     <string name="ui_settings_markdown_scale_title">Markdown 排版缩放</string>
     <string name="ui_settings_markdown_scale_default">默认</string>
+    <string name="ui_settings_model_chooser_style_title">模型选择器风格</string>
+    <string name="ui_settings_model_chooser_style_detailed">详细</string>
+    <string name="ui_settings_model_chooser_style_compact">简洁</string>
     <string name="ui_settings_general_load_last_conversation">启动时载入上次对话</string>
     <string name="ui_settings_general_idle_timeout">响应空闲超时</string>
     <string name="ui_settings_general_idle_timeout_summary">服务器长时间无响应时终止回合</string>

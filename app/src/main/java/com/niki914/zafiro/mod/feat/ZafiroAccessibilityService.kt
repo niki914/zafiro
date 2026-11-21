@@ -32,7 +32,7 @@ class ZafiroAccessibilityService : AccessibilityService() {
             type == AccessibilityEvent.TYPE_VIEW_SCROLLED ||
             type == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
         ) {
-            val displayId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val displayId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 event.displayId
             } else {
                 Display.DEFAULT_DISPLAY
