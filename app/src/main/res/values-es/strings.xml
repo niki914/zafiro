@@ -554,6 +554,9 @@
     <string name="ui_settings_general_language_follow_system">Usar el del sistema</string>
     <string name="ui_settings_markdown_scale_title">Escala de Markdown</string>
     <string name="ui_settings_markdown_scale_default">Predeterminado</string>
+    <string name="ui_settings_model_chooser_style_title">Estilo del selector de modelos</string>
+    <string name="ui_settings_model_chooser_style_detailed">Detallado</string>
+    <string name="ui_settings_model_chooser_style_compact">Compacto</string>
     <string name="ui_settings_general_load_last_conversation">Cargar la última conversación al iniciar</string>
     <string name="ui_settings_general_idle_timeout">Tiempo de inactividad</string>
     <string name="ui_settings_general_idle_timeout_summary">Termina el turno si el servidor no responde</string>

@@ -560,6 +560,9 @@
     <string name="ui_settings_general_language_follow_system">پیروی از سیستم</string>
     <string name="ui_settings_markdown_scale_title">مقیاس صفحه‌آرایی Markdown</string>
     <string name="ui_settings_markdown_scale_default">پیش‌فرض</string>
+    <string name="ui_settings_model_chooser_style_title">سبک انتخاب‌کننده مدل</string>
+    <string name="ui_settings_model_chooser_style_detailed">مفصل</string>
+    <string name="ui_settings_model_chooser_style_compact">فشرده</string>
     <string name="ui_settings_general_load_last_conversation">بار کردن گفتگوی قبلی هنگام شروع</string>
     <string name="ui_settings_general_idle_timeout">مهلت بیکاری پاسخ</string>
     <string name="ui_settings_general_idle_timeout_summary">اگر سرور مدت زیادی پاسخ ندهد، نوبت پایان می‌یابد</string>

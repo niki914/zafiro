@@ -568,6 +568,9 @@
     <string name="ui_settings_general_language_follow_system">حسب النظام</string>
     <string name="ui_settings_markdown_scale_title">مقياس تنسيق Markdown</string>
     <string name="ui_settings_markdown_scale_default">افتراضي</string>
+    <string name="ui_settings_model_chooser_style_title">نمط محدد النماذج</string>
+    <string name="ui_settings_model_chooser_style_detailed">مفصل</string>
+    <string name="ui_settings_model_chooser_style_compact">موجز</string>
     <string name="ui_settings_general_load_last_conversation">فتح آخر محادثة عند التشغيل</string>
     <string name="ui_settings_general_idle_timeout">مهلة خمول الاستجابة</string>
     <string name="ui_settings_general_idle_timeout_summary">إنهاء الجولة إذا بقي الخادم بلا استجابة طويلًا</string>

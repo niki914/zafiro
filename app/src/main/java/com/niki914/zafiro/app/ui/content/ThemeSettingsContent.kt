@@ -14,6 +14,7 @@ import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Translate
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,6 +52,7 @@ import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
 import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.model.ModelChooserStyle
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.app.ui.model.ThemeMode
 import com.niki914.zafiro.app.ui.model.ThemeSettingsEffect
@@ -72,7 +74,13 @@ import kotlin.math.roundToInt
  */
 private const val LANGUAGE_ROW_ID = "theme.language"
 private const val MARKDOWN_SCALE_ROW_ID = "theme.markdown_scale"
+private const val MODEL_CHOOSER_STYLE_ROW_ID = "theme.model_chooser_style"
 private const val THEME_STYLE_ROW_ID = "theme.style"
+
+private data class ModelChooserStyleOption(
+    val style: ModelChooserStyle,
+    val label: String,
+)
 
 private const val LANGUAGE_TAG_ZH_CN = "zh-CN"
 private const val LANGUAGE_TAG_ZH_TW = "zh-TW"
@@ -250,6 +258,15 @@ fun ThemeSettingsContent(
                         },
                         leadingIcon = SettingsRowLeadingIcon.Vector(Icons.Rounded.FormatSize),
                     ),
+                    SettingsRowSpec.Navigation(
+                        id = MODEL_CHOOSER_STYLE_ROW_ID,
+                        title = stringResource(R.string.ui_settings_model_chooser_style_title),
+                        currentState = when (uiState.modelChooserStyle) {
+                            ModelChooserStyle.Detailed -> stringResource(R.string.ui_settings_model_chooser_style_detailed)
+                            ModelChooserStyle.Compact -> stringResource(R.string.ui_settings_model_chooser_style_compact)
+                        },
+                        leadingIcon = SettingsRowLeadingIcon.Vector(Icons.Rounded.Tune),
+                    ),
                 ),
             ),
             SettingsSectionSpec(
@@ -328,10 +345,35 @@ fun ThemeSettingsContent(
                         THEME_STYLE_ROW_ID -> onPush(ThemeStylesPage)
                         LANGUAGE_ROW_ID -> viewModel.sendIntent(ThemeSettingsIntent.OpenLanguageDialog)
                         MARKDOWN_SCALE_ROW_ID -> onPush(MarkdownScalePage)
+                        MODEL_CHOOSER_STYLE_ROW_ID -> viewModel.sendIntent(ThemeSettingsIntent.OpenModelChooserStyleDialog)
                     }
                 }
                 else -> Unit
             }
+        },
+    )
+
+    val modelChooserStyleOptions = listOf(
+        ModelChooserStyleOption(
+            style = ModelChooserStyle.Detailed,
+            label = stringResource(R.string.ui_settings_model_chooser_style_detailed),
+        ),
+        ModelChooserStyleOption(
+            style = ModelChooserStyle.Compact,
+            label = stringResource(R.string.ui_settings_model_chooser_style_compact),
+        ),
+    )
+
+    ZafiroSingleChoiceDialog(
+        visible = uiState.modelChooserStyleDialogVisible,
+        onDismissRequest = { viewModel.sendIntent(ThemeSettingsIntent.DismissModelChooserStyleDialog) },
+        title = stringResource(R.string.ui_settings_model_chooser_style_title),
+        options = modelChooserStyleOptions,
+        selectedId = uiState.modelChooserStyle.storageKey,
+        optionId = { it.style.storageKey },
+        optionLabel = ModelChooserStyleOption::label,
+        onSelect = { option ->
+            viewModel.sendIntent(ThemeSettingsIntent.SelectModelChooserStyle(option.style))
         },
     )
 
