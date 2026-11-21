@@ -49,7 +49,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.emptyBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.colorControls
@@ -159,8 +159,7 @@ private fun LiquidDialogSurface(
     actions: (@Composable RowScope.() -> Unit)? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    val fallbackBackdrop = rememberLayerBackdrop()
-    val resolvedBackdrop = LocalScreenBackdrop.current ?: fallbackBackdrop
+    val resolvedBackdrop = LocalScreenBackdrop.current ?: remember { emptyBackdrop() }
     val isDarkTheme = LocalAppDarkTheme.current
     val colorScheme = MaterialTheme.colorScheme
     val scrimColor = colorScheme.scrim.copy(alpha = 0.42f)

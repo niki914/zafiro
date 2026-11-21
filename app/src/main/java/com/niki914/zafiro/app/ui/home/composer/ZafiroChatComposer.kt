@@ -45,7 +45,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.emptyBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.niki914.uikit.ambient.TopFadeAuroraOverlay
 import com.niki914.uikit.base.LocalAppDarkTheme
@@ -337,7 +337,7 @@ fun ZafiroChatComposer(
     when (themeStyle) {
         ThemeStyle.LiquidGlass -> {
             val glassStyle = LiquidGlassPresets.ComposerBar
-            val resolvedBackdrop = LocalScreenBackdrop.current ?: rememberLayerBackdrop()
+            val resolvedBackdrop = LocalScreenBackdrop.current ?: remember { emptyBackdrop() }
             val animationScope = rememberCoroutineScope()
             val interactiveHighlight = remember(animationScope) {
                 InteractiveHighlight(animationScope = animationScope)

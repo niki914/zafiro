@@ -43,7 +43,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.emptyBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.base.ThemeStyle
@@ -206,7 +206,7 @@ internal fun ZafiroSearchBar(
     when (themeStyle) {
         ThemeStyle.LiquidGlass -> {
             val glassStyle = LiquidGlassPresets.TextField
-            val resolvedBackdrop = LocalScreenBackdrop.current ?: rememberLayerBackdrop()
+            val resolvedBackdrop = LocalScreenBackdrop.current ?: remember { emptyBackdrop() }
             val animationScope = rememberCoroutineScope()
             val interactiveHighlight = remember(animationScope) {
                 InteractiveHighlight(animationScope = animationScope)
