@@ -296,8 +296,9 @@ internal object VirtualDisplayCard {
 
         val miniX = miniLayout.ballX
         val miniY = miniLayout.ballY
-        val miniW = miniLayout.width
-        val miniH = miniLayout.height
+        // 刚挂上的小窗还没测量，用窗口参数里的固定尺寸，避免展开起点变成 0。
+        val miniW = miniLayout.width.takeIf { it > 0 } ?: miniLayout.layoutParams?.width ?: 0
+        val miniH = miniLayout.height.takeIf { it > 0 } ?: miniLayout.layoutParams?.height ?: 0
         val dockSide = miniLayout.getDockSide()
 
         val targetWidthDp = 290.dp

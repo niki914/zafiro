@@ -209,6 +209,10 @@ object AppScreens : Screens {
                 val currentScreen = virtualScreens[screenId] ?: return@withLock
                 overlayVisibleConversations.add(key)
                 bindOverlay(currentScreen)
+                // 选择应用没有预览画面，点开直接进大窗里的列表。
+                if (currentScreen.stage.value is VirtualDisplayStage.AppPicker) {
+                    VirtualDisplayCard.expandIfShowing()
+                }
                 refreshForegroundState()
             }
         }
