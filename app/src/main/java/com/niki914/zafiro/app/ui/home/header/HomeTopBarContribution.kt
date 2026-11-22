@@ -15,6 +15,7 @@ import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 @Composable
 internal fun HomeTopBarContribution(
     isConfigMenuVisible: Boolean,
+    isTitleOccluded: Boolean,
     onDismissConfigMenu: () -> Unit,
     onOpenHistory: () -> Unit,
     onNewConversation: () -> Unit,
@@ -32,10 +33,11 @@ internal fun HomeTopBarContribution(
         settingsMenuLabel,
         titleContent,
         isConfigMenuVisible,
+        isTitleOccluded,
     ) {
         PageChromeContribution(
             titleContent = titleContent,
-            isTitleOccluded = false,
+            isTitleOccluded = isTitleOccluded,
             actionsVisible = true,
             topBarLoad = TopBarLoad.None,
             leftAction = TopBarActionSpec(

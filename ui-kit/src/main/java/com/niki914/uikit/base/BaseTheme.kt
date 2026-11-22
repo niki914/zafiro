@@ -102,6 +102,7 @@ fun BaseTheme(
     paintWindowBackground: Boolean = true,
     themeStyle: ThemeStyle = ThemeStyle.default(),
     uiStyleLookup: UiStyleLookup = FollowGlobalUiStyle,
+    isLowEndDevice: Boolean = rememberIsLowEndDevice(),
     content: @Composable () -> Unit, // 实际要应用主题的 Composable 内容
 ) {
     val paletteStyle = when (themeStyle) {
@@ -174,6 +175,7 @@ fun BaseTheme(
         LocalAppDarkTheme provides darkTheme,
         LocalThemeStyle provides themeStyle,
         LocalUiStyleLookup provides uiStyleLookup,
+        LocalLowEndDevice provides isLowEndDevice,
     ) {
         // 应用 MaterialTheme
         MaterialTheme(

@@ -328,8 +328,12 @@ fun HomePageContent(
         }
     }
 
+    val modelChooserStyle by XRepo.modelChooserStyleSetting.collectAsState()
+
     HomeTopBarContribution(
         isConfigMenuVisible = uiState.isConfigMenuVisible,
+        isTitleOccluded = uiState.isConfigMenuVisible &&
+            modelChooserStyle == ModelChooserStyle.Compact.storageKey,
         onDismissConfigMenu = {
             latestViewModel.sendIntent(HomeChatIntent.DismissConfigMenu)
         },
@@ -347,8 +351,6 @@ fun HomePageContent(
     )
 
     val composerFocusRequester = remember { FocusRequester() }
-
-    val modelChooserStyle by XRepo.modelChooserStyleSetting.collectAsState()
 
     if (modelChooserStyle == ModelChooserStyle.Compact.storageKey) {
         HomeConfigPopover(

@@ -22,16 +22,16 @@ import com.kyant.backdrop.drawPlainBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.runtimeShaderEffect
 import com.niki914.uikit.base.LocalAppDarkTheme
+import com.niki914.uikit.base.LocalLowEndDevice
 import com.niki914.uikit.infra.LiquidGlassPresets
 
 /**
  * Liquid Glass 顶栏渐变毛玻璃背景。
  *
- * 方案 A 隔离舱：内聚 Android 版本感知与三阶硬件模糊级联（Multi-Octave Progressive Blur）。
- * - Android 13+ (API 33 / TIRAMISU)：用 Skia 原生硬件 `blur()` 分三档半径（轻 / 中 / 重）逐层叠合，
- *   相邻档位通过轻量 AGSL Alpha 遮罩平滑过渡，避免大步长手动采样条纹与单层淡出重影，
- *   再在顶层叠加与页面一致的 `background` 多段渐变遮罩。
- * - Android 13 以下：安全降级为 background 实体纯色背景，防止 ClassNotFoundException / NoClassDefFoundError 崩溃。
+ * 方案 A 隔离舱：内聚 Android 版本与设备渲染档位门禁及三阶硬件模糊级联（Multi-Octave Progressive Blur）。
+ * - Android 13+ (API 33 / TIRAMISU) 且非中低端机：用 Skia 原生硬件 `blur()` 分三档半径（轻 / 中 / 重）逐层叠合，
+ *   相邻档位通过轻量 AGSL Alpha 遮罩平滑过渡，再在顶层叠加与页面一致的 `background` 多段渐变遮罩。
+ * - Android 13 以下或中低端机：强制降级为纯 Compose `background` 渐变遮罩，零 GPU 离屏模糊开销。
  */
 @Composable
 fun LiquidTopBarBackground(
@@ -44,17 +44,19 @@ fun LiquidTopBarBackground(
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
+    val tintColor = MaterialTheme.colorScheme.background
+    val topBarStyle = LiquidGlassPresets.TopBar
+    val totalHeight = chromeHeight + topBarStyle.bottomBleed
+    val useProgressiveBlur =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !LocalLowEndDevice.current
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    if (useProgressiveBlur) {
         val isDarkTheme = LocalAppDarkTheme.current
-        val tintColor = MaterialTheme.colorScheme.background
-        val topBarStyle = LiquidGlassPresets.TopBar
         val heavyRadius = topBarStyle.blurRadius(isDarkTheme)
         val mediumRadius = heavyRadius * 0.45f
         val lightRadius = heavyRadius * 0.175f
         val midTint = topBarStyle.tintIntensity(isDarkTheme)
         val topTint = topBarStyle.topTintIntensity(isDarkTheme)
-        val totalHeight = chromeHeight + topBarStyle.bottomBleed
 
         // 三阶模糊的起止高度交错排布，避免各层斜率在同一水平线上叠加形成细微横切感
         val lightFadeStartPx = remember(density, chromeHeight, topInset) {
@@ -122,16 +124,32 @@ fun LiquidTopBarBackground(
             }
         }
     } else {
-        // Android 13 以下安全保底：采用页面 background 整体容器背景
+        // Android 13 以下或中低端机保底：纯 Compose 页面底色渐变遮罩，零离屏模糊开销
+        val fallbackBrush = remember(tintColor) {
+            Brush.verticalGradient(
+                0.00f to tintColor,
+                0.58f to tintColor.copy(alpha = 0.94f),
+                0.82f to tintColor.copy(alpha = 0.62f),
+                1.00f to Color.Transparent,
+            )
+        }
+
         Box(
-            modifier
+            modifier = modifier
                 .fillMaxWidth()
-                .height(chromeHeight)
+                .height(totalHeight)
                 .layerBackdrop(chromeBackdrop)
-                .background(
-                    MaterialTheme.colorScheme.background.copy(alpha = barAlpha),
-                ),
-        )
+                .graphicsLayer { alpha = barAlpha },
+        ) {
+            if (barAlpha > 0.001f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(totalHeight)
+                        .background(fallbackBrush),
+                )
+            }
+        }
     }
 }
 
