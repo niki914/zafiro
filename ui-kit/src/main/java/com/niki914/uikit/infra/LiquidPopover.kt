@@ -414,6 +414,23 @@ internal fun LiquidPopoverSurface(
             val targetWidthDp = with(density) { targetWidthPx.toDp() }
             val targetHeightDp = with(density) { targetHeightPx.toDp() }
 
+            // 动态微量漂移（针对不同对齐方式及 RTL 自适应朝运动方向微微浮出）
+            val driftDistancePx = with(density) { 6.dp.toPx() }
+            val rawDriftX = when (alignment) {
+                PopoverAlignment.BottomCenter -> 0f
+                PopoverAlignment.BottomEnd -> if (isLtr) -driftDistancePx else driftDistancePx
+                PopoverAlignment.BottomStart -> if (isLtr) driftDistancePx else -driftDistancePx
+            }
+            val rawDriftY = driftDistancePx
+            val targetDriftX = rawDriftX.coerceIn(
+                -targetLeft,
+                (constraints.maxWidth - targetWidthPx - targetLeft).coerceAtLeast(0f),
+            )
+            val targetDriftY = rawDriftY.coerceIn(
+                0f,
+                (constraints.maxHeight - targetHeightPx - targetTop).coerceAtLeast(0f),
+            )
+
             // 构造展开态形态卡片（固定尺寸，避免展开动画过程中为中间动态尺寸分配几十个离屏 FBO 撑爆 GPU Cache）
             val cardMeasurables = subcompose("menu_surface_card") {
                 val panelShape = G2FieldShape(20.dp)
@@ -434,6 +451,12 @@ internal fun LiquidPopoverSurface(
                             scaleY = lerp(initialScaleY, 1f, p)
                             alpha = if (p > 0.05f) p.coerceIn(0f, 1f) else 0f
                             this.transformOrigin = transformOrigin
+
+                            // 展开前半程锁死在锚点（时序错峰覆盖圆球淡出）；后半程向运动方向平滑漂移
+                            val driftProgress = if (p > 0.3f) ((p - 0.3f) / 0.7f).coerceIn(0f, 1f) else 0f
+                            val driftFactor = driftProgress * driftProgress
+                            translationX = lerp(0f, targetDriftX, driftFactor)
+                            translationY = lerp(0f, targetDriftY, driftFactor)
                         }
                         .drawBackdrop(
                             backdrop = resolvedBackdrop,

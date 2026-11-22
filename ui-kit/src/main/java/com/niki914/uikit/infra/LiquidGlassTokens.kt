@@ -211,8 +211,10 @@ object LiquidGlassPresets {
  */
 @Immutable
 data class LiquidTopBarStyle(
-    val blurRadius: (isDarkTheme: Boolean) -> Dp = { 16.dp },
-    val tintIntensity: (isDarkTheme: Boolean) -> Float = { if (it) 0.72f else 0.65f },
+    val blurRadius: (isDarkTheme: Boolean) -> Dp = { isDark -> if (isDark) 20.dp else 22.dp },
+    val tintIntensity: (isDarkTheme: Boolean) -> Float = { isDark -> if (isDark) 0.46f else 0.42f },
+    val topTintIntensity: (isDarkTheme: Boolean) -> Float = { isDark -> if (isDark) 0.94f else 0.90f },
+    val bottomBleed: Dp = 14.dp,
 )
 
 
