@@ -10,6 +10,7 @@ import android.content.Intent
 import android.os.Binder
 import android.os.DeadObjectException
 import android.os.IBinder
+import android.os.RemoteException
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
@@ -48,7 +49,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.dropWhile
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -149,6 +150,7 @@ class AgentRuntimeService : Service() {
         const val ACTION_START_RESIDENT = "com.niki914.zafiro.action.START_RESIDENT"
         const val ACTION_STOP_RESIDENT = "com.niki914.zafiro.action.STOP_RESIDENT"
         private const val MAX_QUERY_LENGTH = 8192
+        private const val FRAME_THROTTLE_MS = 80L
         private const val STORE_CHANNEL_ID = "nexus_xservice_default_channel"
         private const val STORE_CHANNEL_NAME = "Zafiro"
 
@@ -494,41 +496,40 @@ class AgentRuntimeService : Service() {
             coroutineScope {
                 val conversationJob = launch {
                     turnAgent.conversation.collect { conv ->
-                        val turn =
-                            conv.turns.find { it.id == targetTurnId } ?: conv.turns.lastOrNull()
-                        if (turn != null) {
-                            val projected =
-                                HostConversationProjector.project(turn, ::resolveErrorMessage)
-                            if (projected != lastProjected || !firstFrameSent) {
-                                frameIndex++
-                                lastProjected = projected
-                                val isFirst = !firstFrameSent
-                                firstFrameSent = true
-                                if (isFirst) {
-                                    Logger.i(
-                                        LOG_TAG,
-                                        "first render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} contentLength=${projected.content.length} thinkingLength=${projected.thinking?.length ?: 0} toolsCount=${projected.tools.size}"
+                            val turn =
+                                conv.turns.find { it.id == targetTurnId } ?: conv.turns.lastOrNull()
+                            if (turn != null) {
+                                val projected =
+                                    HostConversationProjector.project(turn, ::resolveErrorMessage)
+                                if (projected != lastProjected || !firstFrameSent) {
+                                    frameIndex++
+                                    lastProjected = projected
+                                    val isFirst = !firstFrameSent
+                                    firstFrameSent = true
+                                    if (isFirst) {
+                                        Logger.i(
+                                            LOG_TAG,
+                                            "first render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} contentLength=${projected.content.length} thinkingLength=${projected.thinking?.length ?: 0} toolsCount=${projected.tools.size}"
+                                        )
+                                    }
+                                    sendFrame(
+                                        callback,
+                                        RenderFrame(
+                                            content = projected.content,
+                                            thinking = projected.thinking,
+                                            isThinkingComplete = projected.isThinkingComplete,
+                                            tools = projected.tools,
+                                            isFirst = isFirst,
+                                            isFinal = false,
+                                        ),
                                     )
+                                    delay(FRAME_THROTTLE_MS)
                                 }
-                                sendFrame(
-                                    callback,
-                                    RenderFrame(
-                                        content = projected.content,
-                                        thinking = projected.thinking,
-                                        isThinkingComplete = projected.isThinkingComplete,
-                                        tools = projected.tools,
-                                        isFirst = isFirst,
-                                        isFinal = false,
-                                    ),
-                                )
                             }
                         }
-                    }
                 }
 
-                turnAgent.status
-                    .dropWhile { !it.isRunning }
-                    .first { !it.isRunning }
+                turnAgent.status.first { !it.isRunning }
                 conversationJob.cancel()
             }
 
@@ -601,6 +602,8 @@ class AgentRuntimeService : Service() {
             callback.onFrame(frame)
         } catch (e: DeadObjectException) {
             handleBinderDeath()
+        } catch (e: RemoteException) {
+            Logger.w(LOG_TAG, "sendFrame remote error=${e::class.simpleName} msg=${e.message}")
         }
     }
 

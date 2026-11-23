@@ -14,6 +14,7 @@ import com.niki914.zafiro.takeover.TakeoverDecision
 import com.niki914.zafiro.takeover.TakeoverResolver
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 abstract class AbstractAssistantHook(
@@ -156,6 +157,7 @@ abstract class AbstractAssistantHook(
                 LOG_TAG,
                 "dispatch completed turnId=$turnId elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
+            scheduleTurnCleanup(turnId)
         } catch (e: Exception) {
             Logger.e(
                 LOG_TAG,
@@ -166,6 +168,20 @@ abstract class AbstractAssistantHook(
                 turnId, roomId,
                 AssistantFrame.Error(e.message ?: "Service unavailable"),
             )
+            scheduleTurnCleanup(turnId)
+        }
+    }
+
+    /**
+     * 回合结束后经过短暂尾包宽限期释放 ActiveTurnStore，避免永久停留在 InjectedLLM 导致宿主原生清理被一直屏蔽。
+     */
+    private fun scheduleTurnCleanup(turnId: Long) {
+        scope.launch {
+            delay(1500L)
+            if (ActiveTurnStore.getCurrent()?.turnId == turnId) {
+                ActiveTurnStore.clear()
+                Logger.d(LOG_TAG, "turn cleaned up after grace window turnId=$turnId")
+            }
         }
     }
 

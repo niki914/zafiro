@@ -235,4 +235,41 @@ class HostConversationProjectorTest {
         assertEquals(emptyList<ToolItem>(), projected.tools)
         assertEquals("", projected.content)
     }
+
+    @Test
+    fun project_multipleThinkingBlocksAcrossToolsAreAppendedMonotonically() {
+        val turn = ConversationTurn(
+            id = TurnId("t0"),
+            userText = "Complex task",
+            blocks = listOf(
+                TurnBlock.Thinking(
+                    id = "b0",
+                    text = "Step 1: inspect files.",
+                    isComplete = true,
+                ),
+                TurnBlock.Tool(
+                    id = "b1",
+                    invocation = ToolInvocation(
+                        id = "c1",
+                        name = "shell",
+                        label = "shell",
+                        argumentsJson = "{}"
+                    ),
+                    outcome = ToolOutcome.Succeeded("ok"),
+                ),
+                TurnBlock.Thinking(
+                    id = "b2",
+                    text = "Step 2: synthesize answer.",
+                    isComplete = false,
+                ),
+            ),
+        )
+
+        val projected = HostConversationProjector.project(turn)
+
+        assertEquals("Step 1: inspect files.\n\nStep 2: synthesize answer.", projected.thinking)
+        assertEquals(false, projected.isThinkingComplete)
+        assertEquals(listOf(ToolItem("shell", ToolStatus.SUCCESS)), projected.tools)
+        assertEquals("", projected.content)
+    }
 }

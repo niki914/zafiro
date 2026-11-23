@@ -1,19 +1,25 @@
 package com.niki914.zafiro.mod.feat.oppo.subhooks
 
+import android.os.SystemClock
 import com.niki914.xposed.runtime.util.call
 import com.niki914.zafiro.mod.feat.HookTarget
 import com.niki914.zafiro.mod.feat.SubHook
 import com.niki914.zafiro.mod.feat.oppo.BreenoConfigProvider
 import de.robv.android.xposed.XC_MethodHook
 
-/** 从宿主输入链路捕获用户 query 与 roomId，含去重逻辑，回调至 handleCapturedQuery。 */
+/** 从宿主输入链路捕获用户 query 与 roomId，含短时间窗防抖去重逻辑，回调至 handleCapturedQuery。 */
 class CaptureInputHook(
     private val onDataCenterInstanceResolved: (Any) -> Unit,
     private val onInput: (roomId: String, query: String) -> Unit
 ) : SubHook() {
 
+    private companion object {
+        const val DUPLICATE_WINDOW_MS = 1000L
+    }
+
     private val duplicateLock = Any()
     private var lastDeliveredInput: CapturedInput? = null
+    private var lastDeliveredAtElapsedMs: Long = 0L
 
     private data class CapturedInput(
         val roomId: String,
@@ -48,11 +54,13 @@ class CaptureInputHook(
 
     private fun shouldSuppress(roomId: String, query: String): Boolean =
         synchronized(duplicateLock) {
+            val now = SystemClock.elapsedRealtime()
             val currentInput = CapturedInput(roomId = roomId, query = query)
-            if (lastDeliveredInput == currentInput) {
+            if (lastDeliveredInput == currentInput && (now - lastDeliveredAtElapsedMs) <= DUPLICATE_WINDOW_MS) {
                 true
             } else {
                 lastDeliveredInput = currentInput
+                lastDeliveredAtElapsedMs = now
                 false
             }
         }

@@ -25,7 +25,7 @@ internal object HostConversationProjector {
         turn: ConversationTurn,
         resolveErrorMessage: (TurnFailureCode?) -> String = { "Internal error" },
     ): ProjectedFrame {
-        var thinking: String? = null
+        val thinkingParts = mutableListOf<String>()
         var isThinkingComplete = false
         val tools = mutableListOf<ToolItem>()
         val contentBuilder = StringBuilder()
@@ -35,7 +35,7 @@ internal object HostConversationProjector {
                 is TurnBlock.Thinking -> {
                     val raw = block.text.trim()
                     if (raw.isNotEmpty()) {
-                        thinking = raw
+                        thinkingParts.add(raw)
                         isThinkingComplete = block.isComplete
                     }
                 }
@@ -67,9 +67,11 @@ internal object HostConversationProjector {
             }
         }
 
+        val combinedThinking = thinkingParts.takeIf { it.isNotEmpty() }?.joinToString("\n\n")
+
         return ProjectedFrame(
             content = contentBuilder.toString().trimEnd(),
-            thinking = thinking,
+            thinking = combinedThinking,
             isThinkingComplete = isThinkingComplete,
             tools = tools,
         )

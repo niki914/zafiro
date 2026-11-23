@@ -14,7 +14,6 @@ import com.niki914.xposed.runtime.util.HookSideLoader
 import com.niki914.zafiro.app.BuildConfig
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.getInstalledPackageVersion
-import com.niki914.zafiro.mod.HookLocalSettings
 import com.niki914.zafiro.mod.feat.BaseConfigProvider
 import com.niki914.zafiro.mod.feat.hyper.XiaoaiChatHook
 import com.niki914.zafiro.mod.feat.oppo.BreenoHook
@@ -56,13 +55,10 @@ class Entrance : IXposed() {
         scope.launch(Dispatchers.IO) {
             val ctx = ContextProvider.await()
             val client = AgentRuntimeClient(ctx)
-            client.connectAndAwait()
             XRepo.init(ctx, XIpcDomainSettingsStore(client))
 
-            HookLocalSettings.update(ctx, client)
-
             // 配置从 res/raw/legacy_xposed_hooks/ 加载，注入 BaseConfigProvider。
-            // TODO 未来恢复远程配置源时，改回 XRepo.web.await()。
+            // 首次提问或读取规则时按需绑定服务，并在空闲超时后自动解绑，避免后台常驻保活导致高耗电。
             val config = loadConfigFromRaw(ctx, params.packageName)
             if (config != null) {
                 // 注入嵌套的 config 对象（含 actions），而非整个顶层 JSON。
@@ -126,6 +122,7 @@ class Entrance : IXposed() {
             120909L -> R.raw.com_heytap_speechassist_120909_config
             130302L -> R.raw.com_heytap_speechassist_130302_config
             130305L -> R.raw.com_heytap_speechassist_130305_config
+            130403L -> R.raw.com_heytap_speechassist_130403_config
             else -> null
         }
 
