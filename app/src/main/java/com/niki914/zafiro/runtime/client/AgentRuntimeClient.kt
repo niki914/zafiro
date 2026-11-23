@@ -16,13 +16,18 @@ import com.niki914.zafiro.runtime.ipc.IAgentRuntimeService
 import com.niki914.zafiro.runtime.ipc.IAgentStoreService
 import com.niki914.zafiro.runtime.ipc.IRenderFrameCallback
 import com.niki914.zafiro.runtime.ipc.RenderFrame
-import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.milliseconds
 
 class ServiceUnavailableException :
@@ -49,8 +54,16 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     private var bound = false
     private var deathRecipient: IBinder.DeathRecipient? = null
     private var retryCount = 0
+    private val connectMutex = Mutex()
+    private val activeRequests = AtomicInteger(0)
 
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val idleDisconnectRunnable = Runnable {
+        if (activeRequests.get() == 0 && bound) {
+            Logger.i(LOG_TAG, "idle timeout reached, disconnecting AgentRuntimeService")
+            disconnect()
+        }
+    }
 
     companion object {
         private const val LOG_TAG = "niki914_zafiro_AgentRuntimeClient"
@@ -59,6 +72,32 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
             "com.niki914.zafiro.runtime.service.AgentRuntimeService"
         private const val MAX_RETRIES = 3
         private const val RETRY_DELAY_MS = 2000L
+        private const val IDLE_DISCONNECT_DELAY_MS = 60_000L
+    }
+
+    private fun cancelIdleDisconnect() {
+        mainHandler.removeCallbacks(idleDisconnectRunnable)
+    }
+
+    private fun scheduleIdleDisconnect() {
+        mainHandler.removeCallbacks(idleDisconnectRunnable)
+        if (activeRequests.get() == 0 && bound) {
+            mainHandler.postDelayed(idleDisconnectRunnable, IDLE_DISCONNECT_DELAY_MS)
+        }
+    }
+
+    suspend fun ensureConnected(timeoutMs: Long = 5_000): Boolean {
+        cancelIdleDisconnect()
+        if (service != null && storeService != null && _connectionState.value == ConnectionState.Connected) {
+            return true
+        }
+        return connectMutex.withLock {
+            if (service != null && storeService != null && _connectionState.value == ConnectionState.Connected) {
+                true
+            } else {
+                connectAndAwait(timeoutMs)
+            }
+        }
     }
 
     // --- Connection ---
@@ -110,6 +149,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     }
 
     fun disconnect() {
+        cancelIdleDisconnect()
         deathRecipient?.let { dr ->
             binder?.let { b ->
                 try {
@@ -135,28 +175,51 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
 
     // --- AssistantTextSource ---
 
-    override fun submit(query: String): Flow<AssistantFrame> = callbackFlow {
-        val svc = service
-        if (svc == null) {
-            close(ServiceUnavailableException())
-            return@callbackFlow
-        }
-        val callback = object : IRenderFrameCallback.Stub() {
-            override fun onFrame(frame: RenderFrame?) {
-                if (frame != null) {
-                    trySend(frame.toAssistantFrame())
-                    if (frame.isFinal) {
-                        close()
+    override fun submit(query: String): Flow<AssistantFrame> = flow {
+        activeRequests.incrementAndGet()
+        cancelIdleDisconnect()
+        try {
+            val connected = ensureConnected()
+            val svc = service
+            if (!connected || svc == null) {
+                throw ServiceUnavailableException()
+            }
+            val frameChannel = Channel<AssistantFrame>(Channel.CONFLATED)
+            val callback = object : IRenderFrameCallback.Stub() {
+                override fun onFrame(frame: RenderFrame?) {
+                    if (frame != null) {
+                        frameChannel.trySend(frame.toAssistantFrame())
+                        if (frame.isFinal) {
+                            frameChannel.close()
+                        }
                     }
                 }
             }
+            coroutineScope {
+                val disconnectWatcher = launch {
+                    connectionState.first { state ->
+                        state == ConnectionState.Disconnected ||
+                                state == ConnectionState.Reconnecting ||
+                                state == ConnectionState.Unavailable
+                    }
+                    frameChannel.close(ServiceUnavailableException())
+                }
+                try {
+                    svc.submit(query, callback)
+                    for (frame in frameChannel) {
+                        emit(frame)
+                    }
+                } finally {
+                    disconnectWatcher.cancel()
+                    frameChannel.close()
+                }
+            }
+        } finally {
+            if (activeRequests.decrementAndGet() <= 0) {
+                activeRequests.set(0)
+                scheduleIdleDisconnect()
+            }
         }
-        try {
-            svc.submit(query, callback)
-        } catch (e: Exception) {
-            close(e)
-        }
-        awaitClose {}
     }
 
     override suspend fun cancel() {
@@ -174,8 +237,9 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     }
 
     override fun readStore(storeId: String): String? {
-        val svc = storeService ?: return null
+        cancelIdleDisconnect()
         return try {
+            val svc = storeService ?: return null
             val json = svc.readStore(storeId)
             Logger.d(
                 LOG_TAG,
@@ -191,6 +255,8 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
             onBinderUnreachable()
             Logger.w(LOG_TAG, "readStore storeId=$storeId error=RemoteException")
             null
+        } finally {
+            scheduleIdleDisconnect()
         }
     }
 
@@ -248,11 +314,12 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     // --- Binder death ---
 
     private fun onBinderUnreachable() {
-        Logger.w(LOG_TAG, "binder unreachable, unbinding and scheduling reconnect")
+        Logger.w(LOG_TAG, "binder unreachable, unbinding")
         service = null
         storeService = null
         binder = null
         mainHandler.post {
+            cancelIdleDisconnect()
             deathRecipient = null
             if (bound) {
                 try {
@@ -261,13 +328,18 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
                 }
                 bound = false
             }
-            scheduleReconnect()
+            if (activeRequests.get() > 0) {
+                scheduleReconnect()
+            } else {
+                _connectionState.value = ConnectionState.Disconnected
+            }
         }
     }
 
     private fun handleBinderDeath() {
-        Logger.w(LOG_TAG, "binder died, unbinding and scheduling reconnect")
+        Logger.w(LOG_TAG, "binder died, unbinding")
         mainHandler.post {
+            cancelIdleDisconnect()
             deathRecipient = null
             service = null
             storeService = null
@@ -279,7 +351,11 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
                 }
                 bound = false
             }
-            scheduleReconnect()
+            if (activeRequests.get() > 0) {
+                scheduleReconnect()
+            } else {
+                _connectionState.value = ConnectionState.Disconnected
+            }
         }
     }
 
@@ -313,15 +389,23 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
             } else {
                 ConnectionState.Unavailable
             }
+            if (connected) {
+                scheduleIdleDisconnect()
+            }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
-            Logger.w(LOG_TAG, "onServiceDisconnected, scheduling reconnect")
+            Logger.w(LOG_TAG, "onServiceDisconnected")
+            cancelIdleDisconnect()
             service = null
             storeService = null
             binder = null
             bound = false
-            scheduleReconnect()
+            if (activeRequests.get() > 0) {
+                scheduleReconnect()
+            } else {
+                _connectionState.value = ConnectionState.Disconnected
+            }
         }
     }
 

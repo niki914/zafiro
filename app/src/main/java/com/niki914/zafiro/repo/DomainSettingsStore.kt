@@ -6,6 +6,7 @@ import com.niki914.store.IpcReadResult
 import com.niki914.store.IpcWriteResult
 import com.niki914.store.StoreDescriptorRegistry
 import com.niki914.store.XIpcBridge
+import com.niki914.zafiro.runtime.client.AgentRuntimeClient
 
 internal interface DomainSettingsStore {
     suspend fun readJson(context: Context, storeId: String): String
@@ -26,6 +27,7 @@ internal class XIpcDomainSettingsStore(
 
     override suspend fun readJson(context: Context, storeId: String): String {
         val startedAtMs = System.currentTimeMillis()
+        (client as? AgentRuntimeClient)?.ensureConnected()
         val defaultJson = StoreDescriptorRegistry.resolveDynamic(storeId)?.defaultJson ?: EMPTY_JSON
         val json = when (val result = XIpcBridge.readStoreJson(context, storeId, client)) {
             is IpcReadResult.Success -> result.json

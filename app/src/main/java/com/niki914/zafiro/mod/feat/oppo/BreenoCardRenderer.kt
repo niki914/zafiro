@@ -212,9 +212,13 @@ class BreenoCardRenderer {
                 thinkingText
             )
 
-            // 注入思考状态标题
+            // 注入思考状态标题与动画完结标记
             val runningTool = frame.tools.lastOrNull { it.status == ToolStatus.RUNNING }
+            val reasoningFinished = frame.isFinal ||
+                    (isThinkingComplete && runningTool == null) ||
+                    frame.content.isNotEmpty()
             val reasoningStateText = when {
+                frame.isFinal -> BreenoConfigProvider.RenderCard.reasoningStateCompleteDefault
                 runningTool != null -> "正在调用 [${runningTool.name}]..."
                 isThinkingComplete -> BreenoConfigProvider.RenderCard.reasoningStateCompleteDefault
                 else -> BreenoConfigProvider.RenderCard.reasoningStateThinkingDefault
@@ -224,11 +228,31 @@ class BreenoCardRenderer {
                 BreenoConfigProvider.RenderCard.beanSetReasoningStateMethod,
                 reasoningStateText
             )
+            // 小布原生 AiChatCommonHelperKt 会在 hasReasoningAnimPlayed == false 时将正文置空，
+            // 因此思考结束、正文开始输出或终态时必须显式置 true，避免前台 UI 卡死在思考区。
+            if (reasoningFinished) {
+                invokeCall(
+                    bean,
+                    BreenoConfigProvider.RenderCard.beanSetHasReasoningAnimPlayedMethod,
+                    true
+                )
+            }
 
             Logger.d(
                 LOG_TAG,
                 "Thinking injected turnId=$turnId len=${thinkingText.length} " +
-                        "state='$reasoningStateText' isComplete=$isThinkingComplete"
+                        "state='$reasoningStateText' isComplete=$isThinkingComplete finished=$reasoningFinished"
+            )
+        } else if (session.isThinkingAnimInitialized && (frame.content.isNotEmpty() || frame.isFinal)) {
+            invokeCall(
+                bean,
+                BreenoConfigProvider.RenderCard.beanSetReasoningStateMethod,
+                BreenoConfigProvider.RenderCard.reasoningStateCompleteDefault
+            )
+            invokeCall(
+                bean,
+                BreenoConfigProvider.RenderCard.beanSetHasReasoningAnimPlayedMethod,
+                true
             )
         }
 
@@ -317,6 +341,18 @@ class BreenoCardRenderer {
             return
         }
 
+        if (session.isThinkingAnimInitialized) {
+            invokeCall(
+                bean,
+                BreenoConfigProvider.RenderCard.beanSetReasoningStateMethod,
+                BreenoConfigProvider.RenderCard.reasoningStateCompleteDefault
+            )
+            invokeCall(
+                bean,
+                BreenoConfigProvider.RenderCard.beanSetHasReasoningAnimPlayedMethod,
+                true
+            )
+        }
         invokeCall(bean, BreenoConfigProvider.RenderCard.beanSetContentMethod, message)
         invokeCall(bean, BreenoConfigProvider.RenderCard.beanSetFinalMethod, true)
 
