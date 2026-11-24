@@ -7,6 +7,7 @@ import com.niki914.zafiro.app.conversation.ConversationSummary
 import com.niki914.zafiro.app.conversation.ForkKind
 import com.niki914.zafiro.app.conversation.ForkResult
 import com.niki914.zafiro.app.conversation.TurnBranchState
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashSuggestion
 import com.niki914.zafiro.app.ui.model.SavedConfigSummary
 import com.niki914.zafiro.chat.LlmErrorCode
 
@@ -128,6 +129,17 @@ data class HomeChatFile(
     val category: HomeChatFileCategory get() = HomeChatFileCategory.fromPath(path)
 }
 
+sealed interface HomeVirtualDisplayStage {
+    data object AppPicker : HomeVirtualDisplayStage
+    data class Launching(val packageName: String, val appName: String) : HomeVirtualDisplayStage
+    data class Running(val packageName: String, val appName: String) : HomeVirtualDisplayStage
+}
+
+data class HomeVirtualDisplayUiState(
+    val stage: HomeVirtualDisplayStage = HomeVirtualDisplayStage.AppPicker,
+    val isOverlayExpanded: Boolean = false,
+)
+
 data class HomeChatUiState(
     val input: String = "",
     /** 待发送图片（composer 上方图片条）。send 时移入新 turn.images 并清空。 */
@@ -165,6 +177,9 @@ data class HomeChatUiState(
      * 或模型未上报 usage），此时不画环。
      */
     val contextProgress: Float? = null,
+    val slashSuggestions: List<SlashSuggestion> = emptyList(),
+    val virtualDisplay: HomeVirtualDisplayUiState? = null,
+    val showTerminateVirtualDisplayDialog: Boolean = false,
 ) {
     val displayConfig: SavedConfigSummary?
         get() {
@@ -191,6 +206,7 @@ fun HomeChatUiState.withClearedTransient() = copy(
     expandedActionSource = null,
     activeThinkingKey = null,
     isConfigMenuVisible = false,
+    showTerminateVirtualDisplayDialog = false,
 )
 
 sealed interface HomeChatIntent {
@@ -236,7 +252,13 @@ sealed interface HomeChatIntent {
     data object OpenConfigMenu : HomeChatIntent
     data object DismissConfigMenu : HomeChatIntent
     data class SelectConfig(val id: String) : HomeChatIntent
+    data class SelectModel(val configId: String, val modelId: String) : HomeChatIntent
+    data class UpdateThinkingLevel(val configId: String, val wireValue: String) : HomeChatIntent
     data object RefreshConfigs : HomeChatIntent
+    data object OpenVirtualDisplay : HomeChatIntent
+    data object RequestTerminateVirtualDisplay : HomeChatIntent
+    data object DismissTerminateVirtualDisplay : HomeChatIntent
+    data object ConfirmTerminateVirtualDisplay : HomeChatIntent
 }
 
 /**
@@ -246,6 +268,9 @@ sealed interface HomeChatIntent {
 sealed interface HomeChatEffect {
     data class FileAttachFailed(val reason: FileAttachReason) : HomeChatEffect
     data object EmptyInputAttempted : HomeChatEffect
+    data object NoCompactableHistory : HomeChatEffect
+    data object VirtualDisplayRequiresConversation : HomeChatEffect
+    data class OpenVirtualDisplayPage(val conversationId: String) : HomeChatEffect
 }
 
 /**

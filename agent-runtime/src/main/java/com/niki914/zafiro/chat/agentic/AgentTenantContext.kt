@@ -1,6 +1,7 @@
 package com.niki914.zafiro.chat.agentic
 
 import com.niki914.zafiro.api.AgentControl
+import kotlinx.coroutines.currentCoroutineContext
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
@@ -14,14 +15,18 @@ import kotlin.coroutines.coroutineContext
  */
 class AgentTenantContext(
     val tenantId: String,
+    val conversationId: String? = null,
     val agentControl: AgentControl? = null,
 ) : AbstractCoroutineContextElement(Key) {
     companion object Key : CoroutineContext.Key<AgentTenantContext>
 }
 
 /** 获取当前协程上下文中的 Agent 租户标识，若脱离 Agent 运行环境则返回 null。 */
-suspend inline fun currentAgentTenantId(): String? = coroutineContext[AgentTenantContext]?.tenantId
+suspend inline fun currentAgentTenantId(): String? = currentCoroutineContext()[AgentTenantContext]?.tenantId
+
+/** 获取当前协程上下文中的会话标识，若脱离 Agent 运行环境则返回 null。 */
+suspend inline fun currentAgentConversationId(): String? = currentCoroutineContext()[AgentTenantContext]?.conversationId
 
 /** 获取当前协程上下文中的 Agent 控制面，若脱离 Agent 运行环境则返回 null。 */
 suspend inline fun currentAgentControl(): AgentControl? =
-    coroutineContext[AgentTenantContext]?.agentControl
+    currentCoroutineContext()[AgentTenantContext]?.agentControl

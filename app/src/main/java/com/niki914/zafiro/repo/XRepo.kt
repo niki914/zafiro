@@ -34,6 +34,7 @@ import com.niki914.zafiro.settings.model.RuntimeAgentProfile as AgentProfile
 import com.niki914.zafiro.settings.model.RuntimeAgentValidation as AgentValidation
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting as BuiltinToolSetting
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
+import com.niki914.zafiro.settings.model.RuntimeEnvContextConfig
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.zafiro.settings.model.RuntimeMaskingRule as MaskingRule
@@ -48,6 +49,7 @@ object XRepo {
 
     val mcp: McpApi = McpApi(this)
     val textActions: TextActionApi = TextActionApi(this)
+    val quickPrompts: QuickPromptApi = QuickPromptApi(this)
     val mcpService: McpServiceApi = McpServiceApi(this)
     val customPyTools: CustomPyToolApi = CustomPyToolApi(this)
     val builtinTools: BuiltinToolApi = BuiltinToolApi(this)
@@ -99,12 +101,14 @@ object XRepo {
         residentNotificationEnabledField.flow.value = false
         turnNotificationEnabledField.flow.value = false
         floatingBallAutoExpandField.flow.value = true
+        stopRoundOnCommandDenyField.flow.value = true
         floatingBallOpacityPercentField.flow.value = 60
         floatingBallSubmergedOffsetDpField.flow.value = 8
         languageTagField.flow.value = ""
         phoneUseConsentGrantedField.flow.value = false
         mcpService.resetForTest()
         llmConfigs.resetForTest()
+        skills.resetForTest()
     }
 
     internal suspend fun context(): Context {
@@ -499,6 +503,19 @@ object XRepo {
 
     suspend fun setKeepScreenOn(value: Boolean) = keepScreenOnField.set(value)
 
+    /** 拒绝命令后停止本回合。app 以外经 XSettings.stopRoundOnCommandDeny 读。 */
+    private val stopRoundOnCommandDenyField = ReactiveAppStateField(
+        default = true,
+        select = { stopRoundOnCommandDeny },
+        update = { copy(stopRoundOnCommandDeny = it) },
+    )
+    val stopRoundOnCommandDenySetting: MutableStateFlow<Boolean>
+        get() = stopRoundOnCommandDenyField.flow
+
+    suspend fun stopRoundOnCommandDeny(): Boolean = stopRoundOnCommandDenyField.get()
+
+    suspend fun setStopRoundOnCommandDeny(value: Boolean) = stopRoundOnCommandDenyField.set(value)
+
     /** 消息操作行常显开关的进程内热更新通道：读时回填初值，写时同步。 */
     private val alwaysShowMessageActionsField = ReactiveAppStateField(
         default = true,
@@ -662,6 +679,19 @@ object XRepo {
     suspend fun markdownScale(): Float = markdownScaleField.get()
 
     suspend fun setMarkdownScale(value: Float) = markdownScaleField.set(value)
+
+    /** 首页模型选择器风格的进程内热更新通道：detailed/compact，默认 detailed。 */
+    private val modelChooserStyleField = ReactiveAppStateField(
+        default = "detailed",
+        select = { modelChooserStyle },
+        update = { copy(modelChooserStyle = it) },
+    )
+    val modelChooserStyleSetting: MutableStateFlow<String>
+        get() = modelChooserStyleField.flow
+
+    suspend fun modelChooserStyle(): String = modelChooserStyleField.get()
+
+    suspend fun setModelChooserStyle(value: String) = modelChooserStyleField.set(value)
 
     /**
      * 回填型设置 flow 的统一冷启动回填：flow 初值是猜的默认值，必须有人调一次
@@ -953,6 +983,33 @@ class LlmConfigsApi internal constructor(
         bumpRevision()
     }
 
+    suspend fun envContext(): RuntimeEnvContextConfig = document().envContext
+
+    suspend fun saveEnvContext(config: RuntimeEnvContextConfig) {
+        val sanitizedConfig = config.copy(
+            keys = config.keys.map { it.trim() }.filter { it.isNotBlank() }.toSet(),
+            variables = config.variables
+                .mapNotNull { (k, v) ->
+                    val trimmed = k.trim()
+                    if (trimmed.isNotBlank() &&
+                        trimmed != RuntimeEnvContextConfig.KEY_DATE &&
+                        trimmed != RuntimeEnvContextConfig.KEY_TIME &&
+                        trimmed != RuntimeEnvContextConfig.KEY_DEVICE &&
+                        trimmed != RuntimeEnvContextConfig.KEY_VIRTUAL_DISPLAY
+                    ) {
+                        trimmed to v.trim()
+                    } else null
+                }
+                .toMap()
+        )
+        repo.updateJson(StoreDescriptorRegistry.LLM_CONFIGS_ID) { json ->
+            val doc = LlmConfigsSettingsCodec.parse(json)
+            if (doc.envContext == sanitizedConfig) return@updateJson json
+            LlmConfigsSettingsCodec.encode(doc.copy(envContext = sanitizedConfig))
+        }
+        bumpRevision()
+    }
+
     suspend fun setActive(id: String) {
         val updated = repo.updateJsonOrFalse(StoreDescriptorRegistry.LLM_CONFIGS_ID) { json ->
             val doc = LlmConfigsSettingsCodec.parse(json)
@@ -1008,6 +1065,59 @@ class LlmConfigsApi internal constructor(
         }
         bumpRevision()
         return null
+    }
+
+    suspend fun updateModel(id: String, model: String) {
+        val targetId = id.trim()
+        val targetModel = model.trim()
+        if (targetId.isBlank() || targetModel.isBlank()) return
+        val updated = repo.updateJsonOrFalse(StoreDescriptorRegistry.LLM_CONFIGS_ID) { json ->
+            val doc = LlmConfigsSettingsCodec.parse(json)
+            val config = doc.configs.firstOrNull { it.id == targetId } ?: return@updateJsonOrFalse null
+            if (config.model == targetModel) return@updateJsonOrFalse null
+            val updatedConfigs = doc.configs.map {
+                if (it.id == targetId) it.copy(model = targetModel, updatedAt = System.currentTimeMillis()) else it
+            }
+            LlmConfigsSettingsCodec.encode(doc.copy(configs = updatedConfigs))
+        }
+        if (updated) {
+            bumpRevision()
+        }
+    }
+
+    suspend fun updateThinkingLevel(id: String, thinkingLevelWire: String) {
+        val targetId = id.trim()
+        val targetWire = thinkingLevelWire.trim()
+        if (targetId.isBlank()) return
+        val updated = repo.updateJsonOrFalse(StoreDescriptorRegistry.LLM_CONFIGS_ID) { json ->
+            val doc = LlmConfigsSettingsCodec.parse(json)
+            val config = doc.configs.firstOrNull { it.id == targetId } ?: return@updateJsonOrFalse null
+            if (config.thinkingLevel == targetWire) return@updateJsonOrFalse null
+            val updatedConfigs = doc.configs.map {
+                if (it.id == targetId) it.copy(thinkingLevel = targetWire, updatedAt = System.currentTimeMillis()) else it
+            }
+            LlmConfigsSettingsCodec.encode(doc.copy(configs = updatedConfigs))
+        }
+        if (updated) {
+            bumpRevision()
+        }
+    }
+
+    suspend fun updateAvailableModels(id: String, availableModels: List<AvailableModelItem>) {
+        val targetId = id.trim()
+        if (targetId.isBlank()) return
+        val updated = repo.updateJsonOrFalse(StoreDescriptorRegistry.LLM_CONFIGS_ID) { json ->
+            val doc = LlmConfigsSettingsCodec.parse(json)
+            val config = doc.configs.firstOrNull { it.id == targetId } ?: return@updateJsonOrFalse null
+            if (config.availableModels == availableModels) return@updateJsonOrFalse null
+            val updatedConfigs = doc.configs.map {
+                if (it.id == targetId) it.copy(availableModels = availableModels, updatedAt = System.currentTimeMillis()) else it
+            }
+            LlmConfigsSettingsCodec.encode(doc.copy(configs = updatedConfigs))
+        }
+        if (updated) {
+            bumpRevision()
+        }
     }
 
     suspend fun delete(id: String) {
@@ -1536,6 +1646,68 @@ class TextActionApi internal constructor(
         }
     }
 }
+
+/**
+ * 用户自定义的快速提示词（Quick Prompts）。
+ * list 顺序 = 文件顺序，列表页 index 与编辑页 target 一一对应。
+ */
+class QuickPromptApi internal constructor(
+    private val repo: XRepo,
+) {
+    private val _revision = MutableStateFlow(0L)
+    val revision: StateFlow<Long> = _revision.asStateFlow()
+
+    suspend fun list(): List<RuntimeQuickPrompt> {
+        return QuickPromptSettingsCodec.parsePrompts(repo.readJson(StoreDescriptorRegistry.PROMPTS_QUICK_ID))
+    }
+
+    /** previousName 为 null 表示新建；否则先把同名旧项移除再落位，改名不产生重复条目。 */
+    suspend fun replace(previousName: String?, prompt: RuntimeQuickPrompt) {
+        repo.updateJson(StoreDescriptorRegistry.PROMPTS_QUICK_ID) { json ->
+            val prompts = QuickPromptSettingsCodec.parsePrompts(json)
+            val withoutPrevious = if (previousName != null && previousName != prompt.name) {
+                prompts.filterNot { it.name.equals(previousName, ignoreCase = true) }
+            } else {
+                prompts
+            }
+            QuickPromptSettingsCodec.encodePrompts(
+                if (withoutPrevious.any { it.name.equals(prompt.name, ignoreCase = true) }) {
+                    withoutPrevious.map { if (it.name.equals(prompt.name, ignoreCase = true)) prompt else it }
+                } else {
+                    withoutPrevious + prompt
+                },
+            )
+        }
+        _revision.value += 1L
+    }
+
+    suspend fun delete(index: Int) {
+        repo.updateJson(StoreDescriptorRegistry.PROMPTS_QUICK_ID) { json ->
+            val prompts = QuickPromptSettingsCodec.parsePrompts(json)
+            if (index !in prompts.indices) return@updateJson json
+            QuickPromptSettingsCodec.encodePrompts(prompts.filterIndexed { i, _ -> i != index })
+        }
+        _revision.value += 1L
+    }
+
+    suspend fun setEnabled(index: Int, enabled: Boolean) {
+        repo.updateJson(StoreDescriptorRegistry.PROMPTS_QUICK_ID) { json ->
+            QuickPromptSettingsCodec.encodePrompts(
+                QuickPromptSettingsCodec.parsePrompts(json).mapIndexed { i, prompt ->
+                    if (i == index) prompt.copy(enabled = enabled) else prompt
+                },
+            )
+        }
+        _revision.value += 1L
+    }
+}
+
+/** 单条快速提示词：name 为触发词，prompt 为替换内容。 */
+data class RuntimeQuickPrompt(
+    val name: String,
+    val prompt: String,
+    val enabled: Boolean = true,
+)
 
 /** 单条文本快捷动作：名字即会话标题资产，prompt 为动作模板。仅 app 进程内消费，不进 agent-runtime。 */
 data class RuntimeTextAction(

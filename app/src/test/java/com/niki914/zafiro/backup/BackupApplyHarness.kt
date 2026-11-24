@@ -111,6 +111,7 @@ internal class BackupApplyHarness(
         val attachment = FilesBlock.block(listOf(FileRef("/storage/emulated/0/Download/report.pdf")))!!
         return BackupSnapshot(
             appStateJson = """{"draft_text":"hello","last_opened_conversation_id":"c1","pinned_conversations":[{"id":"c1","pinned_at":5}],"theme_mode":"dark"}""",
+            uiStylesJson = """{"overrides":{"composer":"md3"}}""",
             modelsJson = """{"active_id":"m","prompt":"be brief","configs":[{"id":"m","api_key":"sk-live","endpoint":"https://example.test"}]}""",
             memoryJson = """{"memories":[{"id":"mem","content":"likes tea"}]}""",
             mcpServersJson = """{"servers":[{"id":"local","name":"Local","url":"http://127.0.0.1","headers":{"Authorization":"secret-token"}}]}""",
@@ -147,11 +148,13 @@ internal class BackupApplyHarness(
             BackupPartition.Memory to snapshot.memoryJson,
             BackupPartition.Models to snapshot.modelsJson,
             BackupPartition.Preferences to snapshot.appStateJson,
+            BackupPartition.UiStyles to snapshot.uiStylesJson,
             BackupPartition.McpServers to snapshot.mcpServersJson,
             BackupPartition.McpService to snapshot.mcpServiceJson,
             BackupPartition.BuiltinTools to snapshot.builtinToolsJson,
             BackupPartition.PyTools to snapshot.pyToolsJson,
             BackupPartition.TextActions to snapshot.textActionsJson,
+            BackupPartition.QuickPrompts to snapshot.quickPromptsJson,
             BackupPartition.ExecutionRules to snapshot.executionRulesJson,
             BackupPartition.TakeoverRules to snapshot.takeoverRulesJson,
             BackupPartition.MaskingRules to snapshot.maskingRulesJson,
@@ -281,6 +284,7 @@ internal class MemoryBackupStore(
     var pyInstall = File(root, "downloads/py_install_apk").absolutePath
     var pyDownload = File(root, "downloads/py_download_file").absolutePath
     var appStateJson = "{}"
+    var uiStylesJson = """{"overrides":{}}"""
     var modelsJson = """{"active_id":"","prompt":"","configs":[]}"""
     var memoryJson = """{"memories":[]}"""
     var mcpServersJson = """{"servers":[]}"""
@@ -288,6 +292,7 @@ internal class MemoryBackupStore(
     var builtinToolsJson = """{"version":2,"enabled":{}}"""
     var pyToolsJson = """{"tools":[]}"""
     var textActionsJson = """{"actions":[]}"""
+    var quickPromptsJson = """{"prompts":[]}"""
     var executionRulesJson = """{"rules":[]}"""
     var takeoverRulesJson = """{"default_target":"ZAFIRO","rules":[]}"""
     var maskingRulesJson = """{"rules":[]}"""
@@ -298,9 +303,10 @@ internal class MemoryBackupStore(
     var failPartition: BackupPartition? = null
     var imagesWritten = 0
 
-    override suspend fun read(): BackupSnapshot {
+    override suspend fun read(groups: Set<BackupGroup>): BackupSnapshot {
         return BackupSnapshot(
             appStateJson = appStateJson,
+            uiStylesJson = uiStylesJson,
             modelsJson = modelsJson,
             memoryJson = memoryJson,
             mcpServersJson = mcpServersJson,
@@ -308,6 +314,7 @@ internal class MemoryBackupStore(
             builtinToolsJson = builtinToolsJson,
             pyToolsJson = pyToolsJson,
             textActionsJson = textActionsJson,
+            quickPromptsJson = quickPromptsJson,
             executionRulesJson = executionRulesJson,
             takeoverRulesJson = takeoverRulesJson,
             maskingRulesJson = maskingRulesJson,
@@ -331,11 +338,13 @@ internal class MemoryBackupStore(
             BackupPartition.Memory -> memoryJson = json
             BackupPartition.Models -> modelsJson = json
             BackupPartition.Preferences -> appStateJson = json
+            BackupPartition.UiStyles -> uiStylesJson = json
             BackupPartition.McpServers -> mcpServersJson = json
             BackupPartition.McpService -> mcpServiceJson = json
             BackupPartition.BuiltinTools -> builtinToolsJson = json
             BackupPartition.PyTools -> pyToolsJson = json
             BackupPartition.TextActions -> textActionsJson = json
+            BackupPartition.QuickPrompts -> quickPromptsJson = json
             BackupPartition.ExecutionRules -> executionRulesJson = json
             BackupPartition.TakeoverRules -> takeoverRulesJson = json
             BackupPartition.MaskingRules -> maskingRulesJson = json
@@ -375,6 +384,7 @@ internal class MemoryBackupStore(
 
     fun clear() {
         appStateJson = "{}"
+        uiStylesJson = """{"overrides":{}}"""
         modelsJson = """{"active_id":"","prompt":"","configs":[]}"""
         memoryJson = """{"memories":[]}"""
         mcpServersJson = """{"servers":[]}"""
@@ -382,6 +392,7 @@ internal class MemoryBackupStore(
         builtinToolsJson = """{"version":2,"enabled":{}}"""
         pyToolsJson = """{"tools":[]}"""
         textActionsJson = """{"actions":[]}"""
+        quickPromptsJson = """{"prompts":[]}"""
         executionRulesJson = """{"rules":[]}"""
         takeoverRulesJson = """{"default_target":"ZAFIRO","rules":[]}"""
         maskingRulesJson = """{"rules":[]}"""

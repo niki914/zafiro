@@ -4,6 +4,11 @@ import com.niki914.zafiro.settings.model.RuntimeLoadedSkill
 import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
 import com.niki914.zafiro.settings.model.RuntimeSkillValidation
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
@@ -13,34 +18,67 @@ import java.security.MessageDigest
 class SkillApi internal constructor(
     private val repo: XRepo,
 ) {
-    suspend fun listAll(): List<RuntimeSkillMetadata> {
-        return repository().listAll()
+    private val _revision = MutableStateFlow(0L)
+    val revision: StateFlow<Long> = _revision.asStateFlow()
+
+    private val repoMutex = Mutex()
+    private var repositoryInstance: SkillFileRepository? = null
+    private var fileObserver: SkillsFileObserver? = null
+
+    private fun bumpRevision() {
+        _revision.value += 1L
     }
 
-    suspend fun listEnabled(): List<RuntimeSkillMetadata> {
-        return repository().listEnabled()
+    internal fun resetForTest() {
+        _revision.value = 0L
+        fileObserver?.stopWatching()
+        fileObserver = null
+        repositoryInstance?.invalidateCache()
+        repositoryInstance = null
     }
 
-    suspend fun getDetail(id: String): RuntimeLoadedSkill? {
-        return repository().load(id)
+    suspend fun listAll(): List<RuntimeSkillMetadata> = withContext(Dispatchers.IO) {
+        repository().listAll()
     }
 
-    suspend fun saveContent(id: String, content: String): RuntimeSkillValidation? {
-        return repository().saveContent(id, content)
+    suspend fun listEnabled(): List<RuntimeSkillMetadata> = withContext(Dispatchers.IO) {
+        repository().listEnabled()
     }
 
-    suspend fun setEnabled(id: String, enabled: Boolean): RuntimeSkillValidation? {
-        return repository().setEnabled(id, enabled)
+    suspend fun getDetail(id: String): RuntimeLoadedSkill? = withContext(Dispatchers.IO) {
+        repository().load(id)
     }
 
-    suspend fun delete(id: String): RuntimeSkillValidation? {
-        return repository().delete(id)
-    }
-
-    suspend fun importSkill(sourceDir: File, overwrite: Boolean = false): SkillImportResult {
-        return withContext(Dispatchers.IO) {
-            repository().importSkill(sourceDir, overwrite)
+    suspend fun saveContent(id: String, content: String): RuntimeSkillValidation? = withContext(Dispatchers.IO) {
+        val result = repository().saveContent(id, content)
+        if (result == null) {
+            bumpRevision()
         }
+        result
+    }
+
+    suspend fun setEnabled(id: String, enabled: Boolean): RuntimeSkillValidation? = withContext(Dispatchers.IO) {
+        val result = repository().setEnabled(id, enabled)
+        if (result == null) {
+            bumpRevision()
+        }
+        result
+    }
+
+    suspend fun delete(id: String): RuntimeSkillValidation? = withContext(Dispatchers.IO) {
+        val result = repository().delete(id)
+        if (result == null) {
+            bumpRevision()
+        }
+        result
+    }
+
+    suspend fun importSkill(sourceDir: File, overwrite: Boolean = false): SkillImportResult = withContext(Dispatchers.IO) {
+        val result = repository().importSkill(sourceDir, overwrite)
+        if (result is SkillImportResult.Success) {
+            bumpRevision()
+        }
+        result
     }
 
     /**
@@ -90,12 +128,37 @@ class SkillApi internal constructor(
                 skillsTargetDir.mkdirs()
                 seededFile.writeText(seeded.sorted().joinToString("\n"))
             }
+            if (assetEntries.isNotEmpty()) {
+                bumpRevision()
+            }
         }
     }
 
     private suspend fun repository(): SkillFileRepository {
-        val context = repo.context()
-        return SkillFileRepository(File(context.filesDir, SKILLS_DIR_NAME))
+        repositoryInstance?.let { return it }
+        return repoMutex.withLock {
+            repositoryInstance?.let { return@withLock it }
+            val context = repo.context()
+            val skillsDir = File(context.filesDir, SKILLS_DIR_NAME)
+            if (!skillsDir.exists()) {
+                skillsDir.mkdirs()
+            }
+            val repository = SkillFileRepository(skillsDir)
+            if (fileObserver == null) {
+                val observer = SkillsFileObserver(
+                    skillsRoot = skillsDir,
+                    onChanged = {
+                        if (repositoryInstance?.invalidateCacheIfModified() == true) {
+                            bumpRevision()
+                        }
+                    }
+                )
+                observer.startWatching()
+                fileObserver = observer
+            }
+            repositoryInstance = repository
+            repository
+        }
     }
 
     companion object {

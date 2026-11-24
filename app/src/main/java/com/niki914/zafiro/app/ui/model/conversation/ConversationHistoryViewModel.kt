@@ -5,6 +5,7 @@ import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.isRunning
+import com.niki914.zafiro.api.screen.Screens
 import com.niki914.zafiro.api.util.Debouncer
 import com.niki914.zafiro.api.util.debouncer
 import com.niki914.zafiro.api.util.runCatchingCancellable
@@ -16,7 +17,7 @@ import com.niki914.zafiro.app.conversation.ConversationSearchResult
 import com.niki914.zafiro.app.conversation.ConversationSummary
 import com.niki914.zafiro.repo.PinnedConversation
 import com.niki914.zafiro.repo.XRepo
-import com.niki914.zafiro.service.requireService
+import com.niki914.zafiro.service.findService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -104,17 +105,13 @@ internal data class ConversationHistoryViewModelDependencies(
     val setConversationPinned: suspend (String, Boolean) -> Unit,
     val searchConversations: suspend (String) -> List<ConversationSearchResult>,
     val destroyAgent: (String) -> Unit = { id ->
-        tryIgnore {
-            requireService<AgentManager>().destroy(
-                id
-            )
-        }
+        findService<AgentManager>()?.let { tryIgnore { it.destroy(id) } }
     },
     val setHasUnread: suspend (String, Boolean) -> Unit = { id, unread ->
         ConversationRepo.setHasUnread(id, unread)
     },
     val observeActiveStates: () -> Flow<Map<String, AgentState>> = {
-        tryOrDefault(MutableStateFlow(emptyMap())) { requireService<AgentManager>().activeStates }
+        findService<AgentManager>()?.activeStates ?: MutableStateFlow(emptyMap())
     },
 ) {
     companion object {
@@ -126,10 +123,13 @@ internal data class ConversationHistoryViewModelDependencies(
             forkConversation = { id -> ConversationRepo.forkConversation(id) },
             setConversationPinned = { id, pinned -> XRepo.setConversationPinned(id, pinned) },
             searchConversations = { query -> ConversationSearchRepo.searchConversations(query) },
-            destroyAgent = { id -> tryIgnore { requireService<AgentManager>().destroy(id) } },
+            destroyAgent = { id ->
+                findService<AgentManager>()?.let { tryIgnore { it.destroy(id) } }
+                findService<Screens>()?.onConversationDestroyed(id)
+            },
             setHasUnread = { id, unread -> ConversationRepo.setHasUnread(id, unread) },
             observeActiveStates = {
-                tryOrDefault(MutableStateFlow(emptyMap())) { requireService<AgentManager>().activeStates }
+                findService<AgentManager>()?.activeStates ?: MutableStateFlow(emptyMap())
             },
         )
     }
@@ -306,8 +306,9 @@ class ConversationHistoryViewModel internal constructor(
             sendEffect(ConversationHistoryEffect.DeleteActiveConversation(id))
             return
         }
+        val rootId = resolveConversation(id)?.rootId ?: id
         runCatchingCancellable { dependencies.deleteConversation(id) }.fold(
-            onSuccess = { afterDelete(id) },
+            onSuccess = { afterDelete(id, rootId) },
             onFailure = { throwable ->
                 updateState {
                     copy(
@@ -318,9 +319,16 @@ class ConversationHistoryViewModel internal constructor(
         )
     }
 
+    private fun resolveConversation(id: String): ConversationSummary? =
+        currentState.conversations.firstOrNull { it.id == id || it.rootId == id }
+
     /** 删除成功后的收尾：解置顶；活动会话由宿主删完后经同样路径收尾。列表行变动由 Room Flow 自动推送。 */
-    private suspend fun afterDelete(id: String) {
-        tryIgnore { dependencies.setConversationPinned(id, false) }
+    private suspend fun afterDelete(id: String, rootId: String = resolveConversation(id)?.rootId ?: id) {
+        val branchId = id.takeIf { it != rootId }
+        tryIgnore { dependencies.setConversationPinned(rootId, false) }
+        if (branchId != null) {
+            tryIgnore { dependencies.setConversationPinned(branchId, false) }
+        }
         refreshPinned()
     }
 
@@ -337,7 +345,15 @@ class ConversationHistoryViewModel internal constructor(
     }
 
     private suspend fun setPinned(id: String, pinned: Boolean) {
-        runCatchingCancellable { dependencies.setConversationPinned(id, pinned) }.onSuccess {
+        val summary = resolveConversation(id)
+        val rootId = summary?.rootId ?: id
+        val branchId = summary?.id?.takeIf { it != rootId }
+        runCatchingCancellable {
+            dependencies.setConversationPinned(rootId, pinned)
+            if (branchId != null) {
+                dependencies.setConversationPinned(branchId, false)
+            }
+        }.onSuccess {
             refreshPinned()
         }
     }
@@ -346,7 +362,15 @@ class ConversationHistoryViewModel internal constructor(
         val ids = currentState.selectedIds
         if (ids.isEmpty()) return
         ids.forEach { id ->
-            tryIgnore { dependencies.setConversationPinned(id, pinned) }
+            val summary = resolveConversation(id)
+            val rootId = summary?.rootId ?: id
+            val branchId = summary?.id?.takeIf { it != rootId }
+            tryIgnore {
+                dependencies.setConversationPinned(rootId, pinned)
+                if (branchId != null) {
+                    dependencies.setConversationPinned(branchId, false)
+                }
+            }
         }
         refreshPinned()
     }
@@ -381,10 +405,16 @@ class ConversationHistoryViewModel internal constructor(
 
         var failureMessage: String? = null
         normalIds.forEach { id ->
+            val summary = resolveConversation(id)
+            val rootId = summary?.rootId ?: id
+            val branchId = summary?.id?.takeIf { it != rootId }
             runCatchingCancellable {
                 dependencies.destroyAgent(id)
                 dependencies.deleteConversation(id)
-                dependencies.setConversationPinned(id, false)
+                dependencies.setConversationPinned(rootId, false)
+                if (branchId != null) {
+                    dependencies.setConversationPinned(branchId, false)
+                }
             }.onFailure { throwable ->
                 if (failureMessage == null) {
                     failureMessage = throwable.message ?: throwable::class.java.simpleName

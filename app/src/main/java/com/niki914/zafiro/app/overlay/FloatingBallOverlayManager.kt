@@ -28,6 +28,7 @@ import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.isRunning
+import com.niki914.zafiro.api.text.PreviewMarkers
 import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.app.ui.model.ToolPresentation
@@ -250,9 +251,9 @@ object FloatingBallOverlayManager {
                     vmInstance.sendIntent(
                         FloatingBallIntent.UpdateAgentStatus(
                             preview = when (state) {
-                                is AgentState.Generating -> state.text
-                                is AgentState.Thinking -> state.text
-                                is AgentState.Idle -> state.lastText
+                                is AgentState.Generating -> state.text?.let(PreviewMarkers::strip)
+                                is AgentState.Thinking -> state.text?.let(PreviewMarkers::strip)
+                                is AgentState.Idle -> state.lastText?.let(PreviewMarkers::strip)
                                 is AgentState.ToolRunning ->
                                     ToolPresentation.runningText(
                                         appContext,
@@ -333,6 +334,7 @@ object FloatingBallOverlayManager {
                         dynamicColor = themePrefs.seedColor == null,
                         seedColor = seed,
                         themeStyle = themePrefs.themeStyle,
+                        uiStyleLookup = ThemeController.uiStyleLookup(),
                     ) {
                         FloatingBallCollapsedBall(
                             onClick = {
@@ -399,6 +401,7 @@ object FloatingBallOverlayManager {
                         dynamicColor = themePrefs.seedColor == null,
                         seedColor = seed,
                         themeStyle = themePrefs.themeStyle,
+                        uiStyleLookup = ThemeController.uiStyleLookup(),
                     ) {
                         FloatingBallMorphCard(
                             state = uiState.ballState,
@@ -547,6 +550,7 @@ object FloatingBallOverlayManager {
                     dynamicColor = themePrefs.seedColor == null,
                     seedColor = seed,
                     themeStyle = themePrefs.themeStyle,
+                    uiStyleLookup = ThemeController.uiStyleLookup(),
                 ) {
                     val uiState by vm.uiStateFlow.collectAsState()
                     FloatingBallDetailMorphCard(

@@ -62,6 +62,14 @@ enum class BackupPartition(
         listKey = null,
         honorsExplicitEmpty = false,
     ),
+    UiStyles(
+        id = "ui_styles",
+        group = BackupGroup.Config,
+        apply = Apply.Overwrite,
+        singletonApply = null,
+        listKey = null,
+        honorsExplicitEmpty = false,
+    ),
     McpServers(
         id = "mcp_servers",
         group = BackupGroup.Tools,
@@ -108,6 +116,14 @@ enum class BackupPartition(
         apply = Apply.Items,
         singletonApply = null,
         listKey = "actions",
+        honorsExplicitEmpty = true,
+    ),
+    QuickPrompts(
+        id = "quick_prompts",
+        group = BackupGroup.Tools,
+        apply = Apply.Items,
+        singletonApply = null,
+        listKey = "prompts",
         honorsExplicitEmpty = true,
     ),
     ExecutionRules(
@@ -209,6 +225,7 @@ data class SkillSnapshot(
 /** 导出时的全量读数。未选中的组不会写入包，但读数可以先备齐。 */
 data class BackupSnapshot(
     val appStateJson: String = "{}",
+    val uiStylesJson: String = """{"overrides":{}}""",
     val modelsJson: String = """{"active_id":"","prompt":"","configs":[]}""",
     val memoryJson: String = """{"memories":[]}""",
     val mcpServersJson: String = """{"servers":[]}""",
@@ -216,6 +233,7 @@ data class BackupSnapshot(
     val builtinToolsJson: String = """{"version":2,"enabled":{}}""",
     val pyToolsJson: String = """{"tools":[]}""",
     val textActionsJson: String = """{"actions":[]}""",
+    val quickPromptsJson: String = """{"prompts":[]}""",
     val executionRulesJson: String = """{"rules":[]}""",
     val takeoverRulesJson: String = """{"default_target":"ZAFIRO","rules":[]}""",
     val maskingRulesJson: String = """{"rules":[]}""",

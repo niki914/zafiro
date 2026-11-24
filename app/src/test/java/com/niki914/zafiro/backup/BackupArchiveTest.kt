@@ -34,6 +34,7 @@ class BackupArchiveTest {
     fun inspectCountsMatchSourceRows() {
         val snapshot = BackupSnapshot(
             appStateJson = """{"theme_mode":"dark"}""",
+            uiStylesJson = """{"overrides":{"composer":"md3"}}""",
             modelsJson = """{"active_id":"m","prompt":"","configs":[{"id":"m"}]}""",
             memoryJson = """{"memories":[{},{},{}]}""",
             mcpServersJson = """{"servers":[{},{},{},{}]}""",
@@ -41,6 +42,7 @@ class BackupArchiveTest {
             builtinToolsJson = """{"version":2,"enabled":{"a":true,"b":false,"c":true,"d":true,"e":false}}""",
             pyToolsJson = """{"tools":[{},{},{},{},{},{}]}""",
             textActionsJson = """{"actions":[{},{}]}""",
+            quickPromptsJson = """{"prompts":[{},{}]}""",
             executionRulesJson = """{"rules":[{},{}]}""",
             takeoverRulesJson = """{"default_target":"ZAFIRO","rules":[{},{},{}]}""",
             maskingRulesJson = """{"rules":[{},{},{},{}]}""",
@@ -56,12 +58,14 @@ class BackupArchiveTest {
                 "memory" to 3,
                 "models" to 1,
                 "preferences" to 1,
+                "ui_styles" to 1,
                 "mcp_servers" to 4,
                 "mcp_service" to 1,
                 "skills" to 2,
                 "builtin_tools" to 5,
                 "py_tools" to 6,
                 "text_actions" to 2,
+                "quick_prompts" to 2,
                 "execution_rules" to 2,
                 "takeover_rules" to 3,
                 "masking_rules" to 4,
@@ -101,6 +105,8 @@ class BackupArchiveTest {
         assertEquals(SecretsMode.Stripped, result.summary.secrets)
         assertEquals(listOf("", "", ""), listOf((config["api_key"] as JsonPrimitive).content, header.content, bearer.content))
         assertEquals("https://example.test", (config["endpoint"] as JsonPrimitive).content)
+        val available = (config["available_models"] as JsonArray).map { ((it as JsonObject)["id"] as JsonPrimitive).content }
+        assertEquals(listOf("m", "gpt-4o"), available)
     }
 
     @Test
@@ -343,6 +349,22 @@ class BackupArchiveTest {
         assertTrue(result.texts.getValue("conversations").contains(path))
     }
 
+    @Test
+    fun readZipSelectivelySkipsBytes() {
+        val file = folder.newFile()
+        writeZip(
+            file,
+            listOf(
+                ArchiveEntry("manifest.json", "{}".toByteArray()),
+                ArchiveEntry("blobs/huge.jpg", byteArrayOf(1, 2, 3, 4)),
+            ),
+        )
+        val read = readZip(file) { !it.startsWith("blobs/") } as ZipRead.Ok
+        assertEquals(2, read.entries.size)
+        assertEquals("{}", read.entries.getValue("manifest.json").toString(Charsets.UTF_8))
+        assertEquals(0, read.entries.getValue("blobs/huge.jpg").size)
+    }
+
     private fun allGroups(includeSecrets: Boolean = false): BackupRequest {
         return BackupRequest(
             groups = BackupGroup.entries.toSet(),
@@ -358,7 +380,7 @@ class BackupArchiveTest {
 
     private fun secretSnapshot(): BackupSnapshot {
         return BackupSnapshot(
-            modelsJson = """{"active_id":"m","prompt":"","configs":[{"id":"m","endpoint":"https://example.test","api_key":"sk-live"}]}""",
+            modelsJson = """{"active_id":"m","prompt":"","configs":[{"id":"m","endpoint":"https://example.test","api_key":"sk-live","available_models":[{"id":"m","source":"custom"},{"id":"gpt-4o","source":"remote"}]}]}""",
             mcpServersJson = """{"servers":[{"name":"local","url":"http://127.0.0.1","headers":{"Authorization":"secret-token"}}]}""",
             mcpServiceJson = """{"enabled":true,"bearerToken":"bearer-live"}""",
         )

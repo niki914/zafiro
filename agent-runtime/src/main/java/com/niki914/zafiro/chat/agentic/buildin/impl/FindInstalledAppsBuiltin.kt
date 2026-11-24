@@ -20,7 +20,9 @@ class FindInstalledAppsBuiltin : BuiltinTool() {
     override val name: String = "find_installed_apps"
 
     override val description: String =
-        "Find installed apps on this device by app name or package name. Serves opening apps only: use it to resolve which app to open. Not a general search tool."
+        "Query installed applications(fuzzy) on this device by app name or package name. " +
+            "Returns matched app names, package names, and system app flags without launching them. " +
+            "Do NOT use this for web searches."
 
     override val defaultEnabled: Boolean = true
 
@@ -114,7 +116,7 @@ class FindInstalledAppsBuiltin : BuiltinTool() {
               "properties": {
                 "query": {
                   "type": "string",
-                  "description": "App name or package name fragment to resolve."
+                  "description": "App name or package name keyword to search for."
                 },
                 "include_system": {
                   "type": "boolean",

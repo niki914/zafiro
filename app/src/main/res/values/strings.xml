@@ -25,6 +25,12 @@
     <string name="ui_onboard_configure_model_catalog_empty">No matching models</string>
     <string name="ui_onboard_existing_backup_lead">Have a backup?</string>
     <string name="ui_onboard_existing_backup_action">Import data</string>
+    <string name="ui_onboard_provider_pick_byok_hint">What is BYOK?</string>
+    <string name="ui_provider_official_and_relay_summary">Official &amp; third-party relays</string>
+    <string name="ui_onboard_configure_model_add_button">Add model</string>
+    <string name="ui_onboard_configure_model_add_title">Add available model</string>
+    <string name="ui_onboard_configure_model_add_placeholder">Enter model ID, e.g. gpt-4o</string>
+    <string name="ui_onboard_configure_model_catalog_refresh">Refresh model catalog</string>
     <string name="ui_onboard_configure_api_key_label">API Key</string>
     <string name="ui_onboard_configure_api_key_placeholder">Enter your API Key</string>
     <string name="ui_onboard_configure_api_key_show">Show API Key</string>
@@ -45,6 +51,18 @@
     <string name="ui_tool_status_running">Running</string>
     <string name="ui_tool_status_success">Success</string>
     <string name="ui_tool_status_failed">Failed</string>
+    <string name="ui_home_menu_virtual_display">Virtual display</string>
+    <string name="ui_virtual_display_recent_apps">Recently used</string>
+    <string name="ui_virtual_display_all_apps">All apps</string>
+    <string name="ui_virtual_display_create_failed">Failed to create virtual display. Check permissions.</string>
+    <string name="ui_virtual_display_app_in_use_on_main">This app is currently open on the main screen</string>
+    <string name="ui_virtual_display_app_launch_failed">Failed to launch app on virtual display</string>
+    <string name="ui_virtual_display_pick_app">Choose an app</string>
+    <string name="ui_virtual_display_launching_app">Launching %1$s…</string>
+    <string name="ui_virtual_display_card_terminate">Terminate</string>
+    <string name="ui_virtual_display_terminate_title">Terminate virtual display?</string>
+    <string name="ui_virtual_display_terminate_message">This closes the virtual display bound to this conversation and stops apps running in it.</string>
+    <string name="ui_virtual_display_requires_conversation">Please start a conversation first</string>
     <plurals name="ui_steps_wrapped_count">
         <item quantity="one">wrapped %d step</item>
         <item quantity="other">wrapped %d steps</item>
@@ -128,6 +146,11 @@
     <string name="ui_time_hours_ago">%1$dh ago</string>
     <string name="ui_time_yesterday">Yesterday</string>
     <string name="ui_root_back_to_home_hint">Press back again to go to the Home screen</string>
+    <string name="ui_viewer_refresh">Refresh</string>
+    <string name="ui_viewer_open_in_browser">Open in browser</string>
+    <string name="ui_viewer_copy_link">Copy link</string>
+    <string name="ui_viewer_copy_path">Copy file path</string>
+    <string name="ui_toast_no_compactable_history">No conversation history to compact</string>
 
     <!-- Settings Shell -->
     <string name="ui_settings_title">Settings</string>
@@ -230,6 +253,37 @@
     <string name="ui_settings_configure_error_name_duplicate">Configuration name already exists. Please use a different name.</string>
     <string name="ui_settings_configure_error_proxy_invalid">Proxy address is not a valid URI</string>
     <string name="ui_settings_mcp_config">MCP Configuration</string>
+
+    <!-- Context Injection -->
+    <string name="ui_settings_context_injection">Context Injection</string>
+    <string name="ui_settings_context_injection_summary">Attach time, device state, and custom content with messages</string>
+    <string name="ui_settings_env_context_description">Attaches current context to user messages each turn. Placing frequently changing content in the system prompt would break model prompt cache hits and increase costs.</string>
+    <string name="ui_settings_env_context_master_toggle">Enable context injection</string>
+    <string name="ui_settings_env_context_master_summary">Allow time, device information, and custom content to be provided to the model</string>
+    <string name="ui_settings_env_context_group_builtin">Built-in Variables</string>
+    <string name="ui_settings_env_context_key_date">Date</string>
+    <string name="ui_settings_env_context_key_time">Time</string>
+    <string name="ui_settings_env_context_key_device">Device Status</string>
+    <string name="ui_settings_env_context_key_virtual_display">Virtual display</string>
+    <string name="ui_settings_env_context_group_custom">Custom Variables</string>
+    <string name="ui_settings_env_context_empty_custom">No custom variables. Tap \'+\' in the top right to add.</string>
+    <string name="ui_settings_env_context_variable_title_create">Add Variable</string>
+    <string name="ui_settings_env_context_variable_description">Add static context attached to messages. The name is for management, and the model reads the content configured here in each turn.</string>
+    <string name="ui_settings_env_context_field_name">Name</string>
+    <string name="ui_settings_env_context_field_name_hint">Alphanumeric, underscores, and dashes only</string>
+    <string name="ui_settings_env_context_field_enabled">Enabled</string>
+    <string name="ui_settings_env_context_field_content">Content</string>
+    <string name="ui_settings_env_context_field_content_hint">Enter text to attach with messages</string>
+    <string name="ui_settings_env_context_save_action">Save Variable</string>
+    <string name="ui_settings_env_context_delete_dialog_title">Delete Variable</string>
+    <string name="ui_settings_env_context_delete_dialog_text">Are you sure you want to delete variable \"%1$s\"?</string>
+    <string name="ui_settings_env_context_error_key_required">Name cannot be empty</string>
+    <string name="ui_settings_env_context_error_key_reserved">Cannot use reserved names: date, time, device, virtual_display</string>
+    <string name="ui_settings_env_context_error_key_duplicate">Name already exists, please choose another</string>
+    <string name="ui_settings_env_context_error_key_invalid_format">Invalid name format. Only letters, numbers, underscores, and dashes are allowed.</string>
+    <string name="ui_settings_env_context_error_value_required">Content cannot be empty</string>
+    <string name="ui_settings_env_context_error_save_failed">Failed to save: %1$s</string>
+    <string name="ui_settings_env_context_error_delete_failed">Failed to delete: %1$s</string>
 
     <!-- Memory Module -->
     <string name="memory_page_description">Manage saved memories. Swipe left or right to delete, or tap an item to edit it. Once added, the Agent will remember this information even in new conversations.</string>
@@ -360,6 +414,8 @@
     <string name="custom_py_tool_save_dialog_action_done">Done</string>
     <string name="custom_py_tool_save_dialog_action_close">Close</string>
     <string name="custom_py_tool_save_failed">Failed to save: %1$s</string>
+
+    <!-- Python Tool Module -->
 
     <string name="mcp_page_description">Configure connection and authentication for MCP. After saving, Zafiro will automatically discover available tools at runtime.</string>
     <string name="mcp_page_empty_description">Tap the top right to add your first MCP server.</string>
@@ -546,6 +602,17 @@
     <string name="ui_backup_restoring">Restoring</string>
     <string name="ui_settings_configure_thinking_start_label">Default</string>
     <string name="ui_settings_configure_thinking_end_label">Max</string>
+    <string name="ui_tool_display_phone_use">Phone Use</string>
+    <string name="ui_tool_display_open">Open</string>
+    <string name="ui_backup_inspecting">Validating…</string>
+    <string name="ui_settings_model_chooser_style_title">Model chooser style</string>
+    <string name="ui_settings_model_chooser_style_detailed">Detailed</string>
+    <string name="ui_settings_model_chooser_style_compact">Compact</string>
+    <string name="ui_settings_runtime_stop_on_command_deny">Stop the turn after a denied command</string>
+    <string name="ui_home_model_sheet_title">Current Configuration</string>
+    <string name="ui_home_model_sheet_section_config">Configuration</string>
+    <string name="ui_home_model_sheet_section_thinking">Thinking Effort</string>
+    <string name="ui_home_model_sheet_section_model">Model</string>
     <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
     <string name="ui_settings_configure_max_tokens_placeholder">For example: 200000 or 200k</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">Enter a valid number of at least 256, supporting k/m/b</string>
@@ -557,6 +624,43 @@
     <string name="ui_theme_style_liquid">Glass</string>
     <string name="ui_theme_style_md3">MD3</string>
     <string name="ui_theme_style_md3e">MD3E</string>
+    <string name="ui_theme_style_custom">Custom</string>
+    <string name="ui_theme_style_unified">Unified Style</string>
+
+    <string name="ui_theme_group_controls">Controls</string>
+    <string name="ui_theme_group_layout">Layout &amp; Navigation</string>
+    <string name="ui_theme_group_system">Motion &amp; System</string>
+
+    <string name="ui_theme_part_button">Buttons</string>
+
+    <string name="ui_theme_part_switch">Switch</string>
+
+    <string name="ui_theme_part_slider">Slider</string>
+
+    <string name="ui_theme_part_text_field">Text Field</string>
+
+    <string name="ui_theme_part_loading">Loading Indicator</string>
+
+    <string name="ui_theme_part_top_bar_buttons">Top Bar Buttons</string>
+
+    <string name="ui_theme_part_top_bar_plate">Top Bar Plate</string>
+
+    <string name="ui_theme_part_composer">Chat Composer</string>
+
+    <string name="ui_theme_part_search">Search Bar</string>
+
+    <string name="ui_theme_part_page_scroll">Page Scroll</string>
+
+    <string name="ui_theme_part_dialog">Dialogs</string>
+
+    <string name="ui_theme_part_menu">Dropdown Menu</string>
+
+    <string name="ui_theme_part_settings">Settings Cards</string>
+
+    <string name="ui_theme_preview_primary_btn">Primary</string>
+    <string name="ui_theme_preview_tonal_btn">Tonal</string>
+    <string name="ui_theme_preview_loading_hint">Processing…</string>
+    <string name="ui_theme_preview_input_hint">Sample input…</string>
 
     <string name="ui_theme_mode_system">Follow system</string>
     <string name="ui_theme_mode_light">Light</string>
@@ -674,6 +778,29 @@
     <string name="text_action_error_save_failed">Failed to save action.</string>
     <string name="text_action_error_delete_failed">Failed to delete action.</string>
     <string name="crash_startup_copied_toast">Stack trace copied to clipboard. Please send it to the developer.</string>
+    <string name="ui_settings_quick_prompts">Quick Prompts</string>
+    <string name="ui_settings_quick_prompts_summary">Configure slash prompts and snippets for composer</string>
+    <string name="quick_prompt_page_description">Quickly suggest and expand preset prompts by typing / in the composer.</string>
+    <string name="quick_prompt_page_empty_description">Tap the top right to add your first quick prompt.</string>
+    <string name="quick_prompt_loading">Loading quick prompts…</string>
+    <string name="quick_prompt_editor_title_create">New Quick Prompt</string>
+    <string name="quick_prompt_save_action">Save Prompt</string>
+    <string name="quick_prompt_field_name">Trigger Key</string>
+    <string name="quick_prompt_field_name_hint">e.g. btw</string>
+    <string name="quick_prompt_field_name_description">Triggered with / followed by this key. Spaces and special characters are not allowed.</string>
+    <string name="quick_prompt_field_prompt">Prompt Content</string>
+    <string name="quick_prompt_field_prompt_hint">Content to replace or expand into</string>
+    <string name="quick_prompt_field_enabled">Enabled</string>
+    <string name="quick_prompt_delete_dialog_title">Delete Quick Prompt</string>
+    <string name="quick_prompt_delete_dialog_text">Delete prompt "%1$s"? This cannot be undone.</string>
+    <string name="quick_prompt_error_name_required">Trigger key is required.</string>
+    <string name="quick_prompt_error_name_invalid">Trigger key cannot contain whitespace or special characters.</string>
+    <string name="quick_prompt_error_name_duplicate">A prompt with this trigger key already exists.</string>
+    <string name="quick_prompt_error_name_reserved">Trigger key cannot use system reserved commands or keywords.</string>
+    <string name="quick_prompt_error_prompt_required">Prompt content is required.</string>
+    <string name="quick_prompt_error_load_failed">Failed to load quick prompts.</string>
+    <string name="quick_prompt_error_save_failed">Failed to save quick prompt.</string>
+    <string name="quick_prompt_error_delete_failed">Failed to delete quick prompt.</string>
 
     <string name="ui_settings_masking_rules">Data Masking</string>
     <string name="ui_settings_masking_rules_summary">Mask sensitive data before outbound requests</string>

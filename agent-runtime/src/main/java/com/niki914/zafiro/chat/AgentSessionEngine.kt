@@ -62,6 +62,7 @@ class AgentSessionEngine {
 
     val tenantId: String = UUID.randomUUID().toString()
 
+    var conversationIdProvider: (() -> String?)? = null
     var agentControlProvider: (() -> AgentControl?)? = null
 
     private var runtimeState: RuntimeState? = null
@@ -69,6 +70,7 @@ class AgentSessionEngine {
     private val imageManager = ImageIngestionManager()
     private val toolSynchronizer = ToolRegistrySynchronizer(
         tenantId = tenantId,
+        conversationIdProvider = { conversationIdProvider?.invoke() },
         agentControlProvider = { agentControlProvider?.invoke() },
     ) { runtimeState?.snapshot?.tools }
     private val prefixComposer = TurnPrefixComposer()
@@ -76,6 +78,7 @@ class AgentSessionEngine {
         toolRegistry = toolSynchronizer.toolRegistry,
         imageLoader = imageManager.imageLoader,
         ensureImageSaver = imageManager::ensureImageSaver,
+        conversationIdProvider = { conversationIdProvider?.invoke() },
     )
     internal val streamPipeline = LlmStreamPipeline()
 

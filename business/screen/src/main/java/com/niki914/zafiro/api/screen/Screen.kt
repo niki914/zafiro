@@ -21,6 +21,7 @@ interface Screen {
 sealed interface OpenResult {
     data class Opened(val info: ScreenInfo) : OpenResult
     data class Unsupported(val kind: OpenKind) : OpenResult
+    data class Rejected(val code: String) : OpenResult
 }
 
 sealed interface CloseResult {
@@ -28,19 +29,44 @@ sealed interface CloseResult {
     data class Rejected(val code: String) : CloseResult
 }
 
+data class VirtualDisplayContext(
+    val screenId: ScreenId,
+    val packageName: String? = null,
+    val appName: String? = null,
+)
+
 /**
  * 屏的目录。进程内通过 `findService<Screens>()` 取得。
  *
  * `phone` 从目录诞生起就在。`open` 不接受手机。`close` 拒绝关掉手机。
  */
 interface Screens {
-    fun list(): List<ScreenInfo>
+    fun list(callerConversationId: String? = null): List<ScreenInfo>
 
-    fun get(id: ScreenId): Screen?
+    fun get(id: ScreenId, callerConversationId: String? = null): Screen?
 
-    suspend fun open(kind: OpenKind): OpenResult
+    suspend fun open(kind: OpenKind, ownerConversationId: String? = null): OpenResult
 
-    suspend fun close(id: ScreenId): CloseResult
+    suspend fun close(id: ScreenId, callerConversationId: String? = null): CloseResult
+
+    suspend fun closeForConversation(conversationId: String): CloseResult =
+        CloseResult.Rejected("UNKNOWN_SCREEN")
+
+    fun launchApp(id: ScreenId, packageName: String) {}
+
+    fun bindForegroundConversation(conversationId: String?) {}
+
+    fun onConversationDestroyed(conversationId: String) {}
+
+    fun hasVirtualScreen(conversationId: String?): Boolean = false
+
+    fun virtualDisplayContext(conversationId: String?): VirtualDisplayContext? = null
+
+    fun isOverlayShowing(conversationId: String?): Boolean = false
+
+    fun reopenOverlay(conversationId: String?): Boolean = false
+
+    fun expandOverlay(conversationId: String?): Boolean = false
 }
 
 open class ScreenTreeUnavailable(message: String) : RuntimeException(message)

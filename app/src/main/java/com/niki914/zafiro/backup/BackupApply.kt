@@ -70,7 +70,7 @@ internal object BackupImporter {
             snapshotsDir = File(context.filesDir, SNAPSHOT_DIR),
             nowMillis = System.currentTimeMillis(),
             sync = { partitions ->
-                if (BackupPartition.Preferences in partitions) syncPreferenceRuntime()
+                if (BackupPartition.Preferences in partitions || BackupPartition.UiStyles in partitions) syncPreferenceRuntime()
             },
             isCancelled = isCancelled,
         )
@@ -93,7 +93,7 @@ internal object BackupImporter {
                 snapshotsDir = File(context.filesDir, SNAPSHOT_DIR),
                 nowMillis = System.currentTimeMillis(),
                 sync = { partitions ->
-                    if (BackupPartition.Preferences in partitions) syncPreferenceRuntime()
+                    if (BackupPartition.Preferences in partitions || BackupPartition.UiStyles in partitions) syncPreferenceRuntime()
                 },
             )
         } finally {
@@ -130,7 +130,8 @@ internal object BackupImporter {
     ): BackupApplyResult {
         if (isCancelled()) return BackupApplyResult.Cancelled
         if (selectedGroups.isEmpty()) return BackupApplyResult.Report(emptyReport())
-        val opened = openArchive(source)
+        val includeBlobs = BackupGroup.Conversations in selectedGroups
+        val opened = openArchive(source, includeBlobs = includeBlobs)
         if (opened is OpenArchive.Bad) return BackupApplyResult.Rejected(opened.reason)
         val ready = opened as OpenArchive.Ready
         val present = ready.summary.partitions.values.mapNotNull { BackupGroup.fromId(it.groupId) }.toSet()
@@ -141,15 +142,32 @@ internal object BackupImporter {
             partition.group in selectedGroups && partition.id in ready.summary.partitions
         }
         if (isCancelled()) return BackupApplyResult.Cancelled
-        val snapshot = runCatchingCancellable {
-            writeSnapshot(store.read(), selectedGroups, snapshotsDir, nowMillis)
+        val initialSnapshot = runCatchingCancellable {
+            store.read(selectedGroups)
         }.getOrElse { throwable ->
             return BackupApplyResult.Report(
                 emptyReport(failure = failureOf(SNAPSHOT_PARTITION, throwable, rolledBack = false)),
             )
         }
         if (isCancelled()) return BackupApplyResult.Cancelled
-        return applyPartitions(ready.entries, partitions, strategy, store, snapshot, sync, isCancelled)
+        val snapshot = runCatchingCancellable {
+            writeSnapshot(initialSnapshot, selectedGroups, snapshotsDir, nowMillis)
+        }.getOrElse { throwable ->
+            return BackupApplyResult.Report(
+                emptyReport(failure = failureOf(SNAPSHOT_PARTITION, throwable, rolledBack = false)),
+            )
+        }
+        if (isCancelled()) return BackupApplyResult.Cancelled
+        return applyPartitions(
+            entries = ready.entries,
+            partitions = partitions,
+            strategy = strategy,
+            store = store,
+            snapshot = snapshot,
+            initialSnapshot = initialSnapshot,
+            sync = sync,
+            isCancelled = isCancelled,
+        )
     }
 
     private suspend fun applyPartitions(
@@ -158,12 +176,14 @@ internal object BackupImporter {
         strategy: BackupStrategy,
         store: BackupStore,
         snapshot: File,
+        initialSnapshot: BackupSnapshot,
         sync: suspend (Set<BackupPartition>) -> Unit,
         isCancelled: () -> Boolean,
     ): BackupApplyResult {
         val applied = mutableListOf<BackupPartition>()
         val counts = linkedMapOf<String, PartitionChangeCounts>()
         var current = partitions.firstOrNull()?.id ?: SNAPSHOT_PARTITION
+        var currentLocal = initialSnapshot
         val outcome = runCatchingCancellable {
             for (partition in partitions) {
                 if (isCancelled()) return@applyPartitions onCancel(applied, counts, snapshot, store, current)
@@ -171,7 +191,7 @@ internal object BackupImporter {
                 val write = planPartition(
                     partition = partition,
                     entries = entries,
-                    local = store.read(),
+                    local = currentLocal,
                     strategy = strategy,
                     restore = false,
                     imageDir = store.imageDir(),
@@ -179,6 +199,7 @@ internal object BackupImporter {
                 applyWrite(store, write)
                 counts[partition.id] = write.counts
                 applied += partition
+                currentLocal = updateLocalSnapshot(currentLocal, write)
             }
             if (isCancelled()) return@applyPartitions onCancel(applied, counts, snapshot, store, current)
         }
@@ -238,21 +259,55 @@ internal object BackupImporter {
         snapshot: File,
         store: BackupStore,
     ): Throwable? {
-        val opened = openArchive(snapshot)
+        val rollbackGroups = applied.map { it.group }.toSet()
+        val includeBlobs = BackupGroup.Conversations in rollbackGroups
+        val opened = openArchive(snapshot, includeBlobs = includeBlobs)
         val ready = opened as? OpenArchive.Ready ?: return IllegalStateException("snapshot unreadable")
         return runCatchingCancellable {
+            var currentLocal = store.read(rollbackGroups)
             for (partition in applied.asReversed()) {
                 val write = planPartition(
                     partition = partition,
                     entries = ready.entries,
-                    local = store.read(),
+                    local = currentLocal,
                     strategy = BackupStrategy.Overwrite,
                     restore = true,
                     imageDir = store.imageDir(),
                 )
                 applyWrite(store, write)
+                currentLocal = updateLocalSnapshot(currentLocal, write)
             }
         }.exceptionOrNull()
+    }
+}
+
+private fun updateLocalSnapshot(local: BackupSnapshot, write: PartitionWrite): BackupSnapshot {
+    return when (write) {
+        is PartitionWrite.Document -> when (write.partition) {
+            BackupPartition.Preferences -> local.copy(appStateJson = write.json)
+            BackupPartition.UiStyles -> local.copy(uiStylesJson = write.json)
+            BackupPartition.Memory -> local.copy(memoryJson = write.json)
+            BackupPartition.Models -> local.copy(modelsJson = write.json)
+            BackupPartition.McpServers -> local.copy(mcpServersJson = write.json)
+            BackupPartition.McpService -> local.copy(mcpServiceJson = write.json)
+            BackupPartition.BuiltinTools -> local.copy(builtinToolsJson = write.json)
+            BackupPartition.PyTools -> local.copy(pyToolsJson = write.json)
+            BackupPartition.TextActions -> local.copy(textActionsJson = write.json)
+            BackupPartition.QuickPrompts -> local.copy(quickPromptsJson = write.json)
+            BackupPartition.ExecutionRules -> local.copy(executionRulesJson = write.json)
+            BackupPartition.TakeoverRules -> local.copy(takeoverRulesJson = write.json)
+            BackupPartition.MaskingRules -> local.copy(maskingRulesJson = write.json)
+            BackupPartition.Conversations, BackupPartition.Skills -> local
+        }
+        is PartitionWrite.Conversations -> local.copy(
+            conversations = write.conversations,
+            entries = write.entries,
+            appStateJson = write.appStateJson,
+        )
+        is PartitionWrite.Skills -> local.copy(
+            skillsStatusJson = write.statusJson,
+            skills = write.skills,
+        )
     }
 }
 
@@ -335,8 +390,11 @@ private sealed interface OpenArchive {
     data class Bad(val reason: ApplyRejectReason) : OpenArchive
 }
 
-private fun openArchive(file: File): OpenArchive {
-    return when (val zip = readZip(file)) {
+private fun openArchive(
+    file: File,
+    includeBlobs: Boolean = true,
+): OpenArchive {
+    return when (val zip = readZip(file, shouldReadBytes = { includeBlobs || !it.startsWith("blobs/") })) {
         null -> OpenArchive.Bad(ApplyRejectReason.NotAnArchive)
         ZipRead.Unsafe -> OpenArchive.Bad(ApplyRejectReason.UnsafePath)
         is ZipRead.Ok -> when (val inspected = inspectEntries(zip.entries)) {

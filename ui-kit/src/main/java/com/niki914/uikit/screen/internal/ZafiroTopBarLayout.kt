@@ -37,15 +37,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.Backdrop
-import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.button.ZafiroTopBarButton
 import com.niki914.uikit.infra.LiquidScreenTitle
 import com.niki914.uikit.screen.TitleDirection
@@ -85,14 +88,14 @@ internal fun ZafiroTopBarLayout(
     rightButton: (@Composable () -> Unit)? = null,
     overlayContent: (@Composable () -> Unit)? = null,
 ) {
-    val themeStyle = LocalThemeStyle.current
-    val isLiquid = themeStyle == ThemeStyle.LiquidGlass
+    val plateIsLiquid = resolvedUiStyle(UiStylePart.TopBarPlate) == ThemeStyle.LiquidGlass
+    val buttonsAreLiquid = resolvedUiStyle(UiStylePart.TopBarButtons) == ThemeStyle.LiquidGlass
 
     val titleDuration = 320
 
     // 遮挡因子动画：当外部浮层（如右上角菜单或模型切换浮层）展开时淡出，收起时淡入
-    // Material 模式下不隐藏标题，保留标准顶栏视觉并稳定锚点坐标
-    val shouldOcclude = isLiquid && isOccluded
+    // 纯色背景板不隐藏标题，保留标准顶栏视觉并稳定锚点坐标
+    val shouldOcclude = plateIsLiquid && isOccluded
     val occludedAlpha by animateFloatAsState(
         targetValue = if (shouldOcclude) 0f else 1f,
         animationSpec = tween(durationMillis = 200, easing = LinearOutSlowInEasing),
@@ -115,10 +118,12 @@ internal fun ZafiroTopBarLayout(
     }
     val displayedRightButton = rightButton ?: lastNonNullRightButton
     val isRightButtonVisible = showRightButton && rightButton != null
+    val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
+    val dirSign = if (isLtr) 1 else -1
 
     // 按钮显隐转场规范：按风格分流
-    val (leftEnterTransition, leftExitTransition) = remember(isLiquid) {
-        if (isLiquid) {
+    val (leftEnterTransition, leftExitTransition) = remember(buttonsAreLiquid) {
+        if (buttonsAreLiquid) {
             (fadeIn(tween(280, easing = LinearOutSlowInEasing)) +
                 scaleIn(initialScale = 0f, animationSpec = tween(280, easing = LinearOutSlowInEasing))) to
             (fadeOut(tween(280, easing = LinearOutSlowInEasing)) +
@@ -132,8 +137,8 @@ internal fun ZafiroTopBarLayout(
         }
     }
 
-    val (rightEnterTransition, rightExitTransition) = remember(isLiquid) {
-        if (isLiquid) {
+    val (rightEnterTransition, rightExitTransition) = remember(buttonsAreLiquid) {
+        if (buttonsAreLiquid) {
             (fadeIn(tween(280, easing = LinearOutSlowInEasing)) +
                 scaleIn(initialScale = 0f, animationSpec = tween(280, easing = LinearOutSlowInEasing))) to
             (fadeOut(tween(280, easing = LinearOutSlowInEasing)) +
@@ -177,19 +182,19 @@ internal fun ZafiroTopBarLayout(
                 val titleEasing = FastOutSlowInEasing
                 val enterForward = slideInHorizontally(
                     animationSpec = tween(titleDuration, easing = titleEasing),
-                    initialOffsetX = { fullWidth -> fullWidth },
+                    initialOffsetX = { fullWidth -> fullWidth * dirSign },
                 ) + fadeIn(tween(titleDuration, easing = titleEasing))
                 val exitForward = slideOutHorizontally(
                     animationSpec = tween(titleDuration, easing = titleEasing),
-                    targetOffsetX = { fullWidth -> -fullWidth },
+                    targetOffsetX = { fullWidth -> -fullWidth * dirSign },
                 ) + fadeOut(tween(titleDuration, easing = titleEasing))
                 val enterBack = slideInHorizontally(
                     animationSpec = tween(titleDuration, easing = titleEasing),
-                    initialOffsetX = { fullWidth -> -fullWidth },
+                    initialOffsetX = { fullWidth -> -fullWidth * dirSign },
                 ) + fadeIn(tween(titleDuration, easing = titleEasing))
                 val exitBack = slideOutHorizontally(
                     animationSpec = tween(titleDuration, easing = titleEasing),
-                    targetOffsetX = { fullWidth -> fullWidth },
+                    targetOffsetX = { fullWidth -> fullWidth * dirSign },
                 ) + fadeOut(tween(titleDuration, easing = titleEasing))
 
                 when (titleDirection) {

@@ -1,59 +1,55 @@
 ---
-name: Phone Use
-description: MUST Load this skill for ANY task that involves GUI interaction or device control —
-  opening apps, tapping, typing, scrolling, swiping, Back/Home/Recents, reading the screen,
-  or any workflow that touches on-screen content. Load this even when the user does not
-  explicitly mention the device — if the task implies a GUI operation, load this skill first.
+name: phone-use
+description: MUST load for any app or screen tasks. Guides on screenshots, tapping, swiping, and UI interactions.
 ---
 
 ## Overview
 
-You can see and control the Android screen through three channels:
+You interact with Android screens (`vd-*` or `phone`) across two layers:
+- **Semantic tree**: Inspect hierarchy, search text, and tap/type/scroll by node token.
+- **Visual pixels**: Capture screenshots when the tree is unavailable, then tap or swipe by coordinates.
 
-- **The UI tree** — `screen_operation_accessibility` reads the semantic tree (text, labels, bounds, clickability) and acts on nodes by token.
-- **Pixels** — `screenshot` captures the screen as an image and `view_image` reads image files, so you can visually inspect any app.
-- **Coordinates** — `screen_operation_shell` injects tap/swipe/key events at screen-pixel coordinates.
+Write actions automatically settle the UI and return the refreshed tree with a new version token — never issue a redundant read immediately after an action.
 
-Use the tree first; drop to pixels and coordinates when the tree cannot see or reach the target. Coordinates may come from node bounds **or from a screenshot** — compute them, never guess.
+## Screen Policy: Virtual First
 
-First-use consent: when the accessibility or overlay permission is missing, the first screen tool call asks the user to grant both. If the user declines, the tool fails with a consent message — tell the user what to enable and stop; do not retry in a loop. Root is not required; it only shortens the permission chain.
+Always prioritize non-intrusive execution:
 
-## Workflow
+1. **Default to virtual display (`vd-*`)**:
+   - Open or reuse a virtual display using `screens`. It runs the app in the background and displays a floating preview card so the user can observe without interruption.
+   - Launch the target app onto the virtual display with `open` after `find_installed_apps` returns its package name.
+   - **Keep alive**: Leave the virtual display open when the task finishes so subsequent turns or user actions can continue on it. Only release it via `screens` if the user explicitly asks to close it.
+2. **Fallback to physical screen (`phone`)**:
+   - Use the main screen only when the user explicitly requests it or when virtual display creation fails.
 
-### 1. Open the target
+## Interaction Strategy
 
-Prefer `open_uri` when a deep link lands closer to the goal than the launcher activity (e.g. a map at coordinates, a settings page). Otherwise resolve with `find_installed_apps` if the name is ambiguous, then `launch_app`.
+### 1. Semantic Tree vs. Visual Coordinates
 
-### 2. Read the screen
+- **Tree-first**: Prefer targeting nodes by `token` (`{version}_{index}`). The framework automatically handles node clicks and gesture fallbacks.
+- **Dense trees**: Use `search` with keywords rather than scanning huge hierarchy dumps.
+- **Custom-drawn apps (Canvas / Flutter / Unity)**: If the tree is empty or root-only, switch to visual mode immediately: capture a `screenshot` and act via physical coordinates.
+- **Coordinate scaling**: Screenshots may be downscaled. Screen dimensions are in the tree header (`screen: [w, h]`) or `screens` list. Always scale image coordinates to screen pixels:
+   $$\text{screen\_x} = \text{image\_x} \times \frac{\text{screen\_w}}{\text{image\_w}}$$
+   $$\text{screen\_y} = \text{image\_y} \times \frac{\text{screen\_h}}{\text{image\_h}}$$
 
-Start with `screen_operation_accessibility(operation: "read")`. If the tree is empty or root-only, the app uses a non-native UI (Flutter, Unity, WebView, self-drawn canvas) — the tree will not work for this app. Do not retry the read. Instead switch to `screenshot` + coordinate operations via `screen_operation_shell`.
+### 2. Scrolling & Swiping Heuristics
 
-### 3. Act
+- **Avoid edge traps**: Never start gestures at screen edges. Bottom navigation bars, docks, and mini-players steal touch-down. Start mid-container (~70% container height) and swipe upward to scroll down.
+- **Exit condition**: Define an observable termination condition (target item visible, section header, or count) before scrolling.
+- **Detect list boundary**: If two consecutive swipes leave the visible hierarchy unchanged and no loading indicator is active, the list boundary is reached.
+- **Pacing**: One swipe per decision when hunting unknown items. Batching 2–3 swipes is only acceptable when skipping past known content.
 
-- Tree shows a labeled, clickable node → tap it by token.
-- Target is unlabeled, a bare container, or the node's bounds look misaligned with what you see → take a `screenshot`, locate the real target visually, convert image coordinates to screen pixels (see below), and tap with `screen_operation_shell`.
-- `set_text` needs the accessibility method; there is no shell fallback for typing.
+### 3. Typing & Verification
 
-**Image → screen coordinates.** The screenshot is downscaled; its `width`/`height` in the result are the image's, not the screen's. Screen dimensions are in the tree header. Scale per axis: `screen_x = image_x * screen_w / image_w` (same for y).
+- **Typing**: Text injection targets a node `token`. Tap the field first if focus is needed.
+- **State verification**: A successful status confirms event injection, not that the application reached the desired semantic state. Always verify against the returned snapshot.
+- **Stale tokens**: If an action fails due to a stale token, the UI changed. Use the fresh token from the returned snapshot or switch to coordinates.
 
-### 4. Verify
+## Failure & Consent
 
-Write operations return the updated tree automatically. Check that the UI actually reached the expected state — a `success` status means the event was injected, not that the app reacted. If the screen did not change as expected, re-examine: the target may be self-drawn (bounds unreliable — see §3), the tap may have landed on an overlay, or the app may need more time (`wait_ms`). On `SHELL_TIMEOUT` or `SHELL_SESSION_LOST`, verify the screen before retrying as the action may have partially executed.
+If a required permission is missing or an operation is rejected by the system, explain the issue to the user and halt execution. Never retry failing actions in an infinite loop.
 
-### 5. Scroll
+## App Traps
 
-Scroll lists with `screen_operation_shell(operation: "swipe", ...)` — accessibility scroll steps are app-defined and unreliable. Derive coordinates from the scrollable container's bounds, swiping ~70% of the container. Start the gesture mid-container, not at the bottom edge: bottom-docked bars (tab bars, mini-players, toolbars) steal the touch-down. If a dock's bounds contain the start point, move the start above its top edge.
-
-### 6. Navigate
-
-Use key events via `screen_operation_shell`: Back (`code: 4`), Home (`code: 3`), Recents (`code: 187`).
-
-## Scrolling heuristics
-
-- Before scrolling a list, define the exit condition in observable UI: a result count, an empty state, a section boundary.
-- After two separate swipes the visible items are unchanged and nothing is loading → the list boundary is reached. Retarget once in case the gesture missed the container before concluding.
-- One swipe per decision when hunting a specific item; batching 2–3 swipes is acceptable only when skipping intermediate states cannot miss the target.
-
-## App traps
-
-When an unexpected result reveals a stable, verified rule about an app's UI, save it with `memory` (one natural-language sentence naming the app, the misleading element, and the correct action). Do not memorize temporary state, the current tab, or unverified guesses.
+When an unexpected result reveals a stable, verified UI anomaly (misleading clickable wrapper, phantom overlay, deceptive bounds), record it with `memory` as a single declarative sentence (naming the app, element, and workaround). Do not store temporary task progress.

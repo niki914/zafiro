@@ -22,11 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
@@ -45,8 +42,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.LocalAppDarkTheme
-import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
+import com.niki914.uikit.control.ZafiroLoadingIndicator
 import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.uikit.motion.springSquish
 
@@ -59,7 +58,6 @@ private val expressiveButtonShape: Shape = G2FieldShape(20.dp)
  * - 状态分级：高对比度主操作底座（Filled Button，primary 容器色 + onPrimary 文字色）；
  * - 表现力支持：当为 [ThemeStyle.Material3Expressive] 时，采用 Squircle（G2 表现力圆角）并叠加 [springSquish] 弹簧按压物理反馈，加载态使用花瓣 LoadingIndicator。
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MaterialButton(
     text: String,
@@ -73,7 +71,7 @@ fun MaterialButton(
     leadingIcon: (@Composable () -> Unit)? = null,
     trailingIcon: (@Composable () -> Unit)? = null,
 ) {
-    val themeStyle = LocalThemeStyle.current
+    val themeStyle = resolvedUiStyle(UiStylePart.Button)
     val isExpressive = themeStyle == ThemeStyle.Material3Expressive
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -107,19 +105,12 @@ fun MaterialButton(
         ),
     ) {
         if (isLoading) {
-            val indicatorColor = if (enabled) contentColor else disabledContentColor
-            if (isExpressive) {
-                LoadingIndicator(
-                    modifier = Modifier.size(28.dp),
-                    color = indicatorColor,
-                )
-            } else {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(22.dp),
-                    color = indicatorColor,
-                    strokeWidth = 2.5.dp,
-                )
-            }
+            ZafiroLoadingIndicator(
+                color = if (enabled) contentColor else disabledContentColor,
+                size = 22.dp,
+                petalSize = 28.dp,
+                strokeWidth = 2.5.dp,
+            )
         } else {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -145,7 +136,6 @@ fun MaterialButton(
  * - 色彩规范：中对比度底板（FilledTonalButton，默认 primaryContainer 或 surfaceContainerHighest）；
  * - 动效与形状：MD3 为胶囊 + Ripple，MD3E 为 Squircle + 弹簧弹性微缩放。
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MaterialTonalButton(
     text: String,
@@ -160,7 +150,7 @@ fun MaterialTonalButton(
     leadingIcon: (@Composable () -> Unit)? = null,
     trailingIcon: (@Composable () -> Unit)? = null,
 ) {
-    val themeStyle = LocalThemeStyle.current
+    val themeStyle = resolvedUiStyle(UiStylePart.Button)
     val isExpressive = themeStyle == ThemeStyle.Material3Expressive
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -202,19 +192,12 @@ fun MaterialTonalButton(
         ),
     ) {
         if (isLoading) {
-            val indicatorColor = if (enabled) contentColor else disabledContentColor
-            if (isExpressive) {
-                LoadingIndicator(
-                    modifier = Modifier.size(28.dp),
-                    color = indicatorColor,
-                )
-            } else {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(22.dp),
-                    color = indicatorColor,
-                    strokeWidth = 2.5.dp,
-                )
-            }
+            ZafiroLoadingIndicator(
+                color = if (enabled) contentColor else disabledContentColor,
+                size = 22.dp,
+                petalSize = 28.dp,
+                strokeWidth = 2.5.dp,
+            )
         } else {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -249,7 +232,7 @@ fun MaterialScrollToBottomButton(
     bottomClearance: Dp = 0.dp,
     icon: (@Composable () -> Unit)? = null,
 ) {
-    val themeStyle = LocalThemeStyle.current
+    val themeStyle = resolvedUiStyle(UiStylePart.Button)
     val isExpressive = themeStyle == ThemeStyle.Material3Expressive
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -272,13 +255,6 @@ fun MaterialScrollToBottomButton(
                 .shadow(elevation = 4.dp, shape = CircleShape)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
-                .border(
-                    BorderStroke(
-                        1.dp,
-                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                    ),
-                    CircleShape,
-                )
                 .clickable(
                     interactionSource = interactionSource,
                     indication = ripple(bounded = true),

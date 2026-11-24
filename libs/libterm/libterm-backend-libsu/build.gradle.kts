@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.niki914.libterm.backend.libsu"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 26

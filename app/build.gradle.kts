@@ -23,8 +23,8 @@ android {
         applicationId = "com.niki914.zafiro.auto"
         minSdk = 26
         targetSdk = 34
-        versionName = "1.16.0"
-        versionCode = 25
+        versionName = "1.17.0"
+        versionCode = 26
         // Fork policy: no phone-home. A blank base URL makes every telemetry/remote-config path a no-op.
         buildConfigField("String", "TELEMETRY_BASE_URL", "\"\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -85,6 +85,7 @@ android {
     buildFeatures {
         buildConfig = true
         compose = true
+        aidl = true
     }
 
     packaging {
@@ -99,6 +100,7 @@ android {
 dependencies {
     implementation(project(":agent-runtime"))
     implementation(project(":business:permission"))
+    implementation(project(":libs:shizuku"))
     implementation(project(":business:files"))
     implementation(project(":business:application"))
     implementation(project(":business:notification"))
@@ -138,6 +140,7 @@ dependencies {
     implementation("androidx.annotation:annotation:1.9.1")
     implementation("androidx.activity:activity-compose:1.4.0")
     implementation("androidx.documentfile:documentfile:1.0.1")
+    implementation("androidx.webkit:webkit:1.12.1")
 
     // Compose
     implementation("androidx.compose.material3:material3:1.5.0-alpha22")

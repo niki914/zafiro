@@ -117,12 +117,13 @@ class PermissionEntryGuardTest {
     }
 
     private fun isAllowed(relative: String, line: String, pattern: String): Boolean {
-        // libterm 是独立演进的终端运行时，整目录豁免。
+        // libterm 与 shizuku 是独立演进的基础设施运行时，整目录豁免。
         // 仓库根的 libterm 是 .gitignore 掉的符号链接（指向仓库外的同级 checkout），
         // walkTopDown 会跟进去，此时相对路径以 "libterm/" 开头而非 "libs/libterm/"。
         if ("/libterm/" in relative ||
             relative.startsWith("libs/libterm/") ||
-            relative.startsWith("libterm/")
+            relative.startsWith("libterm/") ||
+            relative.startsWith("libs/shizuku/")
         ) {
             return true
         }

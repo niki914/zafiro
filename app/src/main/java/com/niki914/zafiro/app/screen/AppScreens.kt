@@ -1,141 +1,405 @@
 package com.niki914.zafiro.app.screen
 
-import com.niki914.zafiro.accessibility.port.A11yDisplayScreen
-import com.niki914.zafiro.accessibility.port.DefaultDisplayPort
-import com.niki914.zafiro.accessibility.table.DisplayNodeTable
-import com.niki914.zafiro.api.screen.ActResult
-import com.niki914.zafiro.api.screen.ActionStatus
+import com.niki914.logging.Logger
+import com.niki914.shizuku.display.VirtualDisplayController
+import com.niki914.shizuku.display.VirtualDisplayPrepareResult
 import com.niki914.zafiro.api.screen.CloseResult
-import com.niki914.zafiro.api.screen.ImageFrame
-import com.niki914.zafiro.api.screen.NodeInfo
 import com.niki914.zafiro.api.screen.OpenKind
 import com.niki914.zafiro.api.screen.OpenResult
 import com.niki914.zafiro.api.screen.PhoneScreenId
-import com.niki914.zafiro.api.screen.PointerAction
 import com.niki914.zafiro.api.screen.Screen
 import com.niki914.zafiro.api.screen.ScreenAction
 import com.niki914.zafiro.api.screen.ScreenId
-import com.niki914.zafiro.api.screen.ScreenImageUnavailable
 import com.niki914.zafiro.api.screen.ScreenInfo
-import com.niki914.zafiro.api.screen.ScreenKind
-import com.niki914.zafiro.api.screen.ScreenSnapshot
-import com.niki914.zafiro.api.screen.ScreenTreeUnavailable
 import com.niki914.zafiro.api.screen.Screens
 import com.niki914.zafiro.api.screen.ShowResult
 import com.niki914.zafiro.api.screen.ShowTarget
-import com.niki914.zafiro.api.screen.Target
-import com.niki914.zafiro.chat.agentic.buildin.impl.LaunchAppBuiltin
-import com.niki914.zafiro.chat.agentic.buildin.impl.OpenUriBuiltin
+import com.niki914.zafiro.api.screen.VirtualDisplayContext
+import com.niki914.zafiro.api.util.runCatchingCancellable
+import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.helper.ZafiroToast
+import com.niki914.zafiro.business.permission.Permission
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.ConcurrentHashMap
 
 /**
- * 针对物理主屏的屏幕实现。
- * 读、点与截屏交由 [A11yDisplayScreen]，动手前先过 [PhoneScreenAccess]。
- * 滚动和滑动在主屏上与指针一起走。
- * 应用启动与 URI 打开在此层桥接 [LaunchAppBuiltin] 和 [OpenUriBuiltin]，不申请无障碍。
+ * 前台会话绑定的虚拟屏只读状态（纯内存派生，不落盘）。
  */
-class PhoneDisplayScreen(
-    port: DefaultDisplayPort = DefaultDisplayPort(),
-    nodes: DisplayNodeTable = DisplayNodeTable(),
-    private val access: PhoneScreenAccess = PhoneScreenAccess(),
-) : A11yDisplayScreen(PhoneScreenId, ScreenKind.Phone, port, nodes) {
+internal data class ForegroundVirtualDisplayState(
+    val screenId: ScreenId,
+    val stage: StateFlow<VirtualDisplayStage>,
+    val isOverlayShowing: Boolean,
+)
 
-    private val pointer: PhonePointerPlay = PhonePointer.play
+/**
+ * 屏幕目录。主屏一直在。虚拟屏按会话 1:1 并发隔离，创建默认静默驻留，首次创建时一次性申请所需权限。
+ */
+object AppScreens : Screens {
+    private const val TAG = "niki914_zafiro_AppScreens"
 
-    fun info(): ScreenInfo {
-        val (width, height) = port.getDisplayMetrics()
-        return ScreenInfo(id, kind, width, height)
+    private val access = PhoneScreenAccess()
+    private val phone = PhoneDisplayScreen(access = access)
+    private val gate = Mutex()
+    private val cardScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    private val virtualScreens = ConcurrentHashMap<ScreenId, VirtualDisplayScreen>()
+    private val conversationScreens = ConcurrentHashMap<String, ScreenId>()
+    @Volatile
+    private var foregroundConversationId: String? = null
+    private val overlayVisibleConversations = ConcurrentHashMap.newKeySet<String>()
+    @Volatile
+    private var activeOverlayScreenId: ScreenId? = null
+
+    private val _foregroundState = MutableStateFlow<ForegroundVirtualDisplayState?>(null)
+    internal val foregroundState: StateFlow<ForegroundVirtualDisplayState?> = _foregroundState.asStateFlow()
+
+    private val vdController: VirtualDisplayController by lazy {
+        VirtualDisplayController.create(applicationContext())
     }
 
-    override suspend fun snapshot(): ScreenSnapshot {
-        access.prepare(PhoneScreenAccess.Need.Control)?.let { denied ->
-            throw ScreenTreeUnavailable(denied.message)
-        }
-        return super.snapshot()
+    private fun bindingKey(conversationId: String?): String? {
+        return conversationId?.takeIf { it.isNotBlank() }
     }
 
-    override suspend fun image(): ImageFrame {
-        access.prepare(PhoneScreenAccess.Need.Capture)?.let { denied ->
-            throw ScreenImageUnavailable(denied.code, denied.message)
+    private fun refreshForegroundState() {
+        val key = bindingKey(foregroundConversationId)
+        val screenId = key?.let { conversationScreens[it] }
+        val screen = screenId?.let { virtualScreens[it] }
+        _foregroundState.value = screen?.let {
+            ForegroundVirtualDisplayState(
+                screenId = it.id,
+                stage = it.stage,
+                isOverlayShowing = activeOverlayScreenId == it.id && VirtualDisplayCard.isShowing,
+            )
         }
-        return super.image()
     }
 
-    override suspend fun act(action: ScreenAction): ActResult {
-        access.prepare(PhoneScreenAccess.Need.Control)?.let { denied ->
-            return ActResult.Failed(denied.code, null)
+    override fun list(callerConversationId: String?): List<ScreenInfo> {
+        val extra = if (callerConversationId != null) {
+            val targetScreenId = conversationScreens[callerConversationId]
+            targetScreenId?.let { virtualScreens[it]?.info() }
+        } else {
+            null
         }
-        return when (val cue = phoneCue(action, ::locate)) {
-            is PhoneCue.Reject -> ActResult.Failed(cue.code, null)
-            PhoneCue.Skip -> super.act(action)
-            is PhoneCue.Arrive -> pointer.afterArrival(cue.x.toFloat(), cue.y.toFloat()) {
-                super.act(action)
+        return if (extra != null) {
+            listOf(phone.info(), extra)
+        } else if (callerConversationId == null) {
+            listOf(phone.info()) + virtualScreens.values.map { it.info() }
+        } else {
+            listOf(phone.info())
+        }
+    }
+
+    override fun get(id: ScreenId, callerConversationId: String?): Screen? {
+        if (id == PhoneScreenId) return phone
+        val screen = virtualScreens[id] ?: return null
+        if (callerConversationId != null && screen.ownerConversationId != null && screen.ownerConversationId != callerConversationId) {
+            return null
+        }
+        return screen
+    }
+
+    override suspend fun open(kind: OpenKind, ownerConversationId: String?): OpenResult {
+        if (kind != OpenKind.VirtualDisplay) return OpenResult.Unsupported(kind)
+        val key = bindingKey(ownerConversationId) ?: return OpenResult.Rejected("NO_CONVERSATION")
+        gate.withLock {
+            val existingId = conversationScreens[key]
+            val existing = existingId?.let { virtualScreens[it] }
+            if (existing != null) {
+                if (key == bindingKey(foregroundConversationId)) {
+                    refreshForegroundState()
+                }
+                return OpenResult.Opened(existing.info())
             }
-            is PhoneCue.Glide -> pointer.glide(
-                cue.x1.toFloat(),
-                cue.y1.toFloat(),
-                cue.x2.toFloat(),
-                cue.y2.toFloat(),
-                cue.durationMs,
-            ) {
-                acted(
-                    port.inject(
-                        PointerAction.Swipe(cue.x1, cue.y1, cue.x2, cue.y2, cue.durationMs),
-                    ),
-                )
+        }
+        // 权限审批与无障碍连接等待可能挂起较久，移出互斥锁避免阻塞其他会话切换或关闭
+        access.prepare(PhoneScreenAccess.Need.VirtualDisplay)?.let { denied ->
+            return OpenResult.Rejected(denied.code)
+        }
+        return gate.withLock { openVirtualLocked(key) }
+    }
+
+    override suspend fun close(id: ScreenId, callerConversationId: String?): CloseResult {
+        if (id == PhoneScreenId) return CloseResult.Rejected("PHONE_NOT_CLOSABLE")
+        return gate.withLock {
+            val screen = virtualScreens[id] ?: return@withLock CloseResult.Rejected("UNKNOWN_SCREEN")
+            if (callerConversationId != null && screen.ownerConversationId != null && screen.ownerConversationId != callerConversationId) {
+                return@withLock CloseResult.Rejected("PERMISSION_DENIED")
+            }
+            dismiss(screen)
+            CloseResult.Closed
+        }
+    }
+
+    override suspend fun closeForConversation(conversationId: String): CloseResult {
+        val key = bindingKey(conversationId) ?: return CloseResult.Rejected("UNKNOWN_SCREEN")
+        return gate.withLock {
+            val screenId = conversationScreens[key] ?: return@withLock CloseResult.Rejected("UNKNOWN_SCREEN")
+            val screen = virtualScreens[screenId] ?: return@withLock CloseResult.Rejected("UNKNOWN_SCREEN")
+            dismiss(screen)
+            CloseResult.Closed
+        }
+    }
+
+    override fun launchApp(id: ScreenId, packageName: String) {
+        val normalized = packageName.trim()
+        if (normalized.isEmpty()) return
+        val screen = virtualScreens[id] ?: return
+        cardScope.launch {
+            runCatchingCancellable {
+                when (val result = screen.show(ShowTarget.PackageName(normalized))) {
+                    is ShowResult.Shown -> Unit
+                    is ShowResult.Failed -> {
+                        Logger.w(TAG, "launchApp failed screenId=${id.value} pkg=$normalized code=${result.code}")
+                        val toastRes = if (result.code == "IN_USE_ON_MAIN") {
+                            R.string.ui_virtual_display_app_in_use_on_main
+                        } else {
+                            R.string.ui_virtual_display_app_launch_failed
+                        }
+                        ZafiroToast.show(toastRes)
+                    }
+                    is ShowResult.Unsupported,
+                    is ShowResult.Ambiguous -> {
+                        Logger.w(TAG, "launchApp rejected screenId=${id.value} pkg=$normalized result=$result")
+                        ZafiroToast.show(R.string.ui_virtual_display_app_launch_failed)
+                    }
+                }
+            }.onFailure { error ->
+                Logger.w(TAG, "launchApp failed screenId=${id.value} pkg=$normalized: ${error.message}")
+                ZafiroToast.show(R.string.ui_virtual_display_app_launch_failed)
             }
         }
     }
 
-    private fun locate(target: Target): Pair<Int, Int>? {
-        return when (target) {
-            is Target.Point -> target.x to target.y
-            is Target.Node -> nodes.resolve(target.token)?.let(::centerOf)
+    override fun hasVirtualScreen(conversationId: String?): Boolean {
+        val key = bindingKey(conversationId) ?: return false
+        val screenId = conversationScreens[key] ?: return false
+        return virtualScreens.containsKey(screenId)
+    }
+
+    override fun virtualDisplayContext(conversationId: String?): VirtualDisplayContext? {
+        val key = bindingKey(conversationId) ?: return null
+        val screenId = conversationScreens[key] ?: return null
+        return virtualScreens[screenId]?.currentContext()
+    }
+
+    override fun isOverlayShowing(conversationId: String?): Boolean {
+        val key = bindingKey(conversationId) ?: return false
+        val screenId = conversationScreens[key] ?: return false
+        return activeOverlayScreenId == screenId && VirtualDisplayCard.isShowing
+    }
+
+    override fun reopenOverlay(conversationId: String?): Boolean {
+        val key = bindingKey(conversationId) ?: return false
+        val screenId = conversationScreens[key] ?: return false
+        if (!virtualScreens.containsKey(screenId)) return false
+        cardScope.launch {
+            if (!permissionGranted(Permission.OVERLAY)) return@launch
+            gate.withLock {
+                if (bindingKey(foregroundConversationId) != key) return@withLock
+                if (conversationScreens[key] != screenId) return@withLock
+                val currentScreen = virtualScreens[screenId] ?: return@withLock
+                overlayVisibleConversations.add(key)
+                bindOverlay(currentScreen)
+                // 选择应用没有预览画面，点开直接进大窗里的列表。
+                if (currentScreen.stage.value is VirtualDisplayStage.AppPicker) {
+                    VirtualDisplayCard.expandIfShowing()
+                }
+                refreshForegroundState()
+            }
         }
+        return true
     }
 
-    private suspend fun acted(status: ActionStatus): ActResult {
-        return when (status) {
-            ActionStatus.Done -> ActResult.Done(snapshot(), tabs = null)
-            is ActionStatus.Failed -> ActResult.Failed(status.code, null)
+    override fun expandOverlay(conversationId: String?): Boolean {
+        val key = bindingKey(conversationId) ?: return false
+        val screenId = conversationScreens[key] ?: return false
+        if (activeOverlayScreenId != screenId || !VirtualDisplayCard.isShowing) return false
+        cardScope.launch {
+            gate.withLock {
+                if (activeOverlayScreenId == screenId && VirtualDisplayCard.isShowing) {
+                    VirtualDisplayCard.expandIfShowing()
+                }
+            }
         }
+        return true
     }
 
-    private fun centerOf(node: NodeInfo): Pair<Int, Int> {
-        val bounds = node.bounds
-        return (bounds.left + bounds.right) / 2 to (bounds.top + bounds.bottom) / 2
-    }
+    /** 响应前台会话切换，将悬浮窗视口热重绑到当前会话的虚拟屏。 */
+    override fun bindForegroundConversation(conversationId: String?) {
+        cardScope.launch {
+            gate.withLock {
+                foregroundConversationId = conversationId
+                val key = bindingKey(conversationId)
+                val targetScreenId = key?.let { conversationScreens[it] }
+                val targetScreen = targetScreenId?.let { virtualScreens[it] }
 
-    override suspend fun show(target: ShowTarget): ShowResult {
-        return when (target) {
-            is ShowTarget.AppName -> LaunchAppBuiltin().showOnPhone(null, target.name)
-            is ShowTarget.PackageName -> LaunchAppBuiltin().showOnPhone(target.packageName, null)
-            is ShowTarget.Uri -> {
-                val opened = OpenUriBuiltin().openForScreen(target.uri)
-                if (opened.ok) {
-                    ShowResult.Shown(opened.message)
+                val shouldShowOverlay = key != null && targetScreen != null && overlayVisibleConversations.contains(key)
+                virtualScreens.values.forEach { s ->
+                    s.setPaused(!(shouldShowOverlay && s.id == targetScreenId))
+                }
+
+                if (shouldShowOverlay) {
+                    bindOverlay(targetScreen)
                 } else {
-                    ShowResult.Failed(opened.code)
+                    activeOverlayScreenId = null
+                    VirtualDisplayCard.hide()
+                }
+                refreshForegroundState()
+            }
+        }
+    }
+
+    /** 当会话被销毁时彻底释放该会话持有的虚拟屏 */
+    override fun onConversationDestroyed(conversationId: String) {
+        val targetScreenId = conversationScreens[conversationId] ?: return
+        val screen = virtualScreens[targetScreenId] ?: return
+        cardScope.launch {
+            gate.withLock {
+                dismiss(screen)
+            }
+        }
+    }
+
+    /** 无障碍服务重新连上后，把已经开着的预览挂回去。 */
+    fun restoreCard() {
+        val key = bindingKey(foregroundConversationId) ?: return
+        val targetScreenId = conversationScreens[key] ?: return
+        val screen = virtualScreens[targetScreenId] ?: return
+        if (VirtualDisplayCard.isShowing) return
+        cardScope.launch {
+            gate.withLock {
+                if (!VirtualDisplayCard.isShowing && overlayVisibleConversations.contains(key)) {
+                    bindOverlay(screen)
+                    refreshForegroundState()
                 }
             }
         }
     }
-}
 
-/**
- * 屏幕目录服务。
- * 本轮仅装配物理主屏，不做虚拟副屏与浏览器屏。
- */
-object AppScreens : Screens {
-    private val phone = PhoneDisplayScreen()
+    private suspend fun bindOverlay(screen: VirtualDisplayScreen) {
+        activeOverlayScreenId = screen.id
+        screen.setPaused(false)
+        val binding = OverlayBinding(
+            screenId = screen.id.value,
+            frames = screen.preview(),
+            stage = screen.stage,
+            vdWidth = screen.width,
+            vdHeight = screen.height,
+            onClose = {
+                bindingKey(screen.ownerConversationId)?.let { overlayVisibleConversations.remove(it) }
+                screen.setPaused(true)
+                cardScope.launch {
+                    gate.withLock {
+                        if (activeOverlayScreenId == screen.id) {
+                            activeOverlayScreenId = null
+                            VirtualDisplayCard.hide()
+                        }
+                        refreshForegroundState()
+                    }
+                }
+            },
+            onNavKey = { keyCode ->
+                cardScope.launch {
+                    runCatchingCancellable {
+                        screen.act(ScreenAction.Key(keyCode))
+                    }.onFailure { error ->
+                        Logger.e(TAG, "onNavKey failed keyCode=$keyCode", error)
+                    }
+                }
+            },
+            onEnterAppPicker = {
+                screen.enterAppPicker()
+            },
+            onReturnFromAppPicker = {
+                screen.returnFromAppPicker()
+            },
+            onQualityChanged = { highQuality ->
+                screen.setHighQuality(highQuality)
+            },
+            onTouch = { event ->
+                screen.injectTouch(event)
+            },
+            onLaunchApp = { packageName ->
+                cardScope.launch {
+                    runCatchingCancellable {
+                        screen.show(ShowTarget.PackageName(packageName))
+                    }.onFailure { error ->
+                        Logger.e(TAG, "onLaunchApp failed packageName=$packageName", error)
+                    }
+                }
+            },
+        )
+        VirtualDisplayCard.bind(binding)
+    }
 
-    override fun list(): List<ScreenInfo> = listOf(phone.info())
+    private suspend fun openVirtualLocked(key: String): OpenResult {
+        val existingId = conversationScreens[key]
+        val existing = existingId?.let { virtualScreens[it] }
+        if (existing != null) {
+            if (key == bindingKey(foregroundConversationId)) {
+                refreshForegroundState()
+            }
+            return OpenResult.Opened(existing.info())
+        }
+        when (vdController.prepare()) {
+            VirtualDisplayPrepareResult.Ready -> Unit
+            VirtualDisplayPrepareResult.Denied,
+            VirtualDisplayPrepareResult.Unavailable,
+            VirtualDisplayPrepareResult.BindFailed -> return OpenResult.Rejected("SHIZUKU_UNAVAILABLE")
+        }
+        return runCatchingCancellable {
+            val (width, height, dpi) = virtualDisplaySize(applicationContext())
+            val frames = VirtualDisplayFrames.open(vdController, width, height, dpi)
+            if (frames == null) {
+                if (virtualScreens.isEmpty()) vdController.close()
+                return@runCatchingCancellable OpenResult.Rejected("DISPLAY_FAILED")
+            }
+            val screen = VirtualDisplayScreen(
+                frames = frames,
+                controller = vdController,
+                access = access,
+                ownerConversationId = key,
+            )
+            virtualScreens[screen.id] = screen
+            conversationScreens[key] = screen.id
+            // 新建虚拟屏默认不弹悬浮窗，保持 0 FPS 休眠，等待用户从 Composer 顶槽或 /vd 主动打开
+            screen.setPaused(true)
+            refreshForegroundState()
 
-    override fun get(id: ScreenId): Screen? = if (id == PhoneScreenId) phone else null
+            OpenResult.Opened(screen.info())
+        }.getOrElse { error ->
+            Logger.e(TAG, "openVirtual failed unexpectedly", error)
+            if (virtualScreens.isEmpty()) {
+                runCatchingCancellable { vdController.close() }
+            }
+            OpenResult.Rejected("UNKNOWN_ERROR")
+        }
+    }
 
-    override suspend fun open(kind: OpenKind): OpenResult = OpenResult.Unsupported(kind)
-
-    override suspend fun close(id: ScreenId): CloseResult {
-        if (id == PhoneScreenId) return CloseResult.Rejected("PHONE_NOT_CLOSABLE")
-        return CloseResult.Rejected("UNKNOWN_SCREEN")
+    private suspend fun dismiss(screen: VirtualDisplayScreen) {
+        if (virtualScreens.remove(screen.id) == null) return
+        bindingKey(screen.ownerConversationId)?.let { key ->
+            conversationScreens.remove(key, screen.id)
+            overlayVisibleConversations.remove(key)
+        }
+        if (activeOverlayScreenId == screen.id) {
+            activeOverlayScreenId = null
+            runCatchingCancellable { VirtualDisplayCard.hide() }
+        }
+        runCatchingCancellable { vdController.release(screen.port.displayId) }
+        runCatchingCancellable { screen.closeLocal() }
+        if (virtualScreens.isEmpty()) {
+            runCatchingCancellable { vdController.close() }
+        }
+        refreshForegroundState()
     }
 }

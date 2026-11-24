@@ -67,6 +67,7 @@ private fun settingsSections(): List<SettingsSectionDefinition> {
             groups = listOf(
                 ZafiroSettingsGroup.ModelConfig,
                 ZafiroSettingsGroup.Memory,
+                ZafiroSettingsGroup.ContextInjection,
                 ZafiroSettingsGroup.RuntimeControl,
             ),
         ),
@@ -83,6 +84,7 @@ private fun settingsSections(): List<SettingsSectionDefinition> {
             groups = listOf(
                 ZafiroSettingsGroup.Tools,
                 ZafiroSettingsGroup.Skills,
+                ZafiroSettingsGroup.QuickPrompts,
                 ZafiroSettingsGroup.Actions,
                 ZafiroSettingsGroup.Mcp,
                 ZafiroSettingsGroup.McpService,

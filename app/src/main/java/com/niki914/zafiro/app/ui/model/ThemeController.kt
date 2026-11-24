@@ -8,12 +8,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import com.niki914.logging.Logger
+import com.niki914.store.StoreDescriptorRegistry
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStyleLookup
+import com.niki914.uikit.base.UiStylePart
 import com.niki914.uikit.base.resolveThemeColorScheme
 import com.niki914.zafiro.api.util.runCatchingCancellable
-import com.niki914.zafiro.app.ui.model.ThemeController.load
-import com.niki914.zafiro.app.ui.model.ThemeController.setMode
-import com.niki914.zafiro.app.ui.model.ThemeController.setSeedColor
+import com.niki914.zafiro.repo.UiStylesCodec
 import com.niki914.zafiro.repo.XRepo
 
 /** 深浅色模式。 */
@@ -53,6 +54,30 @@ object ThemeController {
     var prefs by mutableStateOf(ThemePrefs())
         private set
 
+    /** 组件覆盖表。空表或某键缺失时，该组件跟随 [ThemePrefs.themeStyle]。 */
+    var uiStyleOverrides by mutableStateOf<Map<String, String>>(emptyMap())
+        private set
+
+    fun styleOverride(part: UiStylePart): ThemeStyle? =
+        UiStylesCodec.overrideOrNull(uiStyleOverrides, part)
+
+    fun resolvedStyle(part: UiStylePart): ThemeStyle =
+        styleOverride(part) ?: prefs.themeStyle
+
+    /**
+     * 当所有部件的实际生效风格一致时，返回该风格；若存在不同风格（混搭），返回 null（表示自定义）。
+     */
+    fun unifiedThemeStyleOrNull(): ThemeStyle? {
+        val parts = UiStylePart.entries
+        if (parts.isEmpty()) return prefs.themeStyle
+        val first = resolvedStyle(parts.first())
+        return if (parts.all { resolvedStyle(it) == first }) first else null
+    }
+
+    private val styleLookup = UiStyleLookup { styleOverride(it) }
+
+    fun uiStyleLookup(): UiStyleLookup = styleLookup
+
     suspend fun load() {
         runCatchingCancellable {
             prefs = ThemePrefs(
@@ -63,6 +88,13 @@ object ThemeController {
             )
         }.onFailure {
             Logger.w("niki914_zafiro_ThemeController", "load failed ${it.message}")
+        }
+        runCatchingCancellable {
+            uiStyleOverrides = UiStylesCodec.parse(
+                XRepo.readJson(StoreDescriptorRegistry.UI_STYLES_ID),
+            )
+        }.onFailure {
+            Logger.w("niki914_zafiro_ThemeController", "load ui styles failed ${it.message}")
         }
     }
 
@@ -86,6 +118,31 @@ object ThemeController {
                     "persist theme style failed ${it.message}"
                 )
             }
+    }
+
+    suspend fun setPartStyle(part: UiStylePart, style: ThemeStyle) {
+        val newOverrides = uiStyleOverrides.toMutableMap()
+        newOverrides[part.storageKey] = style.storageKey
+        uiStyleOverrides = newOverrides
+        persistOverrides(newOverrides)
+    }
+
+    suspend fun setUnifiedThemeStyle(style: ThemeStyle) {
+        setThemeStyle(style)
+        uiStyleOverrides = emptyMap()
+        persistOverrides(emptyMap())
+    }
+
+    private suspend fun persistOverrides(overrides: Map<String, String>) {
+        runCatchingCancellable {
+            val json = UiStylesCodec.encode(overrides)
+            XRepo.writeJson(StoreDescriptorRegistry.UI_STYLES_ID, json)
+        }.onFailure {
+            Logger.w(
+                "niki914_zafiro_ThemeController",
+                "persist ui styles failed ${it.message}"
+            )
+        }
     }
 
     suspend fun setSeedColor(argb: Int?) {

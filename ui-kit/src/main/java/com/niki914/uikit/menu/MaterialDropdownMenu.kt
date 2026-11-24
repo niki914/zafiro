@@ -43,9 +43,11 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
-import com.niki914.uikit.base.LocalThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.infra.GlobalTouchDispatcher
 import com.niki914.uikit.infra.LocalLiquidDialogHostState
@@ -117,7 +119,7 @@ internal fun MaterialMenuSurface(
     onProgressChanged: ((Float) -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val themeStyle = LocalThemeStyle.current
+    val themeStyle = resolvedUiStyle(UiStylePart.Menu)
     val isExpressive = themeStyle == ThemeStyle.Material3Expressive
     val density = LocalDensity.current
     val statusBarTopPx = WindowInsets.statusBars.getTop(density).toFloat()
@@ -184,6 +186,7 @@ internal fun MaterialMenuSurface(
 
     Box(modifier = Modifier.fillMaxSize()) {
         SubcomposeLayout(modifier = Modifier.fillMaxSize()) { constraints ->
+            val isLtr = layoutDirection == LayoutDirection.Ltr
             val anchor = anchorBounds ?: run {
                 val defaultButtonSizePx = with(density) { 48.dp.toPx() }
                 val defaultTitleWidthPx = with(density) { 120.dp.toPx() }
@@ -199,22 +202,42 @@ internal fun MaterialMenuSurface(
                         )
                     }
                     PopoverAlignment.BottomEnd -> {
-                        val right = screenWidthPx - with(density) { 12.dp.toPx() }
-                        Rect(
-                            left = right - defaultButtonSizePx,
-                            top = statusBarTopPx + 4f,
-                            right = right,
-                            bottom = statusBarTopPx + 4f + defaultButtonSizePx,
-                        )
+                        if (isLtr) {
+                            val right = screenWidthPx - with(density) { 12.dp.toPx() }
+                            Rect(
+                                left = right - defaultButtonSizePx,
+                                top = statusBarTopPx + 4f,
+                                right = right,
+                                bottom = statusBarTopPx + 4f + defaultButtonSizePx,
+                            )
+                        } else {
+                            val left = with(density) { 12.dp.toPx() }
+                            Rect(
+                                left = left,
+                                top = statusBarTopPx + 4f,
+                                right = left + defaultButtonSizePx,
+                                bottom = statusBarTopPx + 4f + defaultButtonSizePx,
+                            )
+                        }
                     }
                     PopoverAlignment.BottomStart -> {
-                        val left = with(density) { 12.dp.toPx() }
-                        Rect(
-                            left = left,
-                            top = statusBarTopPx + 4f,
-                            right = left + defaultButtonSizePx,
-                            bottom = statusBarTopPx + 4f + defaultButtonSizePx,
-                        )
+                        if (isLtr) {
+                            val left = with(density) { 12.dp.toPx() }
+                            Rect(
+                                left = left,
+                                top = statusBarTopPx + 4f,
+                                right = left + defaultButtonSizePx,
+                                bottom = statusBarTopPx + 4f + defaultButtonSizePx,
+                            )
+                        } else {
+                            val right = screenWidthPx - with(density) { 12.dp.toPx() }
+                            Rect(
+                                left = right - defaultButtonSizePx,
+                                top = statusBarTopPx + 4f,
+                                right = right,
+                                bottom = statusBarTopPx + 4f + defaultButtonSizePx,
+                            )
+                        }
                     }
                 }
             }
@@ -303,8 +326,8 @@ internal fun MaterialMenuSurface(
             // 横向位置：按 alignment 精准中轴/左/右对齐
             val idealLeftPx = when (alignment) {
                 PopoverAlignment.BottomCenter -> anchor.center.x - targetWidthPx / 2f
-                PopoverAlignment.BottomEnd -> anchor.right - targetWidthPx
-                PopoverAlignment.BottomStart -> anchor.left
+                PopoverAlignment.BottomEnd -> if (isLtr) anchor.right - targetWidthPx else anchor.left
+                PopoverAlignment.BottomStart -> if (isLtr) anchor.left else anchor.right - targetWidthPx
             }
             val finalLeftPx = idealLeftPx.coerceIn(marginPx, screenWidthPx - marginPx - targetWidthPx)
 
@@ -312,8 +335,8 @@ internal fun MaterialMenuSurface(
             val pivotX = if (targetWidthPx > 0f) {
                 val anchorFocusX = when (alignment) {
                     PopoverAlignment.BottomCenter -> anchor.center.x
-                    PopoverAlignment.BottomEnd -> anchor.right
-                    PopoverAlignment.BottomStart -> anchor.left
+                    PopoverAlignment.BottomEnd -> if (isLtr) anchor.right else anchor.left
+                    PopoverAlignment.BottomStart -> if (isLtr) anchor.left else anchor.right
                 }
                 ((anchorFocusX - finalLeftPx) / targetWidthPx).coerceIn(0f, 1f)
             } else {

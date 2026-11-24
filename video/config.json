@@ -1,0 +1,7 @@
+{
+  "fps": 24,
+  "resolution": 1080,
+  "encoder": "libx264",
+  "crf": 22,
+  "preset": "slow"
+}

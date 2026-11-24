@@ -22,10 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -50,12 +47,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.base.LocalThemeStyle
-import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.control.ZafiroLoadingIndicator
 import com.niki914.uikit.button.ZafiroButton
 import com.niki914.uikit.control.ZafiroSwitch
 import com.niki914.uikit.infra.component.OptionRow
 import com.niki914.uikit.infra.component.OptionSheet
+import com.niki914.uikit.infra.component.SheetIconButton
 import com.niki914.uikit.infra.component.SettingsSegmentedSelector
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
 import com.niki914.uikit.infra.component.settings.SettingsRowAction
@@ -136,6 +133,7 @@ fun BackupSettingsContent(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
+        viewModel.sendIntent(BackupSettingsIntent.BeginImportInspection)
         scope.launch {
             val staged = stageImportUri(context, uri)
             if (staged == null) {
@@ -284,12 +282,14 @@ private fun BackupOptionSheet(
     sheet: BackupSheetState?,
     onIntent: (BackupSettingsIntent) -> Unit,
 ) {
+    val inspecting = sheet?.phase == BackupSheetPhase.Inspecting
     val choosing = sheet?.phase == BackupSheetPhase.Choosing
+    val dismissible = choosing || inspecting
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     OptionSheet(
         visible = sheet != null,
         onDismissRequest = { onIntent(BackupSettingsIntent.Dismiss) },
-        dismissible = sheet?.phase == BackupSheetPhase.Choosing,
+        dismissible = dismissible,
         title = sheet?.let { stringResource(it.kind.titleRes()) },
         bodyModifier = Modifier.heightIn(max = screenHeight * 0.85f),
         header = {
@@ -341,7 +341,9 @@ private fun BackupSheetSlot(
     onIntent: (BackupSettingsIntent) -> Unit,
 ) {
     val choosing = sheet.phase == BackupSheetPhase.Choosing
+    val inspecting = sheet.phase == BackupSheetPhase.Inspecting
     val actionText = when (sheet.phase) {
+        BackupSheetPhase.Inspecting -> stringResource(R.string.ui_backup_inspecting)
         BackupSheetPhase.Choosing -> stringResource(sheet.kind.titleRes())
         BackupSheetPhase.Restoring -> stringResource(R.string.dialog_cancel)
         BackupSheetPhase.RestartRequired -> stringResource(R.string.ui_backup_restart)
@@ -370,13 +372,18 @@ private fun BackupSheetSlot(
             text = actionText,
             onClick = {
                 when (sheet.phase) {
+                    BackupSheetPhase.Inspecting -> Unit
                     BackupSheetPhase.Choosing -> onIntent(BackupSettingsIntent.Confirm)
                     BackupSheetPhase.Restoring -> onIntent(BackupSettingsIntent.CancelRestore)
                     BackupSheetPhase.RestartRequired -> onIntent(BackupSettingsIntent.Restart)
                 }
             },
-            enabled = !choosing || sheet.selected.isNotEmpty(),
-            leadingIcon = if (sheet.phase == BackupSheetPhase.Restoring) {
+            enabled = when (sheet.phase) {
+                BackupSheetPhase.Inspecting -> false
+                BackupSheetPhase.Choosing -> sheet.selected.isNotEmpty()
+                BackupSheetPhase.Restoring, BackupSheetPhase.RestartRequired -> true
+            },
+            leadingIcon = if (sheet.phase == BackupSheetPhase.Restoring || sheet.phase == BackupSheetPhase.Inspecting) {
                 { ChatRunningIndicator() }
             } else {
                 null
@@ -397,41 +404,13 @@ private fun SheetToggleIcon(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    val haptics = LocalHapticFeedback.current
-    val interactionSource = remember { MutableInteractionSource() }
-    val background = if (highlighted) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        Color.Transparent
-    }
-    val tint = if (highlighted) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
-    Box(
-        modifier = Modifier
-            .size(48.dp)
-            .clip(CircleShape)
-            .background(background)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                enabled = enabled,
-                role = Role.Button,
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
-                    onClick()
-                },
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = imageVector,
-            contentDescription = contentDescription,
-            tint = tint,
-        )
-    }
+    SheetIconButton(
+        imageVector = imageVector,
+        contentDescription = contentDescription,
+        highlighted = highlighted,
+        enabled = enabled,
+        onClick = onClick,
+    )
 }
 
 @Composable
@@ -510,22 +489,14 @@ private fun BackupSheetKind.titleRes(): Int = when (this) {
     BackupSheetKind.Import -> R.string.ui_settings_backup_import
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ChatRunningIndicator() {
-    val color = LocalContentColor.current
-    if (LocalThemeStyle.current == ThemeStyle.Material3Expressive) {
-        LoadingIndicator(
-            modifier = Modifier.size(28.dp),
-            color = color,
-        )
-    } else {
-        CircularProgressIndicator(
-            modifier = Modifier.size(22.dp),
-            color = color,
-            strokeWidth = 2.dp,
-        )
-    }
+    ZafiroLoadingIndicator(
+        color = LocalContentColor.current,
+        size = 22.dp,
+        petalSize = 28.dp,
+        strokeWidth = 2.dp,
+    )
 }
 
 @StringRes

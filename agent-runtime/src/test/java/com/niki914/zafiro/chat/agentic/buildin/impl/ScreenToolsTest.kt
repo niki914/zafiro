@@ -1,7 +1,6 @@
 package com.niki914.zafiro.chat.agentic.buildin.impl
 
 import com.niki914.zafiro.api.screen.ActResult
-import com.niki914.zafiro.api.screen.AppHit
 import com.niki914.zafiro.api.screen.CloseResult
 import com.niki914.zafiro.api.screen.ImageFrame
 import com.niki914.zafiro.api.screen.NodeInfo
@@ -20,6 +19,7 @@ import com.niki914.zafiro.api.screen.SemanticType
 import com.niki914.zafiro.api.screen.ShowResult
 import com.niki914.zafiro.api.screen.ShowTarget
 import com.niki914.zafiro.api.screen.Target
+import com.niki914.zafiro.chat.agentic.AgentTenantContext
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.RawJsonBuiltinTool
@@ -36,8 +36,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-// 保护：V2 工具把 screen / token / 坐标 / uri / kind 交到 Screens，漏传时模型会打到错误的屏。
-class ScreenToolsV2Test {
+// 保护：屏幕工具把 screen / token / 坐标 / uri / kind 交到 Screens，漏传时模型会打到错误的屏。
+class ScreenToolsTest {
     private val phone = ScreenId("phone")
     private lateinit var screen: RecordingScreen
     private lateinit var screens: RecordingScreens
@@ -112,18 +112,60 @@ class ScreenToolsV2Test {
     }
 
     @Test
-    fun openUriIsPassedThrough() = runTest {
-        val result = invokeText("open", """{"screen":"phone","uri":"https://example.com"}""")
+    fun screenBelongingToAnotherSessionIsRejectedWithGuidance() = runTest {
+        screens.screenOwnerConversationId = "conv-source"
+        val result = kotlinx.coroutines.withContext(
+            AgentTenantContext(
+                tenantId = "test-tenant",
+                conversationId = "conv-forked",
+            ),
+        ) {
+            invokeOperation("""{"screen":"phone","operation":"read"}""")
+        }
+
+        assertEquals(SCREEN_UNAVAILABLE_IN_SESSION, result.code)
+        assertTrue(result.message?.contains("operation='open'") == true)
+        assertEquals(0, screen.snapshots)
+    }
+
+    @Test
+    fun openGlobalUriIsPassedThrough() = runTest {
+        val result = invokeText(
+            "open",
+            """{"kind":"global","screen":"phone","uri":"https://example.com"}""",
+        )
 
         assertEquals(TextToolResult.Status.Success, result.status)
         assertEquals(ShowTarget.Uri("https://example.com"), screen.shown)
     }
 
     @Test
-    fun twoOpenIdentifiersAreRejectedBeforeOpen() = runTest {
+    fun openGlobalPackageNameIsPassedThrough() = runTest {
         val result = invokeText(
             "open",
-            """{"screen":"phone","app_name":"微信","uri":"https://example.com"}""",
+            """{"kind":"global","screen":"phone","package_name":"com.tencent.mm"}""",
+        )
+
+        assertEquals(TextToolResult.Status.Success, result.status)
+        assertEquals(ShowTarget.PackageName("com.tencent.mm"), screen.shown)
+    }
+
+    @Test
+    fun openInAppPreviewIsPassedThroughWithoutScreen() = runTest {
+        val result = invokeText(
+            "open",
+            """{"kind":"in_app_preview","url":"/data/user/0/app/files/report.html"}""",
+        )
+
+        assertEquals(TextToolResult.Status.Success, result.status)
+        assertEquals(ShowTarget.InAppPreview("/data/user/0/app/files/report.html"), screen.shown)
+    }
+
+    @Test
+    fun openGlobalRequiresScreen() = runTest {
+        val result = invokeText(
+            "open",
+            """{"kind":"global","package_name":"com.tencent.mm"}""",
         )
 
         assertEquals(SCREEN_INVALID_ARGUMENTS, result.code)
@@ -131,13 +173,14 @@ class ScreenToolsV2Test {
     }
 
     @Test
-    fun ambiguousAppNameReturnsCandidates() = runTest {
-        val result = invokeText("open", """{"screen":"phone","app_name":"微信"}""")
+    fun twoOpenGlobalIdentifiersAreRejected() = runTest {
+        val result = invokeText(
+            "open",
+            """{"kind":"global","screen":"phone","package_name":"com.tencent.mm","uri":"https://example.com"}""",
+        )
 
-        assertEquals(SCREEN_AMBIGUOUS_APP, result.code)
-        assertTrue(result.payload.contains("com.tencent.mm\t微信"))
-        assertTrue(result.payload.contains("com.tencent.mm.clone\t微信"))
-        assertEquals(ShowTarget.AppName("微信"), screen.shown)
+        assertEquals(SCREEN_INVALID_ARGUMENTS, result.code)
+        assertNull(screen.shown)
     }
 
     @Test
@@ -237,35 +280,35 @@ class ScreenToolsV2Test {
 
         override suspend fun show(target: ShowTarget): ShowResult {
             shown = target
-            if (target is ShowTarget.AppName) {
-                return ShowResult.Ambiguous(
-                    target.name,
-                    listOf(
-                        AppHit("com.tencent.mm", target.name),
-                        AppHit("com.tencent.mm.clone", target.name),
-                    ),
-                )
-            }
             return ShowResult.Shown("opened")
         }
     }
 
-    private class RecordingScreens(private val screen: RecordingScreen) : Screens {
+    private class RecordingScreens(
+        private val screen: RecordingScreen,
+        var screenOwnerConversationId: String? = null,
+    ) : Screens {
         var opened: OpenKind? = null
 
-        override fun list(): List<ScreenInfo> {
+        override fun list(callerConversationId: String?): List<ScreenInfo> {
             return listOf(ScreenInfo(screen.id, screen.kind, 100, 200))
         }
 
-        override fun get(id: ScreenId): Screen? = if (id == screen.id) screen else null
+        override fun get(id: ScreenId, callerConversationId: String?): Screen? {
+            if (id != screen.id) return null
+            if (screenOwnerConversationId != null && callerConversationId != null && screenOwnerConversationId != callerConversationId) {
+                return null
+            }
+            return screen
+        }
 
-        override suspend fun open(kind: OpenKind): OpenResult {
+        override suspend fun open(kind: OpenKind, ownerConversationId: String?): OpenResult {
             opened = kind
             return OpenResult.Opened(
                 ScreenInfo(ScreenId("vd-1"), ScreenKind.VirtualDisplay, 1080, 2400),
             )
         }
 
-        override suspend fun close(id: ScreenId): CloseResult = CloseResult.Closed
+        override suspend fun close(id: ScreenId, callerConversationId: String?): CloseResult = CloseResult.Closed
     }
 }

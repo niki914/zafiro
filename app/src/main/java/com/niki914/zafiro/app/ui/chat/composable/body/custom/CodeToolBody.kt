@@ -12,13 +12,16 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.zafiro.app.R
@@ -65,33 +68,36 @@ internal fun CodeToolBody(
     SelectionContainer(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // 上段：命令行（单行文本占满可用宽度，垂直居中对齐复制按钮，超出尾部省略，整体裁剪 G2 圆角）
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(topShape)
-                    .background(background, topShape)
-                    .tapToOpenViewer(enabled = canOpenCommandViewer) {
-                        openViewer(ViewerContent.Text(commandText))
-                    }
-                    .padding(top = CommandRowPadOuter, bottom = CommandRowPadInner)
-                    .padding(start = CommandPanelPadX, end = CopyBtnGap),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = ui.command,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Start,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
+            // 外层从右往左时，命令仍从物理左边读。控制台输出不在这一层。
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(topShape)
+                        .background(background, topShape)
+                        .tapToOpenViewer(enabled = canOpenCommandViewer) {
+                            openViewer(ViewerContent.Text(commandText))
+                        }
+                        .padding(top = CommandRowPadOuter, bottom = CommandRowPadInner)
+                        .padding(start = CommandPanelPadX, end = CopyBtnGap),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = ui.command,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Start,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
 
-                Spacer(modifier = Modifier.width(CopyBtnGap))
+                    Spacer(modifier = Modifier.width(CopyBtnGap))
 
-                MiniCopyButton(
-                    text = commandText,
-                )
+                    MiniCopyButton(
+                        text = commandText,
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(3.dp))

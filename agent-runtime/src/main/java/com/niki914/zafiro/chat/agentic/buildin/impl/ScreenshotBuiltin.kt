@@ -3,6 +3,7 @@ package com.niki914.zafiro.chat.agentic.buildin.impl
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.api.screen.ScreenImageUnavailable
 import com.niki914.zafiro.chat.agentic.SharedImageCodec
+import com.niki914.zafiro.chat.agentic.currentAgentConversationId
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
@@ -13,7 +14,7 @@ import com.niki914.zafiro.chat.agentic.toToolError
 /**
  * 按 screen 取这一块屏自己的帧，并统一 ingest 写入沙箱图片缓存。
  */
-class ScreenshotBuiltin__V2 : BuiltinTool() {
+class ScreenshotBuiltin : BuiltinTool() {
     override val name: String = "screenshot"
     override val defaultEnabled: Boolean = true
     override val description: String =
@@ -38,11 +39,14 @@ class ScreenshotBuiltin__V2 : BuiltinTool() {
                 code = SCREEN_SERVICE_UNAVAILABLE,
                 message = "Screen service is not installed.",
             )
-        val screen = screens.require(id)
-            ?: return BuiltinToolResult.failure(
-                code = SCREEN_UNKNOWN,
-                message = "Unknown screen '${id.value}'.",
+        val callerConvId = currentAgentConversationId()
+        val (screen, failure) = resolveScreenOrFailure(screens, id, callerConvId)
+        if (failure != null || screen == null) {
+            return BuiltinToolResult.failure(
+                code = failure?.code ?: SCREEN_UNKNOWN,
+                message = failure?.message ?: "Unknown screen '${id.value}'.",
             )
+        }
         val frame = try {
             screen.image()
         } catch (error: ScreenImageUnavailable) {

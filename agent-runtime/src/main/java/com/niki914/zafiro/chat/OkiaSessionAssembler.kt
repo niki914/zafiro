@@ -21,13 +21,18 @@ import com.niki914.okia.protocol.OpenAIChatCompletionCompat
 import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
 import com.niki914.okia.protocol.OpenAIResponsesProtocol
 import com.niki914.okia.tooling.ToolRegistry
+import com.niki914.zafiro.api.screen.Screens
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.chat.agentic.AndroidImageLoader
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.shell.SessionRegistry
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.compaction.ContextPruner
+import com.niki914.zafiro.envcontext.DeviceStateProvider
+import com.niki914.zafiro.envcontext.DeviceStateSnapshot
+import com.niki914.zafiro.envcontext.EnvContextInjectionHook
 import com.niki914.zafiro.masking.MaskingHook
+import com.niki914.zafiro.service.findService
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.LlmProtocol
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
@@ -55,6 +60,7 @@ internal class OkiaSessionAssembler(
     private val toolRegistry: ToolRegistry,
     private val imageLoader: AndroidImageLoader?,
     private val ensureImageSaver: suspend () -> ImageSaver?,
+    private val conversationIdProvider: () -> String? = { null },
 ) {
     internal companion object {
         const val LOG_TAG = "niki914_zafiro_OkiaSessionAssembler"
@@ -100,6 +106,29 @@ internal class OkiaSessionAssembler(
     var activeSession: Okia? = null
     var sessionProtocol: LlmProtocol? = null
         private set
+
+    var deviceStateProvider: DeviceStateProvider? = null
+
+    private val envContextInjectionHook = EnvContextInjectionHook(
+        getLlmConfig = {
+            runCatchingCancellable { RuntimeEnvironment.awaitSettingsGateway().readLlmConfig() }
+                .getOrDefault(RuntimeLlmConfig())
+        },
+        deviceStateProvider = {
+            deviceStateProvider?.getDeviceState()
+                ?: findService<DeviceStateProvider>()?.getDeviceState()
+                ?: DeviceStateSnapshot()
+        },
+        getConversation = { currentConversation.value },
+        virtualDisplayProvider = {
+            val convId = conversationIdProvider() ?: currentConversation.value?.id
+            if (!convId.isNullOrBlank()) {
+                findService<Screens>()?.virtualDisplayContext(convId)
+            } else {
+                null
+            }
+        },
+    )
 
     private val maskingHook = MaskingHook(
         listMaskingRules = {
@@ -197,6 +226,7 @@ internal class OkiaSessionAssembler(
             hooks += killToolResourcesHook
             hooks += fixIncompleteToolCallsHook
             hooks += compactPruningHook
+            hooks += envContextInjectionHook
             hooks += maskingHook
             idleTimeoutSeconds = config.idleTimeoutSeconds ?: AgentSessionEngine.NO_IDLE_TIMEOUT_SECONDS
             retryPolicy = RetryPolicy(maxAttempts = config.retryMaxAttempts)

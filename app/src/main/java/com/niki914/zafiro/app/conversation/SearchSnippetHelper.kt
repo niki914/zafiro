@@ -6,13 +6,12 @@ package com.niki914.zafiro.app.conversation
 object SearchSnippetHelper {
     private const val ELLIPSIS = "..."
     private val WHITESPACE_REGEX = Regex("""\s+""")
-    private val MARKDOWN_DECORATION_REGEX = Regex("""[*#`_~>]""")
 
     /**
      * 以首个命中的 [query] 为中心截取前后上下文片段（Snippet）。
      *
      * 核心机制：
-     * 1. 过滤冗余 Markdown 格式符（如粗体 **、标题 # 等）并压平连续空白；
+     * 1. 压平连续空白。格式符原样保留，用户会拿星号当搜索词；
      * 2. [leadingRadius] 前置字符窗口默认保持紧凑（5 字符），确保在手机单行宽度（约 20-25 汉字）内，
      *    关键词始终位于屏幕前半部，绝不因前缀过长被单行末尾的 TextOverflow.Ellipsis 挤出屏幕；
      * 3. [trailingRadius] 适度保留后续语境（默认 18 字符）；
@@ -25,8 +24,7 @@ object SearchSnippetHelper {
         trailingRadius: Int = 18,
     ): String {
         val trimmedQuery = query.trim()
-        val markdownRegex = if (trimmedQuery.any { it in "*#`_~>" }) null else MARKDOWN_DECORATION_REGEX
-        val cleaned = (if (markdownRegex != null) fullText.replace(markdownRegex, "") else fullText)
+        val cleaned = fullText
             .replace(WHITESPACE_REGEX, " ")
             .trim()
 

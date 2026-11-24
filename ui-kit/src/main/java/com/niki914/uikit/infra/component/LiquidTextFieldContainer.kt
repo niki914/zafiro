@@ -37,7 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.Backdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.emptyBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.infra.LiquidGlassPresets
@@ -73,8 +73,7 @@ internal fun LiquidTextFieldContainer(
     leadingContent: (@Composable RowScope.() -> Unit)? = null,
     trailingContent: (@Composable RowScope.() -> Unit)? = null,
 ) {
-    val fallbackBackdrop = rememberLayerBackdrop()
-    val resolvedBackdrop = backdrop ?: fallbackBackdrop
+    val resolvedBackdrop = backdrop ?: remember { emptyBackdrop() }
     val isDarkTheme = LocalAppDarkTheme.current
     val animationScope = rememberCoroutineScope()
     var isFocused by remember { mutableStateOf(false) }

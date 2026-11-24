@@ -25,16 +25,19 @@ import com.niki914.zafiro.app.ui.nav.ConversationHistoryPage
 import com.niki914.zafiro.app.ui.nav.CustomPyToolDetailPage
 import com.niki914.zafiro.app.ui.nav.CustomPyToolsPage
 import com.niki914.zafiro.app.ui.nav.DonePage
+import com.niki914.zafiro.app.ui.nav.EnvContextVariableDetailPage
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.FloatingBallSettingsPage
 import com.niki914.zafiro.app.ui.nav.MaskingRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.HomePage
 import com.niki914.zafiro.app.ui.nav.MarkdownScalePage
+import com.niki914.zafiro.app.ui.nav.ThemeStylesPage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
 import com.niki914.zafiro.app.ui.nav.OnboardingPreferencesPage
 import com.niki914.zafiro.app.ui.nav.OnboardingThemePage
 import com.niki914.zafiro.app.ui.nav.PromptEditPage
 import com.niki914.zafiro.app.ui.nav.ProviderPickPage
+import com.niki914.zafiro.app.ui.nav.QuickPromptDetailPage
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
 import com.niki914.zafiro.app.ui.nav.SavedConfigPromptEditPage
 import com.niki914.zafiro.app.ui.nav.SettingsDetailPage
@@ -51,21 +54,25 @@ import com.niki914.zafiro.app.ui.content.TaskEditorContent
 import com.niki914.zafiro.app.ui.content.TaskRunContent
 import com.niki914.zafiro.app.ui.content.TasksPageContent
 import com.niki914.zafiro.app.ui.nav.ViewerPage
+import com.niki914.zafiro.app.ui.nav.VirtualDisplayPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.route.BuiltinToolGroupDetailRoute
 import com.niki914.zafiro.app.ui.route.ConfigurePageRoute
 import com.niki914.zafiro.app.ui.route.ConversationHistoryPageRoute
 import com.niki914.zafiro.app.ui.route.DonePageRoute
+import com.niki914.zafiro.app.ui.route.EnvContextVariableDetailRoute
 import com.niki914.zafiro.app.ui.route.ExecutionRuleDetailRoute
 import com.niki914.zafiro.app.ui.route.FloatingBallSettingsPageRoute
 import com.niki914.zafiro.app.ui.route.MaskingRuleDetailRoute
 import com.niki914.zafiro.app.ui.route.HomePageRoute
 import com.niki914.zafiro.app.ui.route.MarkdownScalePageRoute
+import com.niki914.zafiro.app.ui.route.ThemeStylesPageRoute
 import com.niki914.zafiro.app.ui.route.McpServerDetailRoute
 import com.niki914.zafiro.app.ui.route.OnboardingPreferencesRoute
 import com.niki914.zafiro.app.ui.route.OnboardingThemeRoute
 import com.niki914.zafiro.app.ui.route.PromptEditRoute
 import com.niki914.zafiro.app.ui.route.ProviderPickPageRoute
+import com.niki914.zafiro.app.ui.route.QuickPromptDetailRoute
 import com.niki914.zafiro.app.ui.route.SavedConfigDetailRoute
 import com.niki914.zafiro.app.ui.route.SavedConfigPromptEditRoute
 import com.niki914.zafiro.app.ui.route.SettingsDetailPageRoute
@@ -76,6 +83,7 @@ import com.niki914.zafiro.app.ui.route.StartupPageRoute
 import com.niki914.zafiro.app.ui.route.TakeoverRuleDetailRoute
 import com.niki914.zafiro.app.ui.route.TextActionDetailRoute
 import com.niki914.zafiro.app.ui.route.ViewerPageRoute
+import com.niki914.zafiro.app.ui.route.VirtualDisplayPageRoute
 
 @Composable
 fun ZafiroPageContent(
@@ -182,12 +190,22 @@ fun ZafiroPageContent(
             onBack = onPop,
         )
 
+        is EnvContextVariableDetailPage -> EnvContextVariableDetailRoute(
+            page = page,
+            onBack = onPop,
+        )
+
         is SavedConfigPromptEditPage -> SavedConfigPromptEditRoute(
             page = page,
             onBack = onPop,
         )
 
         is McpServerDetailPage -> McpServerDetailRoute(
+            page = page,
+            onBack = onPop,
+        )
+
+        is QuickPromptDetailPage -> QuickPromptDetailRoute(
             page = page,
             onBack = onPop,
         )
@@ -267,9 +285,16 @@ fun ZafiroPageContent(
 
         MarkdownScalePage -> MarkdownScalePageRoute()
 
+        ThemeStylesPage -> ThemeStylesPageRoute()
+
         FloatingBallSettingsPage -> FloatingBallSettingsPageRoute()
 
         is ViewerPage -> ViewerPageRoute(
+            page = page,
+            onBack = onPop,
+        )
+
+        is VirtualDisplayPage -> VirtualDisplayPageRoute(
             page = page,
             onBack = onPop,
         )

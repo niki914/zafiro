@@ -65,6 +65,7 @@ internal fun BackupPartition.itemIdKey(): String? {
     return when (this) {
         BackupPartition.PyTools,
         BackupPartition.TextActions,
+        BackupPartition.QuickPrompts,
         -> "name"
         BackupPartition.Memory,
         BackupPartition.Models,
@@ -82,11 +83,13 @@ internal fun localJson(partition: BackupPartition, local: BackupSnapshot): Strin
         BackupPartition.Memory -> local.memoryJson
         BackupPartition.Models -> local.modelsJson
         BackupPartition.Preferences -> local.appStateJson
+        BackupPartition.UiStyles -> local.uiStylesJson
         BackupPartition.McpServers -> local.mcpServersJson
         BackupPartition.McpService -> local.mcpServiceJson
         BackupPartition.BuiltinTools -> local.builtinToolsJson
         BackupPartition.PyTools -> local.pyToolsJson
         BackupPartition.TextActions -> local.textActionsJson
+        BackupPartition.QuickPrompts -> local.quickPromptsJson
         BackupPartition.ExecutionRules -> local.executionRulesJson
         BackupPartition.TakeoverRules -> local.takeoverRulesJson
         BackupPartition.MaskingRules -> local.maskingRulesJson

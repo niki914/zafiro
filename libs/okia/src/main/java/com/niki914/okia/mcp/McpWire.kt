@@ -6,6 +6,8 @@ import com.niki914.okia.transport.HttpResponse
 import com.niki914.okia.transport.HttpTimeouts
 import com.niki914.okia.transport.SseEventParser
 import com.niki914.okia.transport.SseLineParser
+import com.niki914.okia.util.tryOrDefault
+import com.niki914.okia.util.tryOrNull
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.sync.Mutex
@@ -20,6 +22,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 /**
  * MCP 线缆层共享错误：JSON-RPC error / 传输失败 / 协议畸形统一经它表达。
@@ -99,7 +103,8 @@ internal class McpWire(
         server: McpServer,
         method: String,
         params: JsonObject?,
-        id: Long
+        id: Long,
+        extraHeaders: Map<String, String> = emptyMap()
     ): JsonObject {
         val body = buildJsonObject {
             put("jsonrpc", "2.0")
@@ -107,7 +112,7 @@ internal class McpWire(
             put("method", method)
             if (params != null) put("params", params)
         }
-        val result = parseResult(send(server, body), id)
+        val result = parseResult(send(server, body, extraHeaders), id)
         // 协商版本缓存：initialize 结果携带 protocolVersion，后续请求必须附
         // MCP-Protocol-Version 头（规范 MUST；缺失时不缓存，退化到当前行为）。
         if (method == "initialize") {
@@ -160,7 +165,7 @@ internal class McpWire(
     /** tools/call 的参数 JSON 解析；非法输入 → 明确失败（不静默修正）。 */
     fun parseArguments(toolName: String, raw: String): JsonElement = try {
         json.parseToJsonElement(raw)
-    } catch (e: Exception) {
+    } catch (e: Exception) { // githooks:ignore bare-catch
         throw McpProtocolException(
             "invalid JSON in tools/call arguments for '$toolName': ${e.message}", cause = e
         )
@@ -219,7 +224,11 @@ internal class McpWire(
 
     // ── 发送与信封解析 ──────────────────────────────────────────────────
 
-    private suspend fun send(server: McpServer, body: JsonObject): HttpResponse {
+    private suspend fun send(
+        server: McpServer,
+        body: JsonObject,
+        extraHeaders: Map<String, String> = emptyMap()
+    ): HttpResponse {
         val url = when (val transport = server.transport) {
             is McpTransport.Http -> transport.url
         }
@@ -249,7 +258,7 @@ internal class McpWire(
             HttpRequest(
                 url = url,
                 method = "POST",
-                headers = DEFAULT_HEADERS + sessionHeader + versionHeader + methodHeader + nameHeader + server.headers,
+                headers = DEFAULT_HEADERS + sessionHeader + versionHeader + methodHeader + nameHeader + extraHeaders + server.headers,
                 body = body.toString(),
                 timeouts = timeouts
             )
@@ -315,7 +324,7 @@ internal class McpWire(
             ?: throw McpProtocolException("MCP response is not a JSON object: ${text.take(200)}")
     } catch (e: McpProtocolException) {
         throw e
-    } catch (e: Exception) {
+    } catch (e: Exception) { // githooks:ignore bare-catch
         throw McpProtocolException("MCP response is not valid JSON: ${text.take(200)}", cause = e)
     }
 
@@ -343,7 +352,7 @@ internal class McpWire(
                         )
                 } catch (e: McpProtocolException) {
                     throw e
-                } catch (e: Exception) {
+                } catch (e: Exception) { // githooks:ignore bare-catch
                     throw McpProtocolException(
                         "MCP SSE event data is not valid JSON: ${
                             ev.data.take(
@@ -376,7 +385,7 @@ internal class McpWire(
         val status = response.statusCode ?: return false
         if (status in 200..299) return false
         val detail = response.body?.decodeToString() ?: return false
-        return try {
+        return tryOrDefault(false) {
             val error =
                 (json.parseToJsonElement(detail) as? JsonObject)?.get("error") as? JsonObject
                     ?: return false
@@ -386,8 +395,6 @@ internal class McpWire(
                         message.contains("session", ignoreCase = true) ||
                                 message.contains("not initialized", ignoreCase = true)
                     }
-        } catch (e: Exception) {
-            false
         }
     }
 
@@ -400,11 +407,9 @@ internal class McpWire(
         )
         if (status !in 200..299) {
             val detail = response.body?.decodeToString()?.take(300) ?: ""
-            val rpcCode = try {
+            val rpcCode = tryOrNull {
                 (json.parseToJsonElement(detail).jsonObject["error"] as? JsonObject)
                     ?.get("code")?.let { (it as? JsonPrimitive)?.content?.toIntOrNull() }
-            } catch (e: Exception) {
-                null
             }
             throw McpProtocolException(
                 "MCP request failed with HTTP $status${if (detail.isNotEmpty()) ": $detail" else ""}",
@@ -418,6 +423,81 @@ internal class McpWire(
         val params = body["params"] as? JsonObject ?: return null
         val meta = params["_meta"] as? JsonObject ?: return null
         return (meta["io.modelcontextprotocol/protocolVersion"] as? JsonPrimitive)?.contentOrNull
+    }
+
+    /**
+     * SEP-2243: 根据 tool inputSchema 中的 `x-mcp-header` 属性注解与实际调用的 arguments，
+     * 生成对应的 `Mcp-Param-{HeaderName}` HTTP 头映射。
+     */
+    fun buildParamHeaders(
+        inputSchemaJson: String?,
+        arguments: JsonElement
+    ): Map<String, String> {
+        if (inputSchemaJson.isNullOrEmpty() || arguments !is JsonObject) return emptyMap()
+        val schema = tryOrNull {
+            json.parseToJsonElement(inputSchemaJson).jsonObject
+        } ?: return emptyMap()
+        val properties = schema["properties"] as? JsonObject ?: return emptyMap()
+        val headers = mutableMapOf<String, String>()
+        for ((propName, propSchemaElement) in properties) {
+            val propObj = propSchemaElement as? JsonObject ?: continue
+            val headerAnnotation = propObj["x-mcp-header"] ?: continue
+            val headerName = when (headerAnnotation) {
+                is JsonPrimitive -> {
+                    val content = headerAnnotation.content
+                    if (content.equals("true", ignoreCase = true)) {
+                        propName
+                    } else if (content.equals("false", ignoreCase = true)) {
+                        null
+                    } else {
+                        content
+                    }
+                }
+                else -> null
+            }
+            if (headerName.isNullOrEmpty() || !isValidHeaderToken(headerName)) continue
+            val argVal = arguments[propName] ?: continue
+            val encodedValue = formatParamHeaderValue(argVal) ?: continue
+            headers["Mcp-Param-$headerName"] = encodedValue
+        }
+        return headers
+    }
+
+    /**
+     * 校验 HTTP header token（RFC 9110 / visible ASCII 0x21..0x7E 且不含 ':'）。
+     */
+    private fun isValidHeaderToken(name: String): Boolean {
+        if (name.isEmpty()) return false
+        for (ch in name) {
+            val code = ch.code
+            if (code < 0x21 || code > 0x7E || ch == ':') return false
+        }
+        return true
+    }
+
+    /**
+     * 将参数值格式化为符合 SEP-2243 规范的 header value：
+     * - 可见 ASCII（0x20..0x7E，且首尾非空格）直接输出字面值；
+     * - 包含非 ASCII / 首尾空白 / 控制字符则使用 `=?base64?...?=` 进行 Base64 UTF-8 包装。
+     */
+    @OptIn(ExperimentalEncodingApi::class)
+    private fun formatParamHeaderValue(value: JsonElement): String? {
+        val rawStr = when (value) {
+            is JsonPrimitive -> {
+                if (value.isString) value.content else value.content
+            }
+            else -> return null // 仅支持 primitive types
+        }
+        val isSafeAscii = rawStr.isNotEmpty() &&
+                !rawStr.startsWith(' ') &&
+                !rawStr.endsWith(' ') &&
+                rawStr.all { ch -> ch.code in 0x20..0x7E }
+        return if (isSafeAscii) {
+            rawStr
+        } else {
+            val b64 = Base64.encode(rawStr.encodeToByteArray())
+            "=?base64?$b64?="
+        }
     }
 
     companion object {

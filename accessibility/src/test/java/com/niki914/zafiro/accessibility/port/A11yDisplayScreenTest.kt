@@ -31,6 +31,10 @@ class A11yDisplayScreenTest {
 
         override suspend fun inject(action: PointerAction): ActionStatus = injectStatus
 
+        override suspend fun settle(timeoutMs: Long) {
+            // Fake port 不需要真实硬件驱动等待稳定
+        }
+
         override suspend fun readNodes(): List<NodeInfo> = readNodes("live")
 
         override suspend fun readNodes(version: String): List<NodeInfo> {

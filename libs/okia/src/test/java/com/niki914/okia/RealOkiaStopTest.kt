@@ -21,6 +21,7 @@ import com.niki914.okia.protocol.ProtocolEvent
 import com.niki914.okia.tooling.DefaultToolRegistry
 import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.okia.transport.HttpEngine
+import com.niki914.okia.util.runCatchingCancellable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -427,14 +428,14 @@ class RealOkiaStopTest {
             loop = loop,
             scope = testScope(testScheduler)
         )
-        val sendJob = launch { runCatching { okia.send("first") {} } }
+        val sendJob = launch { runCatchingCancellable { okia.send("first") {} } }
         runCurrent() // 回合 A 挂起在 gateA（清理中）
 
         sendJob.cancel() // 外部取消 → await 抛取消 → catch 进入 cancelAndJoin（等待）
         runCurrent() // NonCancellable 内 cancelAndJoin 挂起等待旧回合退出
 
         // guard 尚未释放：第二个 send 被 activeTurn 挡住
-        val resend = async { runCatching { okia.send("second") {} } }
+        val resend = async { runCatchingCancellable { okia.send("second") {} } }
         runCurrent()
         assertEquals("another turn is already active", resend.await().exceptionOrNull()?.message)
 

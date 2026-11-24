@@ -52,7 +52,12 @@ class McpExecutor(
             val toolName = call.descriptor.name // 原始 MCP 工具名，直接调用
             val server = servers(serverName)
                 ?: return ToolCallOutcome.Failure("MCP server not found: $serverName", content = "MCP server not found: $serverName")
-            val result = client.callTool(server, toolName, call.argumentsJson)
+            val result = client.callTool(
+                server = server,
+                toolName = toolName,
+                argumentsJson = call.argumentsJson,
+                inputSchemaJson = call.descriptor.inputSchemaJson
+            )
             val textContent = StringBuilder()
             val images = mutableListOf<ContentBlock.Image>()
             val saveFailures = mutableListOf<String>()
@@ -96,7 +101,7 @@ class McpExecutor(
         } catch (e: McpProtocolException) {
             val errorMsg = e.message ?: "MCP tool call failed"
             ToolCallOutcome.Failure(message = errorMsg, content = errorMsg)
-        } catch (e: Exception) {
+        } catch (e: Exception) { // githooks:ignore bare-catch
             // 兜底：client 实现违反契约抛非协议异常也转 outcome（永不抛异常）
             val errorMsg = "MCP tool call failed: ${e.message}"
             ToolCallOutcome.Failure(message = errorMsg, content = errorMsg)

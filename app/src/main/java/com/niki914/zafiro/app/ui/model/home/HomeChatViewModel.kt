@@ -14,16 +14,29 @@ import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.api.model.isRunning
+import com.niki914.zafiro.api.screen.Screens
+import com.niki914.zafiro.app.screen.AppScreens
+import com.niki914.zafiro.app.screen.VirtualDisplayCard
+import com.niki914.zafiro.app.screen.VirtualDisplayStage
 import com.niki914.zafiro.app.conversation.ConversationBranchTree
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ForkKind
+import com.niki914.zafiro.app.ui.home.composer.suggestion.BuiltinSlashCommand
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashCategory
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashSuggestion
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SuggestionAction
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SuggestionScope
+import com.niki914.zafiro.app.ui.home.composer.suggestion.isCjkOrPunctuation
 import com.niki914.zafiro.app.ui.model.TextPacer
 import com.niki914.zafiro.app.ui.model.summariesOf
 import com.niki914.zafiro.business.files.FileAttachResult
 import com.niki914.zafiro.business.files.FilesService
 import com.niki914.zafiro.repo.LlmConfigsDocument
+import com.niki914.zafiro.repo.RuntimeQuickPrompt
 import com.niki914.zafiro.repo.XRepo
+import com.niki914.zafiro.service.findService
 import com.niki914.zafiro.service.requireService
+import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
 import kotlinx.coroutines.CancellableContinuation
 import com.niki914.zafiro.api.util.Debouncer
 import com.niki914.zafiro.api.util.debouncer
@@ -31,7 +44,10 @@ import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.api.util.tryOrDefault
 import com.niki914.zafiro.api.util.tryIgnore
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -40,10 +56,30 @@ import kotlin.coroutines.resume
 
 internal data class HomeChatConfigDependencies(
     val loadConfigs: suspend () -> LlmConfigsDocument,
+    val setActiveConfig: suspend (String) -> Unit = { XRepo.llmConfigs.setActive(it) },
+    val updateConfigModel: suspend (configId: String, modelId: String) -> Unit = { configId, modelId ->
+        XRepo.llmConfigs.updateModel(configId, modelId)
+    },
+    val updateThinkingLevel: suspend (configId: String, wireValue: String) -> Unit = { configId, wireValue ->
+        XRepo.llmConfigs.updateThinkingLevel(configId, wireValue)
+    },
+    val configsRevisions: Flow<Long> = emptyFlow(),
+    val loadSkills: suspend () -> List<RuntimeSkillMetadata> = { emptyList() },
+    val skillsRevisions: Flow<Long> = emptyFlow(),
+    val loadQuickPrompts: suspend () -> List<RuntimeQuickPrompt> = { emptyList() },
+    val quickPromptsRevisions: Flow<Long> = emptyFlow(),
 ) {
     companion object {
         val Default = HomeChatConfigDependencies(
             loadConfigs = { XRepo.llmConfigs.document() },
+            setActiveConfig = { XRepo.llmConfigs.setActive(it) },
+            updateConfigModel = { configId, modelId -> XRepo.llmConfigs.updateModel(configId, modelId) },
+            updateThinkingLevel = { configId, wireValue -> XRepo.llmConfigs.updateThinkingLevel(configId, wireValue) },
+            configsRevisions = XRepo.llmConfigs.revision,
+            loadSkills = { XRepo.skills.listEnabled() },
+            skillsRevisions = XRepo.skills.revision,
+            loadQuickPrompts = { XRepo.quickPrompts.list() },
+            quickPromptsRevisions = XRepo.quickPrompts.revision,
         )
     }
 }
@@ -99,6 +135,22 @@ class HomeChatViewModel internal constructor(
         viewModelScope.launch {
             refreshSavedConfigs()
         }
+        viewModelScope.launch {
+            configDependencies.skillsRevisions.collect {
+                refreshSlashSuggestions()
+            }
+        }
+        viewModelScope.launch {
+            configDependencies.quickPromptsRevisions.collect {
+                refreshSlashSuggestions()
+            }
+        }
+        viewModelScope.launch {
+            configDependencies.configsRevisions.collect {
+                refreshSavedConfigs()
+            }
+        }
+        observeVirtualDisplay()
     }
 
     override fun initUiState(): HomeChatUiState = HomeChatUiState()
@@ -146,7 +198,6 @@ class HomeChatViewModel internal constructor(
                 updateState {
                     copy(
                         boundConfigId = intent.id,
-                        isConfigMenuVisible = false,
                     )
                 }
                 currentBoundAgent?.bindConfig(intent.id)
@@ -162,12 +213,173 @@ class HomeChatViewModel internal constructor(
                             )
                         }
                     }
+                } else {
+                    viewModelScope.launch {
+                        runCatchingCancellable {
+                            configDependencies.setActiveConfig(intent.id)
+                        }.onFailure { throwable ->
+                            Logger.w(LOG_TAG, "setActiveConfig failed: ${throwable.message}")
+                        }
+                    }
+                }
+            }
+
+            is HomeChatIntent.SelectModel -> {
+                val targetConfigId = intent.configId.trim()
+                val targetModelId = intent.modelId.trim()
+                if (targetConfigId.isNotBlank() && targetModelId.isNotBlank()) {
+                    updateState {
+                        val updatedConfigs = savedConfigs.map { config ->
+                            if (config.id == targetConfigId) {
+                                config.copy(modelId = targetModelId)
+                            } else {
+                                config
+                            }
+                        }
+                        copy(savedConfigs = updatedConfigs)
+                    }
+                    viewModelScope.launch {
+                        runCatchingCancellable {
+                            configDependencies.updateConfigModel(targetConfigId, targetModelId)
+                        }.onFailure { throwable ->
+                            Logger.w(LOG_TAG, "updateConfigModel failed: ${throwable.message}")
+                        }
+                    }
+                }
+            }
+
+            is HomeChatIntent.UpdateThinkingLevel -> {
+                val targetConfigId = intent.configId.trim()
+                val targetWire = intent.wireValue.trim()
+                if (targetConfigId.isNotBlank()) {
+                    updateState {
+                        val updatedConfigs = savedConfigs.map { config ->
+                            if (config.id == targetConfigId) {
+                                config.copy(thinkingLevel = targetWire)
+                            } else {
+                                config
+                            }
+                        }
+                        copy(savedConfigs = updatedConfigs)
+                    }
+                    viewModelScope.launch {
+                        runCatchingCancellable {
+                            configDependencies.updateThinkingLevel(targetConfigId, targetWire)
+                        }.onFailure { throwable ->
+                            Logger.w(LOG_TAG, "updateThinkingLevel failed: ${throwable.message}")
+                        }
+                    }
                 }
             }
 
             HomeChatIntent.RefreshConfigs -> {
                 refreshSavedConfigs()
+                refreshSlashSuggestions()
             }
+
+            HomeChatIntent.OpenVirtualDisplay -> handleOpenVirtualDisplay()
+
+            HomeChatIntent.RequestTerminateVirtualDisplay -> {
+                updateState { copy(showTerminateVirtualDisplayDialog = true) }
+            }
+
+            HomeChatIntent.DismissTerminateVirtualDisplay -> {
+                updateState { copy(showTerminateVirtualDisplayDialog = false) }
+            }
+
+            HomeChatIntent.ConfirmTerminateVirtualDisplay -> confirmTerminateVirtualDisplay()
+        }
+    }
+
+    private fun observeVirtualDisplay() {
+        viewModelScope.launch {
+            combine(AppScreens.foregroundState, VirtualDisplayCard.isExpanded) { fg, expanded ->
+                fg to expanded
+            }.collectLatest { (fg, expanded) ->
+                if (fg == null) {
+                    updateState { copy(virtualDisplay = null) }
+                } else {
+                    fg.stage.collect { stage ->
+                        val uiStage = when (stage) {
+                            is VirtualDisplayStage.AppPicker -> HomeVirtualDisplayStage.AppPicker
+                            is VirtualDisplayStage.Launching -> HomeVirtualDisplayStage.Launching(
+                                packageName = stage.packageName,
+                                appName = stage.appName,
+                            )
+                            is VirtualDisplayStage.Running -> HomeVirtualDisplayStage.Running(
+                                packageName = stage.packageName,
+                                appName = stage.appName,
+                            )
+                        }
+                        updateState {
+                            copy(
+                                virtualDisplay = HomeVirtualDisplayUiState(
+                                    stage = uiStage,
+                                    isOverlayExpanded = expanded,
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun handleOpenVirtualDisplay() {
+        val conversationId = currentState.currentConversationId?.takeIf { it.isNotBlank() }
+        if (conversationId == null) {
+            sendEffect(HomeChatEffect.VirtualDisplayRequiresConversation)
+            return
+        }
+        val screens = findService<Screens>()
+        if (screens != null && screens.hasVirtualScreen(conversationId)) {
+            if (screens.isOverlayShowing(conversationId)) {
+                screens.expandOverlay(conversationId)
+            } else {
+                screens.reopenOverlay(conversationId)
+            }
+            return
+        }
+        sendEffect(HomeChatEffect.OpenVirtualDisplayPage(conversationId))
+    }
+
+    private suspend fun confirmTerminateVirtualDisplay() {
+        updateState { copy(showTerminateVirtualDisplayDialog = false) }
+        val conversationId = currentState.currentConversationId?.takeIf { it.isNotBlank() } ?: return
+        findService<Screens>()?.closeForConversation(conversationId)
+    }
+
+    private suspend fun refreshSlashSuggestions() {
+        runCatchingCancellable {
+            val builtinSuggestions = BuiltinSlashCommand.ALL.map { it.toSuggestion() }
+            val skills = configDependencies.loadSkills()
+            val skillSuggestions = skills.map { skill ->
+                SlashSuggestion(
+                    id = skill.id,
+                    category = SlashCategory.SKILL,
+                    displayText = "/skill:${skill.id}",
+                    replaceToken = "/skill:${skill.id} ",
+                    scope = SuggestionScope.ANYWHERE,
+                    searchKeys = listOf(skill.name, skill.id),
+                )
+            }
+            val quickPrompts = configDependencies.loadQuickPrompts().filter { it.enabled }
+            val quickPromptSuggestions = quickPrompts.map { prompt ->
+                SlashSuggestion(
+                    id = prompt.name,
+                    category = SlashCategory.PROMPT,
+                    displayText = "/${prompt.name}",
+                    replaceToken = "${prompt.prompt} ",
+                    scope = SuggestionScope.ANYWHERE,
+                    action = SuggestionAction.Insert("${prompt.prompt} "),
+                    searchKeys = listOf(prompt.name, prompt.prompt),
+                )
+            }
+            updateState {
+                copy(slashSuggestions = builtinSuggestions + skillSuggestions + quickPromptSuggestions)
+            }
+        }.onFailure { throwable ->
+            Logger.w(LOG_TAG, "refreshSlashSuggestions failed: ${throwable.message}")
         }
     }
 
@@ -344,6 +556,7 @@ class HomeChatViewModel internal constructor(
                 userToggledKeys = if (id != currentConversationId) emptyMap() else userToggledKeys,
             )
         }
+        notifyForegroundConversation(id)
         Logger.i(LOG_TAG, "applyConversation done id=$id turnsCount=${target.size}")
         if (isFirstConversationAssignment && !currentState.boundConfigId.isNullOrBlank()) {
             val assignedId = id!!
@@ -516,6 +729,19 @@ class HomeChatViewModel internal constructor(
             .onFailure { Logger.w(LOG_TAG, "camera temp file delete failed path=$path") }
     }
 
+    private fun clearInputDraft() {
+        draftDebouncer.cancel()
+        agent.updateDraft { it.copy(text = "") }
+        viewModelScope.launch {
+            runCatchingCancellable {
+                conversations.setDraftText("")
+            }.onFailure { t ->
+                Logger.w(LOG_TAG, "clear draft failed: ${t.message}")
+            }
+        }
+        updateState { copy(input = "") }
+    }
+
     private suspend fun sendCurrentInput() {
         val trimmedInput = currentState.input.trim()
         val hasAttachments =
@@ -524,7 +750,35 @@ class HomeChatViewModel internal constructor(
             sendEffect(HomeChatEffect.EmptyInputAttempted)
             return
         }
-        agent.updateDraft { it.copy(text = trimmedInput) }
+
+        if (!hasAttachments) {
+            when (BuiltinSlashCommand.find(trimmedInput)) {
+                BuiltinSlashCommand.NewSession -> {
+                    clearInputDraft()
+                    startNewConversation()
+                    return
+                }
+                BuiltinSlashCommand.Compact -> {
+                    val hasCompactableHistory = currentState.turns.any {
+                        !it.isCompactedDivider && it.userText.isNotBlank()
+                    }
+                    if (!hasCompactableHistory) {
+                        sendEffect(HomeChatEffect.NoCompactableHistory)
+                        return
+                    }
+                    // 透传给 agent.stream()，由 AgentImpl 拦截执行强制压缩
+                }
+                BuiltinSlashCommand.VirtualDisplay -> {
+                    clearInputDraft()
+                    handleOpenVirtualDisplay()
+                    return
+                }
+                null -> { /* 普通消息，继续正常发送 */ }
+            }
+        }
+
+        val expandedInput = expandQuickPrompts(trimmedInput, configDependencies.loadQuickPrompts())
+        agent.updateDraft { it.copy(text = expandedInput) }
         // stream() is synchronous; don't let it consume Pending images before AgentImpl finishes ingest.
         agent.draft.first { draft -> draft.images.none { it is DraftImage.Pending } }
         updateState { copy(isGenerating = true, unreadTurnId = null) }
@@ -536,18 +790,10 @@ class HomeChatViewModel internal constructor(
             }
             return
         }
-        draftDebouncer.cancel()
-        viewModelScope.launch {
-            runCatchingCancellable {
-                conversations.setDraftText("")
-            }.onFailure { t ->
-                Logger.w(LOG_TAG, "clear draft failed: ${t.message}")
-            }
-        }
+        clearInputDraft()
         // 输入框以本类为准：发起即清空，不从 draft 读回
         updateState {
             copy(
-                input = "",
                 pendingImages = emptyList(),
                 pendingFiles = emptyList(),
                 activeThinkingKey = null,
@@ -562,7 +808,12 @@ class HomeChatViewModel internal constructor(
     private suspend fun stopGenerating() {
         if (!currentState.isGenerating) return
         agent.stop()
-        updateState { copy(activeThinkingKey = null) }
+        updateState {
+            copy(
+                isGenerating = agent.status.value.isRunning,
+                activeThinkingKey = null,
+            )
+        }
         applyConversation(agent.conversation.value, animateTail = false)
     }
 
@@ -570,6 +821,7 @@ class HomeChatViewModel internal constructor(
 
     private suspend fun startNewConversation() {
         Logger.d(LOG_TAG, "start new conversation")
+        notifyForegroundConversation(null)
         val leavingId = agent.conversation.value.id?.value
         detachBoundAgent()
         draftDebouncer.cancel()
@@ -581,6 +833,7 @@ class HomeChatViewModel internal constructor(
                 input = currentInput,
                 savedConfigs = currentState.savedConfigs,
                 globalActiveConfigId = currentState.globalActiveConfigId,
+                slashSuggestions = currentState.slashSuggestions,
                 boundConfigId = null,
                 isLoadingConversation = true,
             )
@@ -641,7 +894,14 @@ class HomeChatViewModel internal constructor(
                     t,
                 )
                 tryIgnore { conversations.setLastOpenedConversationId("") }
-                updateState { HomeChatUiState(input = currentState.input).withClearedTransient() }
+                updateState {
+                    HomeChatUiState(
+                        input = currentState.input,
+                        savedConfigs = currentState.savedConfigs,
+                        globalActiveConfigId = currentState.globalActiveConfigId,
+                        slashSuggestions = currentState.slashSuggestions,
+                    ).withClearedTransient()
+                }
             }
         }
     }
@@ -842,6 +1102,7 @@ class HomeChatViewModel internal constructor(
         }
         groupIds.forEach { branchId ->
             tryIgnore { agentManager.destroy(branchId) }
+            findService<Screens>()?.onConversationDestroyed(branchId)
         }
         conversations.deleteConversation(id)
         if (!deletingCurrent) {
@@ -888,7 +1149,12 @@ class HomeChatViewModel internal constructor(
         // 在途请求交给其他来源（或按拒绝结算）；本类不再持有来源身份
         approvalApprover.detach()
         detachBoundAgent()
+        notifyForegroundConversation(null)
         super.onCleared()
+    }
+
+    private fun notifyForegroundConversation(conversationId: String?) {
+        findService<Screens>()?.bindForegroundConversation(conversationId)
     }
 
     companion object {
@@ -932,4 +1198,50 @@ private class ForegroundDialogApprover(
         onPendingChanged(null)
         current?.cancel()
     }
+}
+
+internal fun isQuickPromptBoundary(char: Char): Boolean {
+    return char.isWhitespace() ||
+            char in "!\"#\$%&'()*+,-./:;<=>?@[\\]^_`{|}~" ||
+            isCjkOrPunctuation(char)
+}
+
+internal fun expandQuickPrompts(
+    input: String,
+    prompts: List<RuntimeQuickPrompt>,
+): String {
+    if (prompts.isEmpty() || !input.contains('/')) return input
+    val enabledPrompts = prompts.filter { it.enabled && it.name.isNotBlank() }
+    if (enabledPrompts.isEmpty()) return input
+
+    val sortedPrompts = enabledPrompts.sortedByDescending { it.name.length }
+    val sb = StringBuilder(input.length)
+    var i = 0
+    while (i < input.length) {
+        if (input[i] == '/') {
+            val isStartBoundary = (i == 0 || isQuickPromptBoundary(input[i - 1]))
+            if (isStartBoundary) {
+                var matchedPrompt: RuntimeQuickPrompt? = null
+                for (prompt in sortedPrompts) {
+                    val nameLen = prompt.name.length
+                    if (input.regionMatches(i + 1, prompt.name, 0, nameLen, ignoreCase = true)) {
+                        val endIdx = i + 1 + nameLen
+                        val isEndBoundary = (endIdx == input.length || isQuickPromptBoundary(input[endIdx]))
+                        if (isEndBoundary) {
+                            matchedPrompt = prompt
+                            break
+                        }
+                    }
+                }
+                if (matchedPrompt != null) {
+                    sb.append(matchedPrompt.prompt)
+                    i += 1 + matchedPrompt.name.length
+                    continue
+                }
+            }
+        }
+        sb.append(input[i])
+        i++
+    }
+    return sb.toString()
 }

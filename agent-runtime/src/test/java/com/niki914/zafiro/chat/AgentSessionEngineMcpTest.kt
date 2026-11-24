@@ -305,6 +305,7 @@ class AgentSessionEngineMcpTest {
             server: McpServer,
             toolName: String,
             argumentsJson: String,
+            inputSchemaJson: String?
         ): McpCallResult = McpCallResult(isError = false, content = emptyList())
 
         suspend fun awaitDiscoveryCalls(expected: Int) {

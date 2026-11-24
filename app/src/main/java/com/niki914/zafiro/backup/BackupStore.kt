@@ -17,7 +17,7 @@ import java.nio.file.Files
  * 读数和导出共用 [BackupSnapshot]，这样快照和应用前看到的是同一份数据。
  */
 internal interface BackupStore {
-    suspend fun read(): BackupSnapshot
+    suspend fun read(groups: Set<BackupGroup> = BackupGroup.entries.toSet()): BackupSnapshot
     fun imageDir(): File
     fun scratchDir(): File
     suspend fun writeDocument(partition: BackupPartition, json: String)
@@ -40,11 +40,13 @@ internal fun BackupPartition.storeId(): String? {
         BackupPartition.Memory -> StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID
         BackupPartition.Models -> StoreDescriptorRegistry.LLM_CONFIGS_ID
         BackupPartition.Preferences -> StoreDescriptorRegistry.APP_STATE_ID
+        BackupPartition.UiStyles -> StoreDescriptorRegistry.UI_STYLES_ID
         BackupPartition.McpServers -> StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID
         BackupPartition.McpService -> StoreDescriptorRegistry.TOOLS_MCP_SERVICE_ID
         BackupPartition.BuiltinTools -> StoreDescriptorRegistry.TOOLS_BUILTIN_ID
         BackupPartition.PyTools -> StoreDescriptorRegistry.TOOLS_PY_ID
         BackupPartition.TextActions -> StoreDescriptorRegistry.TOOLS_TEXT_ACTIONS_ID
+        BackupPartition.QuickPrompts -> StoreDescriptorRegistry.PROMPTS_QUICK_ID
         BackupPartition.ExecutionRules -> StoreDescriptorRegistry.RULES_EXECUTION_ID
         BackupPartition.TakeoverRules -> StoreDescriptorRegistry.RULES_TAKEOVER_ID
         BackupPartition.MaskingRules -> StoreDescriptorRegistry.RULES_MASKING_ID
@@ -93,7 +95,7 @@ internal fun writeSkillTree(
 internal class LiveBackupStore(
     private val context: Context,
 ) : BackupStore {
-    override suspend fun read(): BackupSnapshot = BackupLiveSource.read()
+    override suspend fun read(groups: Set<BackupGroup>): BackupSnapshot = BackupLiveSource.read(groups)
 
     override fun imageDir(): File = File(context.filesDir, IMAGE_CACHE_DIR)
 

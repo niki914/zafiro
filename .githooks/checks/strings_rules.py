@@ -18,6 +18,8 @@ from core.ignore import extract_file_ignores, is_rule_ignored, split_rules
 from core.models import Category, CheckResult, Finding, Rule, Severity
 
 STRINGS_PATTERN = re.compile(r"^(.*?/res)/values([^/]*)/strings\.xml$")
+APP_MAIN_RES_DIR = "app/src/main/res"
+THEME_SETTINGS_PATH = "app/src/main/java/com/niki914/zafiro/app/ui/content/ThemeSettingsContent.kt"
 
 KNOWN_LOCALES = (
     "values",
@@ -26,6 +28,8 @@ KNOWN_LOCALES = (
     "values-es",
     "values-ja",
     "values-ru",
+    "values-ar",
+    "values-fa",
 )
 
 RE_ALLOWED_PARENS = re.compile(
@@ -48,6 +52,14 @@ VERBOSE_UI_RULE = Rule(
     severity=Severity.WARN,
     description="中文 UI 文案包含分号或解释性括号，文案应保持专业简洁、拒绝话痨",
     hint="建议去掉多余解释括号；分号精简为短句或改用换行；确实需要时加 <!-- githooks:ignore verbose-ui --> 放行",
+)
+
+LANGUAGE_UI_RULE = Rule(
+    name="language-ui-registration",
+    category=Category.I18N,
+    severity=Severity.BLOCK,
+    description="多语言资源目录与 UI 语言选项 (ThemeSettingsContent.kt) 未保持双向同步",
+    hint="请在 ThemeSettingsContent.kt 的 languageOptions() 中注册新增语言，或使用 <!-- githooks:ignore-file language-ui-registration --> 放行",
 )
 
 
@@ -203,6 +215,314 @@ def check_verbose_ui(content: str, path: str) -> list[VerboseUiWarning]:
     return warnings
 
 
+def discover_locales_from_fs(root: str, res_dir: str = APP_MAIN_RES_DIR) -> set[str]:
+    """通过扫描文件系统获取指定 res 目录下的所有 locale 目录名（如 'values', 'values-en'）。"""
+    res_path = Path(root, res_dir)
+    locales: set[str] = set()
+    if res_path.is_dir():
+        for p in res_path.glob("values*/strings.xml"):
+            try:
+                rel = p.relative_to(Path(root)).as_posix()
+                m = STRINGS_PATTERN.match(rel)
+                if m:
+                    locales.add(f"values{m.group(2)}")
+            except ValueError:
+                pass
+    return locales
+
+
+def get_effective_locales(
+    root: str | None = None,
+    res_dir: str = APP_MAIN_RES_DIR,
+    extra_paths: set[str] | None = None,
+    base_known: tuple[str, ...] = KNOWN_LOCALES,
+) -> tuple[set[str], set[str]]:
+    """合并已知基础语言与动态扫描的语言列表（取并集）。
+
+    返回 (effective_locales, new_discovered_locales)。
+    - effective_locales: 最终参与检查的完整语言目录集合；
+    - new_discovered_locales: 动态发现但未在 base_known 中登记的新增语言集合。
+    """
+    discovered: set[str] = set()
+    if root:
+        discovered.update(discover_locales_from_fs(root, res_dir))
+    if extra_paths:
+        for p in extra_paths:
+            m = STRINGS_PATTERN.match(p)
+            if m and (not res_dir or m.group(1) == res_dir):
+                discovered.add(f"values{m.group(2)}")
+    new_locales = discovered - set(base_known)
+    effective = set(base_known) | discovered
+    return effective, new_locales
+
+
+def parse_ui_language_options(
+    content: str, path: str = THEME_SETTINGS_PATH
+) -> tuple[dict[str, str] | None, str | None]:
+    """从 ThemeSettingsContent.kt 解析已注册的语言选项。
+
+    返回 (options_dict, error_message)。
+    options_dict 格式为 {tag: label}。
+    如果解析失败（如文件被重构、函数名变更等），返回 (None, error_message)。
+    """
+    # 1. 提取文件内常量（如 private const val LANGUAGE_TAG_ZH_CN = "zh-CN"）
+    constants: dict[str, str] = {}
+    const_matches = re.finditer(
+        r'\b(?:(?:private|internal|public)\s+)?(?:const\s+)?val\s+([A-Za-z0-9_]+)(?:\s*:\s*String)?\s*=\s*"([^"]*)"',
+        content,
+    )
+    for m in const_matches:
+        constants[m.group(1)] = m.group(2)
+
+    # 2. 定位 languageOptions() 函数
+    func_marker = "fun languageOptions"
+    func_idx = content.find(func_marker)
+    if func_idx == -1:
+        return (
+            None,
+            f"在 {path} 中未匹配到 'languageOptions()' 函数声明。"
+            f"若语言选项函数已更名、迁移为独立 Provider 或被重构，请同步更新 .githooks/checks/strings_rules.py 中的解析逻辑。",
+        )
+
+    # 3. 提取函数体（支持花括号函数体或单表达式函数体）
+    body: str | None = None
+    open_brace_idx = content.find("{", func_idx)
+    assign_idx = content.find("=", func_idx)
+
+    if open_brace_idx != -1 and (assign_idx == -1 or open_brace_idx < assign_idx):
+        depth = 1
+        start_pos = open_brace_idx + 1
+        end_pos = -1
+        for i in range(start_pos, len(content)):
+            char = content[i]
+            if char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    end_pos = i
+                    break
+        if end_pos != -1:
+            body = content[start_pos:end_pos]
+    elif assign_idx != -1:
+        rest = content[assign_idx + 1 :]
+        m = re.search(r"\n\s*(?:@Composable|fun\b|class\b|private\b|internal\b|public\b|$)", rest)
+        body = rest[: m.start()] if m else rest
+
+    if body is None:
+        return (
+            None,
+            f"在 {path} 中无法界定 'languageOptions()' 的函数体边界。"
+            f"若代码语法结构调整，请同步更新 .githooks/checks/strings_rules.py。",
+        )
+
+    # 4. 提取 LanguageOption(...) 调用
+    options: dict[str, str] = {}
+    option_matches = re.finditer(r"\bLanguageOption\s*\(([^)]+)\)", body)
+    for opt in option_matches:
+        args_str = opt.group(1).strip()
+        # 提取 tag
+        tag: str | None = None
+        tag_named = re.search(r'\btag\s*=\s*(?:"([^"]*)"|([A-Za-z0-9_]+))', args_str)
+        if tag_named:
+            if tag_named.group(1) is not None:
+                tag = tag_named.group(1)
+            elif tag_named.group(2) is not None:
+                tag = constants.get(tag_named.group(2), tag_named.group(2))
+        else:
+            first_arg = args_str.split(",", 1)[0].strip()
+            if first_arg.startswith('"') and first_arg.endswith('"'):
+                tag = first_arg[1:-1]
+            elif first_arg in constants:
+                tag = constants[first_arg]
+            elif first_arg:
+                tag = first_arg
+
+        # 提取 label
+        label: str = ""
+        label_named = re.search(
+            r'\blabel\s*=\s*(?:"([^"]*)"|stringResource\([^)]+\)|([A-Za-z0-9_]+))',
+            args_str,
+        )
+        if label_named:
+            if label_named.group(1) is not None:
+                label = label_named.group(1)
+            elif label_named.group(2) is not None:
+                label = constants.get(label_named.group(2), label_named.group(2))
+            else:
+                label = "res"
+        else:
+            parts = [p.strip() for p in args_str.split(",")]
+            if len(parts) >= 2:
+                second_arg = parts[1]
+                if second_arg.startswith('"') and second_arg.endswith('"'):
+                    label = second_arg[1:-1]
+                elif second_arg in constants:
+                    label = constants[second_arg]
+                else:
+                    label = second_arg
+
+        if tag is not None:
+            options[tag] = label
+
+    if not options:
+        return (
+            None,
+            f"在 {path} 的 languageOptions() 中未解析到任何有效的 LanguageOption(...) 项。"
+            f"若选项构造方式或数据类型已重构，请同步更新 .githooks/checks/strings_rules.py。",
+        )
+
+    return options, None
+
+
+def locale_to_tags(locale: str) -> set[str]:
+    """根据 values 目录名生成对应的候选 BCP-47 语言 tag 集合。"""
+    if locale == "values":
+        return {"zh-CN", "zh", ""}
+    suffix = locale[len("values-") :] if locale.startswith("values-") else locale
+    candidates = {suffix}
+    if suffix.startswith("b+"):
+        clean = suffix[2:].replace("+", "-")
+        candidates.add(clean)
+        if clean == "zh-Hant":
+            candidates.update({"zh-TW", "zh-HK"})
+    elif "-r" in suffix:
+        clean = suffix.replace("-r", "-")
+        candidates.add(clean)
+        if clean == "zh-TW":
+            candidates.update({"zh-Hant", "b+zh+Hant"})
+    return candidates
+
+
+def tag_matches_locale(tag: str, locale: str) -> bool:
+    """判断 BCP-47 tag 与 Android values 目录名是否匹配。"""
+    if not tag:
+        return locale == "values"
+    candidates = locale_to_tags(locale)
+    if tag in candidates:
+        return True
+    tag_clean = tag.lower().replace("_", "-")
+    for c in candidates:
+        c_clean = c.lower().replace("_", "-")
+        if c_clean == tag_clean:
+            return True
+        if tag_clean.startswith("zh-tw") and "zh-hant" in c_clean:
+            return True
+        if tag_clean.startswith("zh-hant") and "zh-tw" in c_clean:
+            return True
+    return False
+
+
+def check_ui_language_registration(
+    app_res_locales: set[str],
+    content_provider: Callable[[str], str | None],
+    theme_settings_path: str = THEME_SETTINGS_PATH,
+    app_res_dir: str = APP_MAIN_RES_DIR,
+) -> list[Finding]:
+    """检查 app/src/main/res 下的语言目录与 ThemeSettingsContent.kt 中的 UI 选项是否双向对齐。"""
+    findings: list[Finding] = []
+    content = content_provider(theme_settings_path)
+    if content is None:
+        findings.append(
+            Finding(
+                path=theme_settings_path,
+                lineno=None,
+                rule=LANGUAGE_UI_RULE.name,
+                category=LANGUAGE_UI_RULE.category.value,
+                severity=LANGUAGE_UI_RULE.severity.value,
+                message=(
+                    f"未找到 UI 语言注册文件: '{theme_settings_path}'。"
+                    f"若该文件已被移动、重命名或重构，请同步更新 .githooks/checks/strings_rules.py 中的配置路径！"
+                ),
+                hint=LANGUAGE_UI_RULE.hint,
+            )
+        )
+        return findings
+
+    lines = content.splitlines()
+    file_ignores = extract_file_ignores(lines)
+    if is_rule_ignored(LANGUAGE_UI_RULE.name, file_ignores):
+        return []
+
+    parsed_options, parse_err = parse_ui_language_options(content, theme_settings_path)
+    if parse_err:
+        findings.append(
+            Finding(
+                path=theme_settings_path,
+                lineno=None,
+                rule=LANGUAGE_UI_RULE.name,
+                category=LANGUAGE_UI_RULE.category.value,
+                severity=LANGUAGE_UI_RULE.severity.value,
+                message=f"UI 语言注册解析失败: {parse_err}",
+                hint=(
+                    "若语言注册结构或方法已重构，请同步更新 .githooks/checks/strings_rules.py 中的解析逻辑；"
+                    "若确定无需检查，可在文件顶部添加 // githooks:ignore-file language-ui-registration 放行"
+                ),
+            )
+        )
+        return findings
+
+    assert parsed_options is not None
+    registered_tags = set(parsed_options.keys())
+
+    # 1. 检查 app/src/main/res 下每个语言目录是否在 UI 中注册
+    for locale in sorted(app_res_locales):
+        matched = any(tag_matches_locale(tag, locale) for tag in registered_tags)
+        if not matched:
+            strings_file_path = f"{app_res_dir}/{locale}/strings.xml"
+            strings_content = content_provider(strings_file_path) or ""
+            strings_lines = strings_content.splitlines()
+            strings_ignores = extract_file_ignores(strings_lines)
+            if is_rule_ignored(LANGUAGE_UI_RULE.name, strings_ignores):
+                continue
+
+            suggested_tag = (
+                locale[len("values-") :] if locale.startswith("values-") else "zh-CN"
+            )
+            findings.append(
+                Finding(
+                    path=strings_file_path,
+                    lineno=None,
+                    rule=LANGUAGE_UI_RULE.name,
+                    category=LANGUAGE_UI_RULE.category.value,
+                    severity=LANGUAGE_UI_RULE.severity.value,
+                    message=(
+                        f"检测到语言资源目录 '{locale}'，但未在 {theme_settings_path} 的 languageOptions() 中注册 UI 选项！"
+                        f"(缺少对应 tag: '{suggested_tag}')"
+                    ),
+                    hint=(
+                        f"请在 {theme_settings_path} 中添加对应语言的 LanguageOption(tag = \"{suggested_tag}\", label = \"...\")；"
+                        f"若该语言暂不在 UI 界面暴露，可在对应 strings.xml 中添加 <!-- githooks:ignore-file language-ui-registration --> 放行"
+                    ),
+                )
+            )
+
+    # 2. 检查 UI 中注册的每个 tag 是否在 app/src/main/res 下存在对应资源
+    for tag, label in sorted(parsed_options.items()):
+        if not tag:
+            continue
+        matched = any(tag_matches_locale(tag, locale) for locale in app_res_locales)
+        if not matched:
+            findings.append(
+                Finding(
+                    path=theme_settings_path,
+                    lineno=None,
+                    rule=LANGUAGE_UI_RULE.name,
+                    category=LANGUAGE_UI_RULE.category.value,
+                    severity=LANGUAGE_UI_RULE.severity.value,
+                    message=(
+                        f"UI 语言选项中注册了 tag: '{tag}' (label: '{label}')，但在 {app_res_dir} 下未找到对应的 values 资源目录！"
+                    ),
+                    hint=(
+                        f"请在 {app_res_dir} 下创建对应语言目录 (如 values-{tag}/strings.xml) 并对齐翻译键；"
+                        f"或在 {theme_settings_path} 中移除未就绪的语言选项"
+                    ),
+                )
+            )
+
+    return findings
+
+
 def discover_locale_files(root: str, res_dir: str, extra_paths: set[str] | None = None) -> dict[str, str]:
     """发现给定 res 目录下所有语言版本的 strings.xml。返回 {locale_suffix: relative_path}。"""
     res_path = Path(root, res_dir)
@@ -235,11 +555,15 @@ def check_res_dir(
     res_dir: str,
     content_provider: Callable[[str], str | None],
     extra_paths: set[str] | None = None,
+    expected_locales: set[str] | None = None,
 ) -> ModuleReport | None:
     """检查单个 res 目录下的各语言 strings.xml 对齐情况与 UI 文案。"""
     locale_map = discover_locale_files(root, res_dir, extra_paths)
-    if not locale_map:
+    if not locale_map and not expected_locales:
         return None
+
+    if expected_locales is None and res_dir == APP_MAIN_RES_DIR:
+        expected_locales, _ = get_effective_locales(root, res_dir, extra_paths)
 
     base_path = locale_map.get("")
     if not base_path:
@@ -324,6 +648,26 @@ def check_res_dir(
             )
         )
 
+    # 检查 expected_locales 中缺失的语言文件
+    if expected_locales:
+        existing_locales = {f"values{suffix}" for suffix in locale_map.keys()}
+        for exp_loc in sorted(expected_locales):
+            if exp_loc == "values":
+                continue
+            if exp_loc not in existing_locales:
+                missing_path = f"{res_dir}/{exp_loc}/strings.xml"
+                target_reports.append(
+                    TargetLanguageReport(
+                        path=missing_path,
+                        locale=exp_loc,
+                        total_count=0,
+                        missing_keys=(),
+                        extra_keys=(),
+                        duplicates=(),
+                        xml_error=f"缺少语言资源文件: {missing_path}",
+                    )
+                )
+
     return ModuleReport(
         res_dir=res_dir,
         base_file=base_path,
@@ -335,7 +679,7 @@ def check_res_dir(
 
 def print_stat_table(reports: list[ModuleReport]) -> int:
     """输出各模块多语言键值统计大盘。"""
-    all_locales: set[str] = set()
+    all_locales: set[str] = set(KNOWN_LOCALES) - {"values"}
     for r in reports:
         for t in r.target_reports:
             all_locales.add(t.locale)
@@ -384,10 +728,18 @@ def reports_to_check_result(
     reports: list[ModuleReport],
     new_language_files: list[str],
     active_rules: set[str] | None = None,
+    new_locales: set[str] | None = None,
+    extra_findings: list[Finding] | None = None,
 ) -> CheckResult:
     """将 ModuleReport 转换为统一的 CheckResult 结构。"""
     findings: list[Finding] = []
     notices: list[str] = []
+
+    if new_locales:
+        notices.append(
+            f"检测到新增语言目录: {', '.join(sorted(new_locales))}。"
+            f"已自动合并至生效语言集合并进行对齐检查。"
+        )
 
     if new_language_files:
         notices.append(
@@ -458,6 +810,12 @@ def reports_to_check_result(
                         hint=ALIGNMENT_RULE.hint,
                     )
                 )
+
+    # 3. 额外注入的 findings (如 language-ui-registration)
+    if extra_findings:
+        for f in extra_findings:
+            if active_rules is None or f.rule in active_rules:
+                findings.append(f)
 
     return CheckResult(
         findings=findings,

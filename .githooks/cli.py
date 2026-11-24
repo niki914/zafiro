@@ -24,8 +24,14 @@ from checks.code_rules import (
     check_code_files,
 )
 from checks.strings_rules import (
+    APP_MAIN_RES_DIR,
+    LANGUAGE_UI_RULE,
     STRINGS_PATTERN,
+    THEME_SETTINGS_PATH,
     check_res_dir,
+    check_ui_language_registration,
+    discover_locale_files,
+    get_effective_locales,
     reports_to_check_result,
 )
 from checks.tokens_rules import (
@@ -309,6 +315,14 @@ def run_checks(
                 except OSError:
                     return None
 
+        ui_findings: list[Finding] = []
+        is_theme_settings_touched = False
+        if mode in ("worktree", "staged"):
+            is_theme_settings_touched = any(
+                path == THEME_SETTINGS_PATH or path.endswith("ThemeSettingsContent.kt")
+                for _, path in entries
+            )
+
         reports = []
         for r_dir in sorted(res_dirs):
             extra = set(staged_contents_map.keys()) if staged_contents_map else None
@@ -316,7 +330,38 @@ def run_checks(
             if rep:
                 reports.append(rep)
 
-        strings_res = reports_to_check_result(reports, new_lang_files, active_rules)
+        extra_staged_keys = set(staged_contents_map.keys()) if staged_contents_map else None
+        effective_app_locales, new_discovered_locales = get_effective_locales(
+            root, APP_MAIN_RES_DIR, extra_staged_keys
+        )
+
+        if active_rules is None or LANGUAGE_UI_RULE.name in active_rules:
+            should_check_ui = (
+                mode == "all"
+                or APP_MAIN_RES_DIR in res_dirs
+                or is_theme_settings_touched
+                or bool(new_lang_files)
+            )
+            if should_check_ui:
+                app_locales_map = discover_locale_files(
+                    root, APP_MAIN_RES_DIR, extra_staged_keys
+                )
+                app_res_locales = {f"values{s}" for s in app_locales_map.keys()}
+                combined_locales = app_res_locales | effective_app_locales
+                ui_findings = check_ui_language_registration(
+                    app_res_locales=combined_locales,
+                    content_provider=content_provider,
+                    theme_settings_path=THEME_SETTINGS_PATH,
+                    app_res_dir=APP_MAIN_RES_DIR,
+                )
+
+        strings_res = reports_to_check_result(
+            reports,
+            new_lang_files,
+            active_rules,
+            new_locales=new_discovered_locales,
+            extra_findings=ui_findings,
+        )
         all_findings.extend(strings_res.findings)
         total_ignored += strings_res.ignored
         scanned_count += strings_res.scanned_count
@@ -342,11 +387,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--staged", action="store_true",
-        help="仅检查暂存区增量变动（默认行为）。",
+        help="仅检查暂存区增量变动（git pre-commit 钩子使用）。",
     )
     parser.add_argument(
         "--worktree", action="store_true",
-        help="检查工作区变动（含未暂存与已暂存）。",
+        help="检查工作区变动（含未暂存与已暂存，默认行为）。",
     )
     parser.add_argument(
         "--category", "-c", action="append", dest="categories",
@@ -376,7 +421,7 @@ def main(argv: list[str] | None = None) -> int:
         print("githooks: 不在 git 仓库内", file=sys.stderr)
         return 0
 
-    mode = "all" if args.all else ("worktree" if args.worktree else "staged")
+    mode = "all" if args.all else ("staged" if args.staged else "worktree")
     active_rules = resolve_active_rules(args.categories, args.rules)
 
     result = run_checks(root, active_rules, mode, args.scope)

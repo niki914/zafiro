@@ -21,7 +21,7 @@ import org.junit.Test
 import java.io.File
 import java.nio.file.Files
 
-// 保护：运行控制页的状态计算与落盘——空闲超时/重试次数/屏幕常亮/复读灵敏度的读写与弹窗状态。
+// 保护：运行控制页的状态计算与落盘——空闲超时/重试次数/屏幕常亮/拒绝后停回合/复读灵敏度的读写与弹窗状态。
 @OptIn(ExperimentalCoroutinesApi::class)
 class RuntimeControlViewModelTest {
 
@@ -55,6 +55,7 @@ class RuntimeControlViewModelTest {
         XRepo.setLlmIdleTimeoutSeconds(90L)
         XRepo.setLlmRetryMaxAttempts(5)
         XRepo.setKeepScreenOn(false)
+        XRepo.setStopRoundOnCommandDeny(true)
         XRepo.setRepetitionSensitivity(RepetitionSensitivity.Strictest)
 
         val viewModel = RuntimeControlViewModel()
@@ -65,6 +66,7 @@ class RuntimeControlViewModelTest {
         assertEquals(90L, state.idleTimeoutSeconds)
         assertEquals(5, state.retryMaxAttempts)
         assertFalse(state.keepScreenOn)
+        assertTrue(state.stopRoundOnCommandDeny)
         assertEquals(RepetitionSensitivity.Strictest, state.repetitionSensitivity)
         assertFalse(state.isLoading)
         assertNull(state.activeDialog)
@@ -119,6 +121,18 @@ class RuntimeControlViewModelTest {
 
         assertFalse(viewModel.uiStateFlow.value.keepScreenOn)
         assertFalse(XRepo.keepScreenOn())
+    }
+
+    @Test
+    fun toggleStopRoundOnCommandDeny_updatesStateAndRepo() = runTest {
+        val viewModel = RuntimeControlViewModel()
+
+        assertTrue(viewModel.uiStateFlow.value.stopRoundOnCommandDeny)
+        viewModel.sendIntent(RuntimeControlIntent.ToggleStopRoundOnCommandDeny(false))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiStateFlow.value.stopRoundOnCommandDeny)
+        assertFalse(XRepo.stopRoundOnCommandDeny())
     }
 
     @Test

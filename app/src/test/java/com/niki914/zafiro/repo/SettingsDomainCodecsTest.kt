@@ -2,6 +2,9 @@ package com.niki914.zafiro.repo
 
 // githooks:ignore-file file-token-limit
 
+import com.niki914.zafiro.repo.AvailableModelItem
+import com.niki914.zafiro.repo.AvailableModelSource
+
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
@@ -14,6 +17,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
+import com.niki914.zafiro.settings.model.RuntimeEnvContextConfig
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.zafiro.settings.model.RuntimeMaskingRule as MaskingRule
@@ -42,6 +46,10 @@ class SettingsDomainCodecsTest {
                     endpoint = "https://api.example",
                     apiKey = "secret",
                     model = "gpt-test",
+                    availableModels = listOf(
+                        AvailableModelItem("gpt-test", AvailableModelSource.Custom),
+                        AvailableModelItem("gpt-4o", AvailableModelSource.Remote),
+                    ),
                     protocol = "openai-responses",
                     thinkingLevel = "high",
                     prompt = "dedicated prompt",
@@ -70,6 +78,23 @@ class SettingsDomainCodecsTest {
     }
 
     @Test
+    fun llmConfigsDocumentWithEnvContextRoundTripKeepsAllFields() {
+        val document = LlmConfigsDocument(
+            activeId = "cfg-a",
+            prompt = "global prompt",
+            envContext = RuntimeEnvContextConfig(
+                enabled = true,
+                keys = setOf("date", "time", "device", "role"),
+                variables = mapOf("role" to "Developer"),
+            ),
+        )
+
+        val parsed = LlmConfigsSettingsCodec.encode(document).let(LlmConfigsSettingsCodec::parse)
+
+        assertEquals(document.envContext, parsed.envContext)
+    }
+
+    @Test
     fun llmConfigsDocumentLegacyConfigWithoutMaxTokensParsesAsUnset() {
         // 老数据（无 max_tokens 键）：空串 = 未设置，由 gateway 落云端/默认值
         val json = """
@@ -81,6 +106,7 @@ class SettingsDomainCodecsTest {
         assertEquals("", config.maxTokensText)
         assertEquals("", config.contextWindowText)
         assertEquals("", config.prompt)
+        assertEquals(emptyList<AvailableModelItem>(), config.availableModels)
     }
 
     @Test
@@ -109,6 +135,24 @@ class SettingsDomainCodecsTest {
         assertEquals("", config.maxTokensText)
         assertEquals("", config.contextWindowText)
         assertEquals("", config.prompt)
+        assertEquals(emptyList<AvailableModelItem>(), config.availableModels)
+    }
+
+    @Test
+    fun llmConfigsDocumentParsesAvailableModelsObjectAndStringFormats() {
+        val json = """
+            {"active_id":"cfg-a","configs":[{"id":"cfg-a","name":"Primary","provider":"openai","endpoint":"https://api.example","api_key":"k","model":"m","protocol":"openai-responses","proxy":"","available_models":[{"id":"remote-1","source":"remote"},{"id":"custom-1","source":"custom"},"legacy-str"]}]}
+        """.trimIndent()
+
+        val config = LlmConfigsSettingsCodec.parse(json).configs.single()
+        assertEquals(
+            listOf(
+                AvailableModelItem("remote-1", AvailableModelSource.Remote),
+                AvailableModelItem("custom-1", AvailableModelSource.Custom),
+                AvailableModelItem("legacy-str", AvailableModelSource.Custom),
+            ),
+            config.availableModels,
+        )
     }
 
     @Test
@@ -361,6 +405,13 @@ class SettingsDomainCodecsTest {
     }
 
     @Test
+    fun appStateStopRoundOnCommandDenyRoundTripsUnderItsDiskKey() {
+        val json = AppStateSettingsCodec.encode(AppStateSettings(stopRoundOnCommandDeny = true))
+        assertTrue(jsonObject(json)["stop_round_on_command_deny"]!!.jsonPrimitive.boolean)
+        assertTrue(AppStateSettingsCodec.parse(json).stopRoundOnCommandDeny)
+    }
+
+    @Test
     fun appStateFloatingBallAutoExpandDefaultsEnabledAndRoundTrips() {
         assertTrue(AppStateSettingsCodec.parse("""{}""").floatingBallAutoExpand)
 
@@ -417,6 +468,14 @@ class SettingsDomainCodecsTest {
     @Test
     fun appStateBlankSeedColorMeansFollowWallpaper() {
         assertEquals("", AppStateSettingsCodec.parse("""{"theme_seed_color":""}""").themeSeedColor)
+    }
+
+    @Test
+    fun appStateModelChooserStyleFallback() {
+        assertEquals("detailed", AppStateSettingsCodec.parse("""{"model_chooser_style":"unknown"}""").modelChooserStyle)
+        assertEquals("detailed", AppStateSettingsCodec.parse("""{"model_chooser_style":""}""").modelChooserStyle)
+        assertEquals("compact", AppStateSettingsCodec.parse("""{"model_chooser_style":"compact"}""").modelChooserStyle)
+        assertEquals("detailed", AppStateSettingsCodec.parse("""{"model_chooser_style":"detailed"}""").modelChooserStyle)
     }
 
     @Test

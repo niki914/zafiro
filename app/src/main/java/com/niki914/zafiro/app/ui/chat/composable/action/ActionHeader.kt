@@ -13,10 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,8 +25,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.base.LocalThemeStyle
-import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.control.ZafiroLoadingIndicator
 import com.niki914.zafiro.app.ui.chat.helper.MiniCopyButton
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
 import com.niki914.zafiro.app.ui.chat.model.ActionUiModel
@@ -49,15 +45,11 @@ import com.niki914.zafiro.app.ui.model.ToolPresentation
  * 2. 左右槽位对称，底色统一为 primary.copy(alpha = 0.12f)；
  * 3. nonCollapsible = true 时右侧槽位不渲染 Chevron。
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun ActionHeader(
     action: ActionUiModel,
     modifier: Modifier = Modifier,
 ) {
-    val themeStyle = LocalThemeStyle.current
-    val isExpressive = themeStyle == ThemeStyle.Material3Expressive
-
     val chevronRotation by animateFloatAsState(
         targetValue = if (action.isExpanded) 90f else 0f,
         animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
@@ -156,18 +148,12 @@ internal fun ActionHeader(
                 contentAlignment = Alignment.Center,
             ) {
                 if (action.isRunning) {
-                    if (isExpressive) {
-                        LoadingIndicator(
-                            modifier = Modifier.size(BlockLoaderSize),
-                            color = titleColor,
-                        )
-                    } else {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(BlockCircularLoaderSize),
-                            color = titleColor,
-                            strokeWidth = 2.dp,
-                        )
-                    }
+                    ZafiroLoadingIndicator(
+                        color = titleColor,
+                        size = BlockCircularLoaderSize,
+                        petalSize = BlockLoaderSize,
+                        strokeWidth = 2.dp,
+                    )
                 } else {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,

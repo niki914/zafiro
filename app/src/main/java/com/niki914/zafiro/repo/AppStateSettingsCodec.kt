@@ -42,6 +42,9 @@ internal data class AppStateSettings(
     /** Markdown 字体排版缩放比例；基准为 1.0f (100%)。 */
     @SerialName("markdown_scale")
     val markdownScale: Float = 1.0f,
+    /** 首页模型选择器风格；detailed/compact。 */
+    @SerialName("model_chooser_style")
+    val modelChooserStyle: String = "detailed",
     /** 流式空闲超时秒数；0 = 不超时。 */
     @SerialName("llm_idle_timeout_seconds")
     val llmIdleTimeoutSeconds: Long = 60L,
@@ -57,6 +60,9 @@ internal data class AppStateSettings(
     /** 回答进行中保持屏幕常亮。 */
     @SerialName("keep_screen_on")
     val keepScreenOn: Boolean = true,
+    /** 命令确认被拒绝后立刻停止本回合。默认开。 */
+    @SerialName("stop_round_on_command_deny")
+    val stopRoundOnCommandDeny: Boolean = true,
     /** 消息操作行（复制/重新生成/fork 等）是否常显。 */
     @SerialName("always_show_message_actions")
     val alwaysShowMessageActions: Boolean = true,
@@ -131,9 +137,14 @@ internal object AppStateSettingsCodec {
                     "liquid", "md3", "md3e" -> fixed.themeStyle
                     else -> ThemeStyle.default().storageKey
                 }
+                val sanitizedModelChooserStyle = when (fixed.modelChooserStyle) {
+                    "detailed", "compact" -> fixed.modelChooserStyle
+                    else -> "detailed"
+                }
                 fixed.copy(
                     themeStyle = sanitizedThemeStyle,
                     markdownScale = fixed.markdownScale.coerceIn(0.6f, 1.4f),
+                    modelChooserStyle = sanitizedModelChooserStyle,
                     repetitionSensitivity = RepetitionSensitivity.fromWire(
                         fixed.repetitionSensitivity
                     ).wireValue,

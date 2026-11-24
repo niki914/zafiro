@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.repo
 
 import android.app.Application
@@ -207,6 +208,20 @@ class XRepoTest {
         // 编辑保存不得重置 createdAt，否则按 createdAt 排序的列表会重排
         XRepo.llmConfigs.upsert(savedConfig(id = "cfg-a").copy(model = "edited-model"))
         assertEquals(createdAt, storeJson().configs.first { it.id == "cfg-a" }.createdAt)
+    }
+
+    @Test
+    fun llmConfigs_updateModelAndUpdateThinkingLevel() = runTest {
+        installStore(FakeDomainSettingsStore())
+        XRepo.llmConfigs.upsert(savedConfig(id = "cfg-1", model = "m1").copy(thinkingLevel = "low"))
+        assertEquals("m1", XRepo.llmConfigs.document().configs.first().model)
+        assertEquals("low", XRepo.llmConfigs.document().configs.first().thinkingLevel)
+
+        XRepo.llmConfigs.updateModel("cfg-1", "m2")
+        assertEquals("m2", XRepo.llmConfigs.document().configs.first().model)
+
+        XRepo.llmConfigs.updateThinkingLevel("cfg-1", "high")
+        assertEquals("high", XRepo.llmConfigs.document().configs.first().thinkingLevel)
     }
 
     @Test

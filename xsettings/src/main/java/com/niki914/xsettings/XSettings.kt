@@ -29,6 +29,13 @@ interface XSettings {
     val appLanguageTag: StateFlow<String>
 
     /**
+     * 命令确认被用户拒绝后，是否立刻停止本回合。
+     * 消费方：`business:agent` 的 `AgentImpl`。默认开。
+     */
+    val stopRoundOnCommandDeny: StateFlow<Boolean>
+        get() = MutableStateFlow(true)
+
+    /**
      * 屏幕控制（Phone Use）知情同意是否已获得用户授权。
      * 消费方：屏幕控制驱动与动作执行。
      */

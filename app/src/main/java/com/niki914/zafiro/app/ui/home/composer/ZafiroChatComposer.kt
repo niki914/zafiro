@@ -41,11 +41,17 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import com.kyant.backdrop.backdrops.emptyBackdrop
 import com.kyant.backdrop.drawBackdrop
+import com.niki914.uikit.ambient.TopFadeAuroraOverlay
 import com.niki914.uikit.base.LocalAppDarkTheme
-import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.infra.LiquidGlassPresets
 import com.niki914.uikit.infra.LocalScreenBackdrop
 import com.niki914.uikit.infra.interaction.InteractiveHighlight
@@ -58,12 +64,15 @@ import com.niki914.zafiro.app.ui.home.composer.attach.ComposerAttachButton
 import com.niki914.zafiro.app.ui.home.composer.send.ComposerSendButton
 import com.niki914.zafiro.app.ui.home.composer.voice.ComposerMicButton
 import com.niki914.zafiro.app.ui.home.composer.voice.rememberDictationController
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashSuggestion
+import com.niki914.zafiro.app.ui.home.composer.suggestion.SlashTrigger
+import com.niki914.zafiro.app.ui.home.composer.suggestion.findSlashTrigger
 
 /** 紧凑态 composer 最小高度：12dp 容器垂直 padding × 2 + 48sp 按钮 footprint。 */
 internal val COMPACT_COMPOSER_MIN_HEIGHT = 72.dp
 
 /** 展开态编辑区最大行数。 */
-private const val EXPANDED_MAX_LINES = 7
+private const val EXPANDED_MAX_LINES = 4
 
 private val ComposerLiquidInteractiveStyle =
     LiquidInteractiveStyle(
@@ -87,6 +96,13 @@ fun ZafiroChatComposer(
     modifier: Modifier = Modifier,
     contextProgress: Float? = null,
     onAttachImageClick: () -> Unit = {},
+    onSlashTriggerChange: (SlashTrigger?) -> Unit = {},
+    pendingSuggestion: SlashSuggestion? = null,
+    onSuggestionApplied: () -> Unit = {},
+    onExpandedChange: (Boolean) -> Unit = {},
+    topAmbientColors: List<Color> = emptyList(),
+    topAmbientAnimating: Boolean = true,
+    topContent: (@Composable () -> Unit)? = null,
 ) {
     // Owned here, above the compact/expanded layout switch, so dictation survives the layout changing while you speak.
     val dictation = rememberDictationController(value = value, onValueChange = onValueChange)
@@ -95,6 +111,10 @@ fun ZafiroChatComposer(
     val density = LocalDensity.current
     val hysteresisPx = with(density) { 4.dp.toPx() }
     val expanded = value.contains('\n') || expandedLatch
+
+    LaunchedEffect(expanded) {
+        onExpandedChange(expanded)
+    }
 
     val onLayout: (TextLayoutResult?) -> Unit = { layout ->
         if (layout != null) {
@@ -131,7 +151,40 @@ fun ZafiroChatComposer(
         }
     }
 
-    val themeStyle = LocalThemeStyle.current
+    val currentTrigger = remember(textFieldValue.text, textFieldValue.selection.end, isFocused) {
+        if (isFocused) {
+            findSlashTrigger(textFieldValue.text, textFieldValue.selection.end)
+        } else {
+            null
+        }
+    }
+
+    LaunchedEffect(currentTrigger) {
+        onSlashTriggerChange(currentTrigger)
+    }
+
+    LaunchedEffect(pendingSuggestion) {
+        val suggestion = pendingSuggestion ?: return@LaunchedEffect
+        val text = textFieldValue.text
+        val cursor = textFieldValue.selection.end
+        val trigger = findSlashTrigger(text, cursor)
+        if (trigger != null) {
+            val before = text.substring(0, trigger.slashIndex)
+            val after = text.substring(trigger.endIndex)
+            val newText = before + suggestion.replaceToken + after
+            val newCursor = before.length + suggestion.replaceToken.length
+            textFieldValue = TextFieldValue(
+                text = newText,
+                selection = TextRange(newCursor),
+            )
+            if (newText != value) {
+                onValueChange(newText)
+            }
+        }
+        onSuggestionApplied()
+    }
+
+    val themeStyle = resolvedUiStyle(UiStylePart.Composer)
     val colorScheme = MaterialTheme.colorScheme
     val isDarkTheme = LocalAppDarkTheme.current
     val interactiveEffectsEnabled = !isFocused || textFieldValue.text.isEmpty()
@@ -247,11 +300,52 @@ fun ZafiroChatComposer(
         )
     }
 
+    val hasTopContent = topContent != null
+    val cornerRadius by animateDpAsState(
+        targetValue = if (hasTopContent) 28.dp else 36.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "composer_corner_radius",
+    )
+    val fieldShape = G2FieldShape(cornerRadius)
+    val inputSizeAnimModifier = Modifier.animateContentSize(
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        alignment = Alignment.BottomCenter,
+    )
+
+    @Composable
+    fun ComposerBodyWithTopSlot(auroraMaxAlpha: Float) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            if (topAmbientColors.isNotEmpty()) {
+                TopFadeAuroraOverlay(
+                    colors = topAmbientColors,
+                    maxAlpha = auroraMaxAlpha,
+                    animate = topAmbientAnimating,
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
+            Column(modifier = Modifier.fillMaxWidth()) {
+                topContent?.invoke()
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(inputSizeAnimModifier),
+                ) {
+                    ComposerInputContent()
+                }
+            }
+        }
+    }
+
     when (themeStyle) {
         ThemeStyle.LiquidGlass -> {
-            val fieldShape = G2FieldShape(36.dp)
             val glassStyle = LiquidGlassPresets.ComposerBar
-            val resolvedBackdrop = LocalScreenBackdrop.current ?: rememberLayerBackdrop()
+            val resolvedBackdrop = LocalScreenBackdrop.current ?: remember { emptyBackdrop() }
             val animationScope = rememberCoroutineScope()
             val interactiveHighlight = remember(animationScope) {
                 InteractiveHighlight(animationScope = animationScope)
@@ -295,12 +389,11 @@ fun ZafiroChatComposer(
                     )
                     .then(if (interactiveEffectsEnabled) interactiveHighlight.gestureModifier else Modifier),
             ) {
-                ComposerInputContent()
+                ComposerBodyWithTopSlot(auroraMaxAlpha = 0.72f)
             }
         }
         ThemeStyle.Material3,
         ThemeStyle.Material3Expressive -> {
-            val shape = G2FieldShape(36.dp)
             val interactionSource = remember { MutableInteractionSource() }
             val motionModifier = if (themeStyle == ThemeStyle.Material3Expressive && interactiveEffectsEnabled) {
                 Modifier.springSquish(interactionSource, targetScale = 0.985f)
@@ -312,10 +405,10 @@ fun ZafiroChatComposer(
                 modifier = modifier
                     .fillMaxWidth()
                     .then(motionModifier),
-                shape = shape,
+                shape = fieldShape,
                 color = colorScheme.surfaceContainerHigh,
             ) {
-                ComposerInputContent()
+                ComposerBodyWithTopSlot(auroraMaxAlpha = 0.88f)
             }
         }
     }

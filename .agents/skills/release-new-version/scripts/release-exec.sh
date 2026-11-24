@@ -79,19 +79,23 @@ fi
 # 4. Commit and push main
 echo "==> [3/7] Committing and pushing to main..."
 git add app/build.gradle.kts README.md README_CN.md .agents/skills/release-new-version/
-git commit -m "release: bump to ${VERSION_NAME}"
-git push origin main
+if ! git diff --cached --quiet; then
+  git commit -m "release: bump to ${VERSION_NAME}"
+  git push origin main
+fi
 
 # 5. Tag and push tag
 echo "==> [4/7] Tagging ${TAG_NAME} and pushing..."
-git tag "${TAG_NAME}"
-git push origin "${TAG_NAME}"
+if ! git rev-parse "${TAG_NAME}" >/dev/null 2>&1; then
+  git tag "${TAG_NAME}"
+  git push origin "${TAG_NAME}"
+fi
 
 # 6. Wait for GitHub Actions release build CI
 echo "==> [5/7] Waiting for GitHub Actions release build CI for ${TAG_NAME}..."
 RUN_ID=""
 for i in {1..15}; do
-  RUN_ID=$(gh run list -R "$MAIN_REPO" --workflow=release.yml --limit=5 --json databaseId,headBranch --jq ".[] | select(.headBranch == \"${TAG_NAME}\") | .databaseId" | head -n 1)
+  RUN_ID=$(gh run list -R "$MAIN_REPO" --workflow=release.yml --limit=10 --json databaseId,headBranch,status --jq ".[] | select(.headBranch == \"${TAG_NAME}\" and .status != \"completed\") | .databaseId" | head -n 1)
   if [ -n "$RUN_ID" ] && [ "$RUN_ID" != "null" ]; then
     break
   fi

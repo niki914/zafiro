@@ -126,6 +126,7 @@ Evidence-based status: ROADMAP.md and TESTING.md. As of 2026-11-10: `feat/founda
 ├── .agents/skills/      # SKILLs 真实目录
 ├── .claude/skills/      # .agents/skills 的软链，不用修改这里的文件
 ├── .githooks/           # 提交前坏味道检查；规则、放行、清理方式见其 README.md
+├── accessibility/       # 无障碍屏幕驱动：节点树提取、手势派发、虚拟屏幕
 ├── app/                 # 主应用：Compose UI、AgentRuntimeService、Xposed 钩子
 ├── business/            # 业务核心层（契约与实现分离）
 │   ├── api/             # 业务对外公共契约接口
@@ -133,7 +134,9 @@ Evidence-based status: ROADMAP.md and TESTING.md. As of 2026-11-10: `feat/founda
 │   ├── files/           # 文件附件与路径解析
 │   ├── notification/    # 常驻通知、前台服务与通知渠道管理
 │   ├── permission/      # 权限管理中心（Root / Shizuku 自动授权、统一审批）
-│   └── application/     # 应用管理与生命周期
+│   ├── application/     # 应用管理与生命周期
+│   ├── screen/          # 屏幕交互契约与 DisplayPort 抽象
+│   └── remote/          # 遥测上报与设备画像
 ├── agent-runtime/       # Agent 运行时：LLM 调用、工具/Skill/MCP 执行、Python 运行时
 ├── xsettings/           # 轻量配置模块（业务按需依赖）
 ├── store/               # Store 持久化、IPC 桥（XIpcBridge）
@@ -144,6 +147,7 @@ Evidence-based status: ROADMAP.md and TESTING.md. As of 2026-11-10: `feat/founda
 └── libs/
     ├── logging/         # 日志库
     ├── okia/            # Okia Agent 运行时基础库
+    ├── shizuku/         # Shizuku 提权绑定与特权服务封装
     └── libterm/         # 终端库（含多个后端：libsu, shizuku, ssh 等）
 ```
 
@@ -210,6 +214,10 @@ AI 对话通常是以 list 的形式存放 messages，同时只会有一个对�
 - Conversation - 单次对话中的消息的集合
 - Turn - Agent 通常会与 Tool 交互多个回合才结束。因此，我们将一条用户消息与其产生的若干 Agent 回答、Tool 调用、Tool 结果的集合称为一个 Turn。便于管理
 
+### 手机控制
+
+手机控制通过 Screens API 完成，底层基于无障碍实现。Zafiro Agent 通过内置的 phone-use Skill 来完成任务。手机控制有两种选项：运行在虚拟屏或直接运行在主屏。虚拟屏模式下有一个悬浮窗显示屏幕内容
+
 ### 持久化
 
 项目有着多种持久化方案：
@@ -219,7 +227,7 @@ AI 对话通常是以 list 的形式存放 messages，同时只会有一个对�
 
 ### IPC
 
-目前来说，Zafiro Agent 的对话功能是限定在主进程之内的，虽然有一个宿主的业务，Agent 相关的调用逻辑依然用 Binder 包裹在主进程之内
+Zafiro Agent 的对话功能是限定在主进程之内的，虽然有一个宿主的业务，Agent 相关的调用逻辑依然用 Binder 包裹在主进程之内
 
 项目通过 Chaquopy 实现 Python 能力支持，在单独的 py 进程中运行代码
 
@@ -234,7 +242,9 @@ AI 对话通常是以 list 的形式存放 messages，同时只会有一个对�
 ### 共识
 
 - 若某项功能实现难度高（难度评分超过 6/10）且 ROI 较低，在着手开发前应先与用户协商功能范围
+- 对话有可能被压缩。如果见到以 XML 格式承载的对话摘要类信息说明对话已经被压缩，如任务有沉淀如 PLAN、CR 等文档，需要重读以确保对齐
 - 提交信息和 PR 标题均使用英文，采用 `feat: did something` 这样的格式；标题简洁明了，不带模块名，补充说明写在正文中。PR 使用 gh CLI 完成
+- 仓库 `.gitignore` 刻意配置了 `*.md`，默认不跟踪和提交 Markdown 文件，不出现在 `git status` 中是预期行为，无须用 `git check-ignore`
 - 搜索用 `rg`，不要 `grep -r`。 `rg` 默认读 `.gitignore`，自动排除 `**/build/`；`grep -r` 会扫到 build 与 `.git`
 
 ### 边界

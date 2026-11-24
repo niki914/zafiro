@@ -13,8 +13,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.uikit.infra.component.SettingToggleItem
-import com.niki914.uikit.infra.component.SettingsGroupCard
-import com.niki914.uikit.infra.component.SettingsItemDivider
+import com.niki914.uikit.infra.component.SettingsConnectedGroup
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
 import com.niki914.zafiro.app.R
@@ -146,57 +145,74 @@ private fun TextActionsDetailContentBody(
         inlineErrorText = textActionInlineErrorText(uiState.inlineError),
         actionEnabled = !uiState.isSaving,
     ) { fieldController ->
-        SettingsGroupCard {
-            SettingControlledExpandableTextItem(
-                field = TextActionEditableField.Name,
-                controller = fieldController,
-                title = stringResource(R.string.text_action_field_name),
-                value = uiState.formState.name,
-                onValueChange = onNameChange,
-                placeholder = stringResource(R.string.text_action_field_name_hint),
-                description = textActionFieldErrorText(uiState.formState.nameErrorResId),
-                enabled = !uiState.isSaving,
-                minLines = 1,
-                maxLines = 1,
-            )
-            SettingsItemDivider()
-            SettingToggleItem(
-                title = stringResource(R.string.text_action_field_enabled),
-                checked = uiState.formState.enabled,
-                enabled = !uiState.isSaving,
-                onCheckedChange = onEnabledChange,
-            )
+        SettingsConnectedGroup {
+            item { shape, isStandalone, _ ->
+                SettingControlledExpandableTextItem(
+                    field = TextActionEditableField.Name,
+                    controller = fieldController,
+                    title = stringResource(R.string.text_action_field_name),
+                    value = uiState.formState.name,
+                    onValueChange = onNameChange,
+                    placeholder = stringResource(R.string.text_action_field_name_hint),
+                    description = textActionFieldErrorText(uiState.formState.nameErrorResId),
+                    enabled = !uiState.isSaving,
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
+                    minLines = 1,
+                    maxLines = 1,
+                )
+            }
+            item { shape, isStandalone, _ ->
+                SettingToggleItem(
+                    title = stringResource(R.string.text_action_field_enabled),
+                    checked = uiState.formState.enabled,
+                    enabled = !uiState.isSaving,
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
+                    onCheckedChange = onEnabledChange,
+                )
+            }
         }
 
-        SettingsGroupCard {
-            SettingControlledExpandableTextItem(
-                field = TextActionEditableField.Prompt,
-                controller = fieldController,
-                title = stringResource(R.string.text_action_field_prompt),
-                value = uiState.formState.prompt,
-                onValueChange = onPromptChange,
-                placeholder = stringResource(R.string.text_action_field_prompt_hint),
-                description = textActionFieldErrorText(uiState.formState.promptErrorResId),
-                enabled = !uiState.isSaving,
-                minLines = 4,
-                maxLines = 10,
-            )
-            SettingsItemDivider()
-            SettingToggleItem(
-                title = stringResource(R.string.text_action_field_screenshot),
-                description = stringResource(R.string.text_action_field_screenshot_description),
-                checked = uiState.formState.requiresScreenshot,
-                enabled = !uiState.isSaving,
-                onCheckedChange = onRequiresScreenshotChange,
-            )
-            SettingsItemDivider()
-            SettingToggleItem(
-                title = stringResource(R.string.text_action_field_background),
-                description = stringResource(R.string.text_action_field_background_description),
-                checked = uiState.formState.runInBackground,
-                enabled = !uiState.isSaving,
-                onCheckedChange = onRunInBackgroundChange,
-            )
+        SettingsConnectedGroup {
+            item { shape, isStandalone, _ ->
+                SettingControlledExpandableTextItem(
+                    field = TextActionEditableField.Prompt,
+                    controller = fieldController,
+                    title = stringResource(R.string.text_action_field_prompt),
+                    value = uiState.formState.prompt,
+                    onValueChange = onPromptChange,
+                    placeholder = stringResource(R.string.text_action_field_prompt_hint),
+                    description = textActionFieldErrorText(uiState.formState.promptErrorResId),
+                    enabled = !uiState.isSaving,
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
+                    minLines = 4,
+                    maxLines = 10,
+                )
+            }
+            item { shape, isStandalone, _ ->
+                SettingToggleItem(
+                    title = stringResource(R.string.text_action_field_screenshot),
+                    description = stringResource(R.string.text_action_field_screenshot_description),
+                    checked = uiState.formState.requiresScreenshot,
+                    enabled = !uiState.isSaving,
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
+                    onCheckedChange = onRequiresScreenshotChange,
+                )
+            }
+            item { shape, isStandalone, _ ->
+                SettingToggleItem(
+                    title = stringResource(R.string.text_action_field_background),
+                    description = stringResource(R.string.text_action_field_background_description),
+                    checked = uiState.formState.runInBackground,
+                    enabled = !uiState.isSaving,
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
+                    onCheckedChange = onRunInBackgroundChange,
+                )
+            }
         }
     }
 }

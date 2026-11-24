@@ -8,13 +8,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.uikit.dialog.ZafiroSingleChoiceDialog
-import com.niki914.uikit.infra.component.SettingsGroupCard
-import com.niki914.uikit.infra.component.SettingsItemDivider
+import com.niki914.uikit.infra.component.SettingsConnectedGroup
 import com.niki914.uikit.infra.component.SettingsListItem
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
@@ -151,44 +151,55 @@ private fun ExecutionRuleDetailContentBody(
         inlineErrorText = executionRulesInlineErrorText(uiState.inlineError),
         actionEnabled = !uiState.isSaving,
     ) { fieldController ->
-        SettingsGroupCard {
-            SettingControlledExpandableTextItem(
-                field = ExecutionRuleEditableField.Name,
-                controller = fieldController,
-                title = stringResource(R.string.execution_rules_field_name),
-                value = uiState.formState.name,
-                onValueChange = onNameChange,
-                placeholder = stringResource(R.string.execution_rules_field_name_hint),
-                description = executionRulesFieldErrorText(uiState.formState.nameErrorResId),
-                enabled = !uiState.isSaving,
-                minLines = 1,
-                maxLines = 1,
-            )
-            SettingsItemDivider()
-            ExecutionRuleEnabledModeRow(
-                selectedMode = uiState.formState.enabledMode,
-                enabled = !uiState.isSaving,
-                onClick = {
-                    fieldController.clearActiveField()
-                    showEnabledModeDialog = true
-                },
-            )
+        SettingsConnectedGroup {
+            item { shape, isStandalone, _ ->
+                SettingControlledExpandableTextItem(
+                    field = ExecutionRuleEditableField.Name,
+                    controller = fieldController,
+                    title = stringResource(R.string.execution_rules_field_name),
+                    value = uiState.formState.name,
+                    onValueChange = onNameChange,
+                    placeholder = stringResource(R.string.execution_rules_field_name_hint),
+                    description = executionRulesFieldErrorText(uiState.formState.nameErrorResId),
+                    enabled = !uiState.isSaving,
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
+                    minLines = 1,
+                    maxLines = 1,
+                )
+            }
+            item { shape, isStandalone, _ ->
+                ExecutionRuleEnabledModeRow(
+                    selectedMode = uiState.formState.enabledMode,
+                    enabled = !uiState.isSaving,
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
+                    onClick = {
+                        fieldController.clearActiveField()
+                        showEnabledModeDialog = true
+                    },
+                )
+            }
         }
 
-        SettingsGroupCard {
-            SettingControlledExpandableTextItem(
-                field = ExecutionRuleEditableField.Patterns,
-                controller = fieldController,
-                title = stringResource(R.string.execution_rules_field_patterns),
-                value = uiState.formState.patternsInput,
-                onValueChange = onPatternsInputChange,
-                placeholder = stringResource(R.string.execution_rules_field_patterns_hint),
-                description = executionRulesFieldErrorText(uiState.formState.patternsErrorResId)
-                    ?: stringResource(R.string.execution_rules_field_patterns_description),
-                enabled = !uiState.isSaving,
-                minLines = 4,
-                maxLines = 6,
-            )
+        SettingsConnectedGroup {
+            item { shape, isStandalone, _ ->
+                SettingControlledExpandableTextItem(
+                    field = ExecutionRuleEditableField.Patterns,
+                    controller = fieldController,
+                    title = stringResource(R.string.execution_rules_field_patterns),
+                    value = uiState.formState.patternsInput,
+                    onValueChange = onPatternsInputChange,
+                    placeholder = stringResource(R.string.execution_rules_field_patterns_hint),
+                    description = executionRulesFieldErrorText(uiState.formState.patternsErrorResId)
+                        ?: stringResource(R.string.execution_rules_field_patterns_description),
+                    enabled = !uiState.isSaving,
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
+                    minLines = 4,
+                    maxLines = 6,
+                )
+            }
         }
     }
 
@@ -221,6 +232,8 @@ private data class ExecutionRuleModeOption(
 @Composable
 private fun ExecutionRuleEnabledModeRow(
     selectedMode: RuntimeExecutionRuleEnabledMode,
+    shape: Shape,
+    isStandaloneCard: Boolean,
     onClick: () -> Unit,
     enabled: Boolean = true,
 ) {
@@ -229,6 +242,8 @@ private fun ExecutionRuleEnabledModeRow(
         currentState = stringResource(selectedMode.labelRes()),
         showChevron = true,
         enabled = enabled,
+        shape = shape,
+        isStandaloneCard = isStandaloneCard,
         onClick = onClick,
     )
 }

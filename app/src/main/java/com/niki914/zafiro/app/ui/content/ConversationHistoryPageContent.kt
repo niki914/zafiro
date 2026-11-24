@@ -40,7 +40,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material3.CircularProgressIndicator
+import com.niki914.uikit.control.ZafiroLoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -83,6 +83,7 @@ import com.niki914.uikit.screen.zafiroScreenTopPadding
 import com.niki914.uikit.scroll.ZafiroOverscrollContainer
 import com.niki914.uikit.scroll.rememberZafiroOverscrollController
 import com.niki914.uikit.textfield.ZafiroTextField
+import com.niki914.zafiro.api.text.PreviewMarkers
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ConversationOriginKind
@@ -202,8 +203,8 @@ internal fun ConversationHistoryPageContent(
             )
         }
         if (onConversationPin != null) {
-            val sheetId = sheetConversation?.id
-            val isPinned = sheetId != null && sheetId in pinnedIdSet
+            val target = sheetConversation
+            val isPinned = target?.let { it.rootId in pinnedIdSet || it.id in pinnedIdSet } == true
             OptionRow(
                 title = stringResource(
                     if (isPinned) {
@@ -216,10 +217,9 @@ internal fun ConversationHistoryPageContent(
                     Icon(Icons.Default.PushPin, contentDescription = null)
                 },
                 onClick = {
-                    val target = sheetConversation
                     dismissThen {
                         sheetConversation = null
-                        target?.let { onConversationPin(it.id, !isPinned) }
+                        target?.let { onConversationPin(it.rootId, !isPinned) }
                     }
                 },
             )
@@ -439,7 +439,7 @@ private fun ConversationHistoryListContent(
                                             val matchedSnippet = searchResultById[conversation.id]?.matchedSnippet
                                             ConversationHistoryItem(
                                                 conversation = conversation,
-                                                isPinned = conversation.id in pinnedIds,
+                                                isPinned = conversation.rootId in pinnedIds || conversation.id in pinnedIds,
                                                 inPinnedSection = section.bucket == TimelineBucket.Pinned,
                                                 initialPulsed = !isSearchingActive && conversation.id == initialPulsedId,
                                                 currentTimeMillis = currentTimeMillis,
@@ -538,7 +538,12 @@ private fun ConversationHistoryItem(
         }
     }
 
-    val previewText = matchedSnippet ?: conversation.lastMessagePreview
+    val rawPreview = matchedSnippet ?: conversation.lastMessagePreview
+    val previewText = if (searchQuery.isBlank()) {
+        PreviewMarkers.strip(rawPreview)
+    } else {
+        rawPreview
+    }
     val displayPreviewAnnotated = remember(previewText, searchQuery, bodyHighlightStyle) {
         if (searchQuery.isNotBlank() && previewText.isNotBlank()) {
             SearchHighlightHelper.highlight(previewText, searchQuery, bodyHighlightStyle)
@@ -650,12 +655,12 @@ private fun ConversationHistoryItem(
                             modifier = Modifier.padding(start = 8.dp),
                         ) {
                             if (runState == ConversationRunState.Running) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier
-                                        .padding(end = 4.dp)
-                                        .size(11.dp),
-                                    strokeWidth = 1.2.dp,
+                                ZafiroLoadingIndicator(
+                                    modifier = Modifier.padding(end = 4.dp),
                                     color = MaterialTheme.colorScheme.primary,
+                                    size = 11.dp,
+                                    petalSize = 11.dp,
+                                    strokeWidth = 1.2.dp,
                                 )
                             } else if (runState == ConversationRunState.WaitingApproval || runState == ConversationRunState.UnreadCompleted) {
                                 Icon(
@@ -853,8 +858,9 @@ private fun groupByTimeline(
     val pinnedAtById = pinnedConversations.associate { it.id to it.pinnedAt }
     val pinned = conversations
         .mapNotNull { conversation ->
-            pinnedAtById[conversation.id]?.let { pinnedAt ->
-                conversation to maxOf(pinnedAt, conversation.updatedAt)
+            val pinnedAt = pinnedAtById[conversation.rootId] ?: pinnedAtById[conversation.id]
+            pinnedAt?.let {
+                conversation to maxOf(it, conversation.updatedAt)
             }
         }
         .sortedByDescending { it.second }

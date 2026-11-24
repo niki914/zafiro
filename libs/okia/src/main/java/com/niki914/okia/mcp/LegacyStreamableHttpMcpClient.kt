@@ -42,7 +42,8 @@ internal class LegacyStreamableHttpMcpClient(
     override suspend fun callTool(
         server: McpServer,
         toolName: String,
-        argumentsJson: String
+        argumentsJson: String,
+        inputSchemaJson: String?
     ): McpCallResult {
         // 会话失效自愈：丢弃旧会话 → 重建（initialize + initialized 通知）→ 重试一次。
         // 无状态服务器不返回会话头、tools/call 无握手也不报错，本路径不触发。
@@ -50,14 +51,16 @@ internal class LegacyStreamableHttpMcpClient(
         while (true) {
             try {
                 val arguments = wire.parseArguments(toolName, argumentsJson)
+                val paramHeaders = wire.buildParamHeaders(inputSchemaJson, arguments)
                 val result = wire.request(
-                    server,
-                    "tools/call",
-                    buildJsonObject {
+                    server = server,
+                    method = "tools/call",
+                    params = buildJsonObject {
                         put("name", toolName)
                         put("arguments", arguments)
                     },
-                    wire.nextId()
+                    id = wire.nextId(),
+                    extraHeaders = paramHeaders
                 )
                 return wire.parseCallResult(result)
             } catch (e: McpProtocolException) {

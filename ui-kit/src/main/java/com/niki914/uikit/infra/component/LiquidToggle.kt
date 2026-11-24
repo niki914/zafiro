@@ -45,6 +45,7 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.onClick
@@ -52,6 +53,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceIn
 import androidx.compose.ui.util.lerp
@@ -97,6 +99,7 @@ fun LiquidToggle(
     val animatedFraction = remember { Animatable(if (checked) 1f else 0f) }
     val trackWidthPx = remember { mutableFloatStateOf(0f) }
     val density = LocalDensity.current
+    val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
     val progressAnimationSpec = spring(0.5f, 300f, 0.001f)
     val progressAnimation = remember { Animatable(0f) }
     val stateMachine = remember { LiquidToggleStateMachine(initialChecked = checked) }
@@ -216,7 +219,7 @@ fun LiquidToggle(
                 .padding(horizontal = 2.dp)
                 .graphicsLayer {
                     translationX =
-                        animatedFraction.value * (trackWidthPx.floatValue - with(density) { thumbWidth.toPx() + 4.dp.toPx() })
+                        animatedFraction.value * (trackWidthPx.floatValue - with(density) { thumbWidth.toPx() + 4.dp.toPx() }) * if (isLtr) 1f else -1f
                 }
                 .then(
                     if (enabled && onCheckedChange != null) {
@@ -250,8 +253,9 @@ fun LiquidToggle(
                                     }
 
                                     fun dragBy(delta: Float) {
+                                        val directionalDelta = if (isLtr) delta else -delta
                                         val newFraction =
-                                            (animatedFraction.value + delta / draggableWidth).fastCoerceIn(
+                                            (animatedFraction.value + directionalDelta / draggableWidth).fastCoerceIn(
                                                 -0.3f,
                                                 1.3f
                                             )

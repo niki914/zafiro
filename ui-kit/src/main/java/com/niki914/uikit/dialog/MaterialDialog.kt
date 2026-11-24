@@ -48,11 +48,15 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.base.LocalThemeStyle
+import com.niki914.uikit.base.UiStylePart
+import com.niki914.uikit.base.resolvedUiStyle
 import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.infra.LocalLiquidDialogHostState
 import com.niki914.uikit.infra.nextLiquidDialogHostEntryId
 import com.niki914.uikit.infra.shape.G2FieldShape
+
+/** 选项列表过高时只滚正文，标题和按钮留在外面。 */
+private val DialogBodyMaxHeight = 288.dp
 
 @Composable
 internal fun MaterialDialog(
@@ -102,7 +106,7 @@ private fun MaterialDialogSurface(
     actions: (@Composable RowScope.() -> Unit)? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    val themeStyle = LocalThemeStyle.current
+    val themeStyle = resolvedUiStyle(UiStylePart.Dialog)
     val colorScheme = MaterialTheme.colorScheme
     val scrimColor = colorScheme.scrim.copy(alpha = 0.32f)
     val panelShape = G2FieldShape(28.dp)
@@ -220,14 +224,24 @@ private fun MaterialDialogSurface(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .verticalScroll(scrollState)
                         .padding(horizontal = 24.dp, vertical = 24.dp),
                     horizontalAlignment = Alignment.Start,
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     title?.invoke()
-                    text?.invoke()
-                    content?.invoke(this)
+                    if (text != null || content != null) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .heightIn(max = DialogBodyMaxHeight)
+                                .verticalScroll(scrollState)
+                                .fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            text?.invoke()
+                            content?.invoke(this)
+                        }
+                    }
                     if (actions != null) {
                         Row(
                             modifier = Modifier

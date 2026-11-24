@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -30,9 +31,8 @@ import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.dialog.ZafiroInputDialog
 import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
+import com.niki914.uikit.infra.component.SettingsConnectedGroup
 import com.niki914.uikit.infra.component.SettingsDetailFormScaffold
-import com.niki914.uikit.infra.component.SettingsGroupCard
-import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsListItem
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.OnboardingPreferencesIntent
@@ -68,88 +68,103 @@ fun OnboardingPreferencesContent(
         secondaryActionEnabled = !uiState.isRequesting,
         onSecondaryActionClick = { onIntent(OnboardingPreferencesIntent.Complete) },
     ) {
-        SettingsGroupCard(
+        SettingsConnectedGroup(
             title = stringResource(R.string.ui_onboard_preferences_permissions_group),
         ) {
-            PermissionRow(
-                icon = Icons.Rounded.PhoneAndroid,
-                title = stringResource(R.string.ui_onboard_preferences_phone_use_title),
-                summary = stringResource(R.string.ui_onboard_preferences_phone_use_desc),
-                granted = uiState.phoneUseGranted,
-                enabled = !uiState.isRequesting,
-                onGrantClick = { onIntent(OnboardingPreferencesIntent.RequestPhoneUse) },
-            )
-            SettingsItemDivider()
-            PermissionRow(
-                icon = Icons.Rounded.Layers,
-                title = stringResource(R.string.ui_onboard_preferences_floating_ball_title),
-                summary = stringResource(R.string.ui_onboard_preferences_floating_ball_desc),
-                granted = uiState.overlayGranted,
-                enabled = !uiState.isRequesting,
-                onGrantClick = { onIntent(OnboardingPreferencesIntent.RequestFloatingBall) },
-            )
-            SettingsItemDivider()
-            PermissionRow(
-                icon = Icons.Rounded.Notifications,
-                title = stringResource(R.string.ui_onboard_preferences_notification_title),
-                summary = stringResource(R.string.ui_onboard_preferences_notification_desc),
-                granted = uiState.notificationGranted,
-                enabled = !uiState.isRequesting,
-                onGrantClick = {
-                    onIntent(OnboardingPreferencesIntent.RequestResidentNotification)
-                },
-            )
-            SettingsItemDivider()
-            PermissionRow(
-                icon = Icons.Rounded.Folder,
-                title = stringResource(R.string.ui_onboard_preferences_file_title),
-                summary = stringResource(R.string.ui_onboard_preferences_file_desc),
-                granted = uiState.storageGranted,
-                enabled = !uiState.isRequesting,
-                onGrantClick = { onIntent(OnboardingPreferencesIntent.RequestFileAccess) },
-            )
+            item { shape, isStandalone, _ ->
+                PermissionRow(
+                    icon = Icons.Rounded.PhoneAndroid,
+                    title = stringResource(R.string.ui_onboard_preferences_phone_use_title),
+                    summary = stringResource(R.string.ui_onboard_preferences_phone_use_desc),
+                    granted = uiState.phoneUseGranted,
+                    enabled = !uiState.isRequesting,
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
+                    onGrantClick = { onIntent(OnboardingPreferencesIntent.RequestPhoneUse) },
+                )
+            }
+            item { shape, isStandalone, _ ->
+                PermissionRow(
+                    icon = Icons.Rounded.Layers,
+                    title = stringResource(R.string.ui_onboard_preferences_floating_ball_title),
+                    summary = stringResource(R.string.ui_onboard_preferences_floating_ball_desc),
+                    granted = uiState.overlayGranted,
+                    enabled = !uiState.isRequesting,
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
+                    onGrantClick = { onIntent(OnboardingPreferencesIntent.RequestFloatingBall) },
+                )
+            }
+            item { shape, isStandalone, _ ->
+                PermissionRow(
+                    icon = Icons.Rounded.Notifications,
+                    title = stringResource(R.string.ui_onboard_preferences_notification_title),
+                    summary = stringResource(R.string.ui_onboard_preferences_notification_desc),
+                    granted = uiState.notificationGranted,
+                    enabled = !uiState.isRequesting,
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
+                    onGrantClick = {
+                        onIntent(OnboardingPreferencesIntent.RequestResidentNotification)
+                    },
+                )
+            }
+            item { shape, isStandalone, _ ->
+                PermissionRow(
+                    icon = Icons.Rounded.Folder,
+                    title = stringResource(R.string.ui_onboard_preferences_file_title),
+                    summary = stringResource(R.string.ui_onboard_preferences_file_desc),
+                    granted = uiState.storageGranted,
+                    enabled = !uiState.isRequesting,
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
+                    onGrantClick = { onIntent(OnboardingPreferencesIntent.RequestFileAccess) },
+                )
+            }
         }
 
-        SettingsGroupCard(
+        SettingsConnectedGroup(
             title = stringResource(R.string.ui_onboard_preferences_security_group),
         ) {
-            SettingsListItem(
-                title = stringResource(R.string.ui_onboard_preferences_rule_add_action),
-                summary = stringResource(R.string.ui_onboard_preferences_security_hint),
-                trailingContent = {
-                    IconButton(onClick = { onIntent(OnboardingPreferencesIntent.ShowAddRuleDialog) }) {
-                        Icon(
-                            imageVector = Icons.Rounded.Add,
-                            contentDescription = stringResource(
-                                R.string.ui_onboard_preferences_rule_add_action
-                            ),
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                },
-                onClick = { onIntent(OnboardingPreferencesIntent.ShowAddRuleDialog) },
-            )
-            uiState.securityPatterns.forEach { pattern ->
-                SettingsItemDivider()
+            item { shape, isStandalone, _ ->
                 SettingsListItem(
-                    title = pattern,
+                    title = stringResource(R.string.ui_onboard_preferences_rule_add_action),
+                    summary = stringResource(R.string.ui_onboard_preferences_security_hint),
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
                     trailingContent = {
-                        IconButton(
-                            onClick = {
-                                onIntent(OnboardingPreferencesIntent.RemoveRule(pattern))
-                            },
-                        ) {
+                        IconButton(onClick = { onIntent(OnboardingPreferencesIntent.ShowAddRuleDialog) }) {
                             Icon(
-                                imageVector = Icons.Rounded.RemoveCircleOutline,
-                                contentDescription = stringResource(
-                                    R.string.ui_onboard_preferences_rule_delete,
-                                    pattern,
-                                ),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                imageVector = Icons.Rounded.Add,
+                                contentDescription = "Add rule",
+                                tint = MaterialTheme.colorScheme.primary,
                             )
                         }
                     },
+                    onClick = { onIntent(OnboardingPreferencesIntent.ShowAddRuleDialog) },
                 )
+            }
+            uiState.securityPatterns.forEach { pattern ->
+                item { shape, isStandalone, _ ->
+                    SettingsListItem(
+                        title = pattern,
+                        shape = shape,
+                        isStandaloneCard = isStandalone,
+                        trailingContent = {
+                            IconButton(
+                                onClick = {
+                                    onIntent(OnboardingPreferencesIntent.RemoveRule(pattern))
+                                },
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.RemoveCircleOutline,
+                                    contentDescription = "Delete rule",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        },
+                    )
+                }
             }
         }
     }
@@ -176,23 +191,21 @@ private fun PermissionRow(
     summary: String,
     granted: Boolean,
     enabled: Boolean,
+    shape: Shape,
+    isStandaloneCard: Boolean,
     onGrantClick: () -> Unit,
 ) {
     SettingsListItem(
         title = title,
         summary = summary,
         enabled = enabled,
+        shape = shape,
+        isStandaloneCard = isStandaloneCard,
         leadingContent = { RowLeadingIcon(icon) },
         trailingContent = {
             Icon(
                 imageVector = if (granted) Icons.Rounded.Check else Icons.Rounded.Close,
-                contentDescription = stringResource(
-                    if (granted) {
-                        R.string.ui_onboard_preferences_granted
-                    } else {
-                        R.string.ui_onboard_preferences_grant_action
-                    }
-                ),
+                contentDescription = if (granted) "Granted" else "Grant permission",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp),
             )

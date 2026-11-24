@@ -2,6 +2,7 @@ package com.niki914.zafiro.app.ui.model
 
 import androidx.annotation.ColorRes
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import com.niki914.zafiro.app.R
 
 sealed interface ProviderSpec {
@@ -16,6 +17,9 @@ sealed interface ProviderSpec {
 
     /** 新建配置时预填的协议（LlmProtocol.wireId）。 */
     val defaultProtocol: String
+
+    @get:StringRes
+    val summaryRes: Int? get() = null
 
     @get:DrawableRes
     val iconRes: Int
@@ -109,6 +113,7 @@ private data object OpenAiSpec : ProviderSpec {
     override val exampleModelId: String = "gpt-5.4"
     override val allowsCustomEndpointInNewConfig: Boolean = true
     override val defaultProtocol: String = "openai-responses"
+    override val summaryRes: Int = R.string.ui_provider_official_and_relay_summary
     override val iconRes: Int = R.drawable.openai
     override val tintIcon: Boolean = true
     override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
@@ -128,6 +133,7 @@ private data object AnthropicSpec : ProviderSpec {
     override val exampleModelId: String = "claude-sonnet-4-6"
     override val allowsCustomEndpointInNewConfig: Boolean = true
     override val defaultProtocol: String = "anthropic-messages"
+    override val summaryRes: Int = R.string.ui_provider_official_and_relay_summary
     override val iconRes: Int = R.drawable.anthropic
     override val tintIcon: Boolean = true
     override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(

@@ -21,27 +21,36 @@ class CliResolutionTest(unittest.TestCase):
         self.assertIn("monitor-lock", rules)
         self.assertIn("file-token-limit", rules)
         self.assertIn("strings-alignment", rules)
+        self.assertIn("language-ui-registration", rules)
         self.assertIn("content-description-i18n", rules)
         self.assertIn("rounded-corner-shape", rules)
-        self.assertEqual(len(rules), 12)
+        self.assertIn("store-backup-pairing", rules)
+        self.assertEqual(len(rules), 16)
 
     def test_category_filter_limits_rules(self):
         rules = resolve_active_rules(["ui"], None)
-        self.assertEqual(rules, {"rounded-corner-shape", "verbose-ui"})
+        self.assertEqual(rules, {"rounded-corner-shape", "settings-item-divider", "verbose-ui"})
 
         arch_rules = resolve_active_rules(["architecture"], None)
-        self.assertEqual(arch_rules, {"file-token-limit"})
+        self.assertEqual(arch_rules, {"file-token-limit", "store-backup-pairing"})
 
         safety_rules = resolve_active_rules(["safety"], None)
         self.assertEqual(
             safety_rules,
-            {"monitor-lock", "uncancellable-run-catching", "bare-catch", "log-api", "log-tag"},
+            {
+                "monitor-lock",
+                "uncancellable-run-catching",
+                "run-catching-require-service",
+                "bare-catch",
+                "log-api",
+                "log-tag",
+            },
         )
 
         i18n_rules = resolve_active_rules(["i18n"], None)
         self.assertEqual(
             i18n_rules,
-            {"strings-alignment", "content-description-i18n"},
+            {"strings-alignment", "content-description-i18n", "language-ui-registration"},
         )
 
     def test_specific_rule_filter(self):
@@ -51,14 +60,15 @@ class CliResolutionTest(unittest.TestCase):
     def test_strings_wrapper_rules_resolve_both_alignment_and_verbose_ui(self):
         from check_strings import STRING_RULE_NAMES
         rules = resolve_active_rules(None, [",".join(STRING_RULE_NAMES)])
-        self.assertEqual(rules, {"strings-alignment", "verbose-ui"})
+        self.assertEqual(rules, {"strings-alignment", "verbose-ui", "language-ui-registration"})
 
     def test_code_wrapper_rules_resolve_only_code_rules(self):
         from check import RULE_NAMES
         rules = resolve_active_rules(None, [",".join(RULE_NAMES)])
-        self.assertEqual(len(rules), 9)
+        self.assertEqual(len(rules), 12)
         self.assertNotIn("strings-alignment", rules)
         self.assertNotIn("verbose-ui", rules)
+        self.assertNotIn("language-ui-registration", rules)
         self.assertNotIn("file-token-limit", rules)
 
 

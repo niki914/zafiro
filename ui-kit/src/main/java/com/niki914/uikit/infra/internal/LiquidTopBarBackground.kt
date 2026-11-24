@@ -7,25 +7,31 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.drawPlainBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.runtimeShaderEffect
 import com.niki914.uikit.base.LocalAppDarkTheme
+import com.niki914.uikit.base.LocalLowEndDevice
 import com.niki914.uikit.infra.LiquidGlassPresets
 
 /**
  * Liquid Glass 顶栏渐变毛玻璃背景。
  *
- * 方案 A 隔离舱：内聚 Android 版本感知与 AGSL Progressive Blur。
- * - Android 13+ (API 33 / TIRAMISU)：执行 Progressive Blur RuntimeShader 渲染。
- * - Android 13 以下：安全降级为 surfaceContainerHigh 实体纯色背景，防止 ClassNotFoundException / NoClassDefFoundError 崩溃。
+ * 方案 A 隔离舱：内聚 Android 版本与设备渲染档位门禁及三阶硬件模糊级联（Multi-Octave Progressive Blur）。
+ * - Android 13+ (API 33 / TIRAMISU) 且非中低端机：用 Skia 原生硬件 `blur()` 分三档半径（轻 / 中 / 重）逐层叠合，
+ *   相邻档位通过轻量 AGSL Alpha 遮罩平滑过渡，再在顶层叠加与页面一致的 `background` 多段渐变遮罩。
+ * - Android 13 以下或中低端机：强制降级为纯 Compose `background` 渐变遮罩，零 GPU 离屏模糊开销。
  */
 @Composable
 fun LiquidTopBarBackground(
@@ -38,71 +44,154 @@ fun LiquidTopBarBackground(
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
+    val tintColor = MaterialTheme.colorScheme.background
+    val topBarStyle = LiquidGlassPresets.TopBar
+    val totalHeight = chromeHeight + topBarStyle.bottomBleed
+    val useProgressiveBlur =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !LocalLowEndDevice.current
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    if (useProgressiveBlur) {
         val isDarkTheme = LocalAppDarkTheme.current
-        val tintColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        val blurRadius = LiquidGlassPresets.TopBar.blurRadius(isDarkTheme)
-        val baseTintIntensity = LiquidGlassPresets.TopBar.tintIntensity(isDarkTheme)
-        val topInsetPx = with(density) { topInset.toPx() }
-        val fadeStartY = with(density) { (topInset + buttonSlotHeight / 2).toPx() }
+        val heavyRadius = topBarStyle.blurRadius(isDarkTheme)
+        val mediumRadius = heavyRadius * 0.45f
+        val lightRadius = heavyRadius * 0.175f
+        val midTint = topBarStyle.tintIntensity(isDarkTheme)
+        val topTint = topBarStyle.topTintIntensity(isDarkTheme)
+
+        // 三阶模糊的起止高度交错排布，避免各层斜率在同一水平线上叠加形成细微横切感
+        val lightFadeStartPx = remember(density, chromeHeight, topInset) {
+            with(density) { (chromeHeight - 18.dp).coerceAtLeast(topInset).toPx() }
+        }
+        val mediumHeight = chromeHeight + 4.dp
+        val mediumFadeStartPx = remember(density, topInset, buttonSlotHeight) {
+            with(density) { (topInset + buttonSlotHeight * 0.45f).toPx() }
+        }
+        val heavyHeight = (chromeHeight - 8.dp).coerceAtLeast(topInset)
+        val heavyFadeStartPx = remember(density, topInset, buttonSlotHeight) {
+            with(density) { (topInset + buttonSlotHeight * 0.25f).toPx() }
+        }
+
+        val scrimBrush = remember(tintColor, topTint, midTint) {
+            Brush.verticalGradient(
+                0.00f to tintColor.copy(alpha = topTint),
+                0.34f to tintColor.copy(alpha = (topTint + midTint) * 0.52f),
+                0.58f to tintColor.copy(alpha = midTint),
+                0.80f to tintColor.copy(alpha = midTint * 0.18f),
+                1.00f to Color.Transparent,
+            )
+        }
 
         Box(
-            modifier
+            modifier = modifier
                 .fillMaxWidth()
-                .height(chromeHeight)
-                .graphicsLayer { alpha = barAlpha }
-                .drawPlainBackdrop(
-                    backdrop = contentBackdrop,
-                    shape = { RectangleShape },
-                    exportedBackdrop = chromeBackdrop,
-                    effects = {
-                        blur(blurRadius.toPx())
-                        runtimeShaderEffect(
-                            "ActionBarProgressiveBlur_v3",
-                            """
-                            uniform shader content;
-                            uniform float2 size;
-                            layout(color) uniform half4 tint;
-                            uniform float tintIntensity;
-                            uniform float progress;
-                            uniform float fadeStartY;
-                            uniform float topInset;
-
-                            half4 main(float2 coord) {
-                                // 从 fadeStartY（标题中线）向下衰减至 size.y 归零完全透明
-                                float blurAlpha = smoothstep(size.y, fadeStartY, coord.y) * progress;
-                                float tintAlpha = smoothstep(size.y, fadeStartY, coord.y) * progress;
-
-                                // 向上到达屏幕顶部（0 ~ topInset 状态栏区间）时，底色浓度平滑升至 1.0，呈现纯正的 surfaceContainerHigh 原生背景色
-                                float topSolidFactor = smoothstep(topInset, 0.0, coord.y);
-                                float currentTintIntensity = mix(tintIntensity, 1.0, topSolidFactor);
-
-                                return mix(content.eval(coord) * blurAlpha, tint * tintAlpha, currentTintIntensity);
-                            }
-                            """.trimIndent(),
-                            "content",
-                        ) {
-                            setFloatUniform("size", size.width, size.height)
-                            setColorUniform("tint", tintColor)
-                            setFloatUniform("tintIntensity", baseTintIntensity)
-                            setFloatUniform("progress", barAlpha)
-                            setFloatUniform("fadeStartY", fadeStartY)
-                            setFloatUniform("topInset", topInsetPx)
-                        }
-                    },
-                ),
-        )
-    } else {
-        // Android 13 以下安全保底：采用 surfaceContainerHigh 整体容器背景
-        Box(
-            modifier
-                .fillMaxWidth()
-                .height(chromeHeight)
+                .height(totalHeight)
                 .layerBackdrop(chromeBackdrop)
-                .background(
-                    MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = barAlpha),
-                ),
-        )
+                .graphicsLayer { alpha = barAlpha },
+        ) {
+            // 顶栏完全透明时跳过三阶离屏模糊与遮罩，但保留外层空 Box 刷新 chromeBackdrop 防止残留旧帧
+            if (barAlpha > 0.001f) {
+                // 第 1 阶（轻模糊，0 -> 3.5dp）：负责最底部与锐利内容的无感羽化衔接
+                BlurOctaveLayer(
+                    contentBackdrop = contentBackdrop,
+                    height = totalHeight,
+                    blurRadius = lightRadius,
+                    fadeStartPx = lightFadeStartPx,
+                    shaderKey = "ActionBarBlurOctaveLight_v8",
+                )
+                // 第 2 阶（中模糊，3.5dp -> 9dp）：承接按钮下沿到标题区的过渡
+                BlurOctaveLayer(
+                    contentBackdrop = contentBackdrop,
+                    height = mediumHeight,
+                    blurRadius = mediumRadius,
+                    fadeStartPx = mediumFadeStartPx,
+                    shaderKey = "ActionBarBlurOctaveMedium_v8",
+                )
+                // 第 3 阶（重模糊，9dp -> 20dp）：覆盖状态栏与标题核心区，彻底柔化文字
+                BlurOctaveLayer(
+                    contentBackdrop = contentBackdrop,
+                    height = heavyHeight,
+                    blurRadius = heavyRadius,
+                    fadeStartPx = heavyFadeStartPx,
+                    shaderKey = "ActionBarBlurOctaveHeavy_v8",
+                )
+                // 顶层页面底色渐变遮罩：与模糊层解耦，保证状态栏与标题对比度同时保留通透流动感
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(totalHeight)
+                        .background(scrimBrush),
+                )
+            }
+        }
+    } else {
+        // Android 13 以下或中低端机保底：纯 Compose 页面底色渐变遮罩，零离屏模糊开销
+        val fallbackBrush = remember(tintColor) {
+            Brush.verticalGradient(
+                0.00f to tintColor,
+                0.58f to tintColor.copy(alpha = 0.94f),
+                0.82f to tintColor.copy(alpha = 0.62f),
+                1.00f to Color.Transparent,
+            )
+        }
+
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(totalHeight)
+                .layerBackdrop(chromeBackdrop)
+                .graphicsLayer { alpha = barAlpha },
+        ) {
+            if (barAlpha > 0.001f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(totalHeight)
+                        .background(fallbackBrush),
+                )
+            }
+        }
     }
 }
+
+@Composable
+private fun BlurOctaveLayer(
+    contentBackdrop: LayerBackdrop,
+    height: Dp,
+    blurRadius: Dp,
+    fadeStartPx: Float,
+    shaderKey: String,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .drawPlainBackdrop(
+                backdrop = contentBackdrop,
+                shape = { RectangleShape },
+                effects = {
+                    blur(blurRadius.toPx())
+                    runtimeShaderEffect(
+                        shaderKey,
+                        VERTICAL_FADE_MASK_SHADER,
+                        "content",
+                    ) {
+                        setFloatUniform("fadeStartY", fadeStartPx)
+                        setFloatUniform("fadeEndY", size.height)
+                    }
+                },
+            ),
+    )
+}
+
+private val VERTICAL_FADE_MASK_SHADER = """
+    uniform shader content;
+    uniform float fadeStartY;
+    uniform float fadeEndY;
+
+    half4 main(float2 coord) {
+        float safeEndY = max(fadeEndY, fadeStartY + 1.0);
+        float t = 1.0 - smoothstep(fadeStartY, safeEndY, coord.y);
+        float alpha = t * mix(1.0, t, 0.35);
+        return content.eval(coord) * half(alpha);
+    }
+""".trimIndent()

@@ -13,7 +13,7 @@ internal object BackupExporter {
     }
 
     fun inspect(file: File): InspectResult {
-        return when (val zip = readZip(file)) {
+        return when (val zip = readZip(file, shouldReadBytes = { !it.startsWith("blobs/") })) {
             null -> InspectResult.Rejected(RejectReason.NotAnArchive)
             ZipRead.Unsafe -> InspectResult.Rejected(RejectReason.UnsafePath)
             is ZipRead.Ok -> inspectEntries(zip.entries)
@@ -40,6 +40,7 @@ internal object BackupExporter {
             built[BackupPartition.Models.jsonName] = models.toByteArray()
             built[BackupPartition.Preferences.jsonName] =
                 preferencesDocument(snapshot.appStateJson).toByteArray()
+            built[BackupPartition.UiStyles.jsonName] = snapshot.uiStylesJson.toByteArray()
         }
         if (BackupGroup.Tools in request.groups) {
             val servers = if (request.includeSecrets) {
@@ -61,6 +62,7 @@ internal object BackupExporter {
                 snapshot.pyDownloadFileDir,
             ).toByteArray()
             built[BackupPartition.TextActions.jsonName] = snapshot.textActionsJson.toByteArray()
+            built[BackupPartition.QuickPrompts.jsonName] = snapshot.quickPromptsJson.toByteArray()
         }
         if (BackupGroup.Skills in request.groups) {
             built += skillEntries(snapshot)

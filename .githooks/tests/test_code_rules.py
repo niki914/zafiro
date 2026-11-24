@@ -172,6 +172,27 @@ class RunCatchingRequireServiceTest(unittest.TestCase):
         self.assertEqual(findings, [])
         self.assertEqual(ignored, 1)
 
+    def test_try_extensions_with_require_service_are_flagged(self):
+        self.assertEqual(
+            rules_hit("val s = tryOrDefault(null) { requireService<Foo>() }\n"),
+            ["run-catching-require-service"],
+        )
+        self.assertEqual(
+            rules_hit("tryIgnore { requireService<Foo>().ping() }\n"),
+            ["run-catching-require-service"],
+        )
+
+    def test_native_try_catch_with_require_service_is_flagged(self):
+        source = "val s = try {\n    requireService<Foo>()\n} catch (e: IllegalStateException) {\n    null\n}\n"
+        self.assertEqual(
+            rules_hit(source),
+            ["run-catching-require-service", "run-catching-require-service"],
+        )
+
+    def test_non_try_lambdas_with_require_service_are_allowed(self):
+        self.assertEqual(rules_hit("val provider = { requireService<Foo>() }\n"), [])
+        self.assertEqual(rules_hit("launch { requireService<Foo>() }\n"), [])
+
 
 class BareCatchTest(unittest.TestCase):
     def test_catch_throwable_is_flagged(self):
@@ -182,6 +203,41 @@ class BareCatchTest(unittest.TestCase):
 
     def test_catch_specific_exception_is_allowed(self):
         self.assertEqual(rules_hit("} catch (e: IOException) {\n"), [])
+
+
+class SettingsItemDividerTest(unittest.TestCase):
+    RULE = {"settings-item-divider"}
+    BUSINESS = "app/src/main/java/com/niki914/zafiro/app/ui/content/Foo.kt"
+
+    def _hit(self, source: str, path: str):
+        lines = list(range(1, len(source.splitlines()) + 1))
+        res = check_code_files({path: source}, {path: lines}, self.RULE)
+        return [f.rule for f in res.findings], res.ignored
+
+    def test_business_call_is_flagged(self):
+        self.assertEqual(self._hit("    SettingsItemDivider()\n", self.BUSINESS)[0], ["settings-item-divider"])
+
+    def test_ui_kit_call_is_not_flagged(self):
+        path = "ui-kit/src/main/java/com/niki914/uikit/infra/component/SettingsGroupCard.kt"
+        self.assertEqual(self._hit("                    SettingsItemDivider()\n", path)[0], [])
+
+    def test_preview_file_is_not_flagged(self):
+        path = "app/src/main/java/com/niki914/zafiro/app/ui/content/SavedConfigDesignPreview.kt"
+        self.assertEqual(self._hit("                SettingsItemDivider()\n", path)[0], [])
+
+    def test_preview_directory_is_not_flagged(self):
+        path = "app/src/main/java/com/niki914/zafiro/app/ui/preview/theme/TextFieldThemePreview.kt"
+        self.assertEqual(self._hit("    SettingsItemDivider()\n", path)[0], [])
+
+    def test_comment_and_string_are_not_flagged(self):
+        source = '// SettingsItemDivider()\nval sample = "SettingsItemDivider()"\n'
+        self.assertEqual(self._hit(source, self.BUSINESS)[0], [])
+
+    def test_ignore_comment_is_counted(self):
+        source = "    SettingsItemDivider() // githooks:ignore settings-item-divider\n"
+        findings, ignored = self._hit(source, self.BUSINESS)
+        self.assertEqual(findings, [])
+        self.assertEqual(ignored, 1)
 
 
 class RoundedCornerShapeTest(unittest.TestCase):
@@ -241,6 +297,50 @@ class ContentDescriptionI18nTest(unittest.TestCase):
         findings, ignored = findings_for(source)
         self.assertEqual(findings, [])
         self.assertEqual(ignored, 1)
+
+
+class StoreBackupPairingTest(unittest.TestCase):
+    def setUp(self):
+        from checks.code_rules import set_backup_store_cache_for_testing
+        set_backup_store_cache_for_testing(None)
+
+    def tearDown(self):
+        from checks.code_rules import set_backup_store_cache_for_testing
+        set_backup_store_cache_for_testing(None)
+
+    def test_unpaired_store_descriptor_is_flagged(self):
+        from checks.code_rules import set_backup_store_cache_for_testing
+        set_backup_store_cache_for_testing("val BackupStore = listOf(OLD_STORE_ID)")
+        source = 'val NEW_STORE = StoreDescriptor("new_store_id")\n'
+        path = "store/src/main/java/com/niki914/store/StoreDescriptorRegistry.kt"
+        lines = [1]
+        res = check_code_files({path: source}, {path: lines}, {"store-backup-pairing"})
+        self.assertEqual(len(res.findings), 1)
+        self.assertEqual(res.findings[0].rule, "store-backup-pairing")
+
+    def test_paired_store_descriptor_passes(self):
+        from checks.code_rules import set_backup_store_cache_for_testing
+        set_backup_store_cache_for_testing('val BackupStore = listOf("new_store_id")')
+        source = 'val NEW_STORE = StoreDescriptor("new_store_id")\n'
+        path = "store/src/main/java/com/niki914/store/StoreDescriptorRegistry.kt"
+        lines = [1]
+        res = check_code_files({path: source}, {path: lines}, {"store-backup-pairing"})
+        self.assertEqual(len(res.findings), 0)
+
+    def test_excluded_store_passes(self):
+        source = 'val WEB_SETTINGS = StoreDescriptor("web_settings")\n'
+        path = "store/src/main/java/com/niki914/store/StoreDescriptorRegistry.kt"
+        lines = [1]
+        res = check_code_files({path: source}, {path: lines}, {"store-backup-pairing"})
+        self.assertEqual(len(res.findings), 0)
+
+    def test_ignored_store_passes(self):
+        source = 'val NEW_STORE = StoreDescriptor("new_store_id") // githooks:ignore store-backup-pairing 无需备份\n'
+        path = "store/src/main/java/com/niki914/store/StoreDescriptorRegistry.kt"
+        lines = [1]
+        res = check_code_files({path: source}, {path: lines}, {"store-backup-pairing"})
+        self.assertEqual(len(res.findings), 0)
+        self.assertEqual(res.ignored, 1)
 
 
 class IgnoreMarkerTest(unittest.TestCase):

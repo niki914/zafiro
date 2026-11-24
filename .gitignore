@@ -16,6 +16,7 @@
 .env.*.local
 *.md
 !/.agents/skills/**/*.md
+!/app/src/main/assets/skills/**/*.md
 !/docs/**/*.md
 !/app/src/main/assets/**/*.md
 
@@ -55,3 +56,4 @@ pnpm-debug.log*
 /libterm
 media/
 nexus-res/
+*.mp4

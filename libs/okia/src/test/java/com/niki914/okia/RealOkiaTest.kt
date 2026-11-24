@@ -23,6 +23,7 @@ import com.niki914.okia.message.StopReason
 import com.niki914.okia.protocol.ProtocolCompatMapper
 import com.niki914.okia.protocol.ProtocolEvent
 import com.niki914.okia.transport.HttpEngine
+import com.niki914.okia.util.runCatchingCancellable
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -276,7 +277,7 @@ class RealOkiaTest {
         val attempts = (1..24).map { n ->
             async(Dispatchers.Default) {
                 allStarted.countDown()
-                runCatching { okia.send("t$n") { } }
+                runCatchingCancellable { okia.send("t$n") { } }
             }
         }
         allStarted.await()
@@ -307,7 +308,7 @@ class RealOkiaTest {
         val job = launch {
             okia.send("one") { event ->
                 if (event is TurnEvent.TurnAborted) {
-                    rewindResult = runCatching { okia.rewind("x") }
+                    rewindResult = runCatchingCancellable { okia.rewind("x") }
                 }
             }
         }

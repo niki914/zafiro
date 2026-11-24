@@ -102,6 +102,7 @@ class XRepoRuntimeGateway(
             // 空串/旧格式的 0 = 未设置：用户 > 云端 > 默认
             maxTokens = maxTokens,
             contextWindowTokens = contextWindowLimit.first,
+            envContext = doc.envContext,
         )
     }
 

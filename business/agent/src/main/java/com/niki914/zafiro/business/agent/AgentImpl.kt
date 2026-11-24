@@ -24,6 +24,7 @@ import com.niki914.zafiro.business.agent.AgentImpl.Companion.STATUS_TEXT_THROTTL
 import com.niki914.zafiro.chat.AgentSessionEngine
 import com.niki914.zafiro.chat.LlmErrorCode
 import com.niki914.zafiro.chat.LlmStreamEvent
+import com.niki914.xsettings.XSettings
 import com.niki914.zafiro.service.findService
 import com.niki914.zafiro.service.requireService
 import com.niki914.zafiro.api.util.runCatchingCancellable
@@ -61,6 +62,10 @@ class AgentImpl(
     val engine: AgentSessionEngine = AgentSessionEngine(),
     val isPersistent: Boolean = true,
 ) : Agent {
+
+    init {
+        engine.conversationIdProvider = { conversationFlow.value.id?.value }
+    }
 
     private val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
         Logger.e(LOG_TAG, "Uncaught exception in Agent scope: ${throwable.message}", throwable)
@@ -354,6 +359,7 @@ class AgentImpl(
         val request: ApprovalRequest,
         val result: CompletableDeferred<ApprovalDecision>,
         val scope: CoroutineScope,
+        private val onSettled: (ApprovalDecision) -> Unit,
     ) {
         val jobs = ConcurrentHashMap<Approver, Job>()
         val decisions = ConcurrentHashMap<Approver, ApprovalDecision>()
@@ -366,6 +372,7 @@ class AgentImpl(
                         decisions[app] = decision
                         if (decision != ApprovalDecision.Abstain) {
                             result.complete(decision)
+                            onSettled(decision)
                         } else {
                             checkAllAbstained()
                         }
@@ -405,6 +412,20 @@ class AgentImpl(
     }
 
     /**
+     * 只认命令确认框上的点拒绝。弃权凑成的拒绝、屏幕授权拒绝都不停回合。
+     * 没装配置时按关闭，模型看到拒绝后继续。
+     */
+    private fun stopRoundAfterDeniedCommand(
+        decision: ApprovalDecision,
+        request: ApprovalRequest,
+    ) {
+        if (decision != ApprovalDecision.Deny) return
+        if (request !is ApprovalRequest.ToolExecution) return
+        if (findService<XSettings>()?.stopRoundOnCommandDeny?.value != true) return
+        stop()
+    }
+
+    /**
      * 并发询问所有已注册的 Approver，首个非 Abstain 决策胜出。
      * 若当前在后台运行（无 Approver 接入），则挂起等待，直到前台换绑或外部接入裁决。
      */
@@ -412,7 +433,9 @@ class AgentImpl(
         approvalMutex.withLock {
             coroutineScope {
                 val deferred = CompletableDeferred<ApprovalDecision>()
-                val approval = ActiveApproval(request, deferred, this)
+                val approval = ActiveApproval(request, deferred, this) { decision ->
+                    stopRoundAfterDeniedCommand(decision, request)
+                }
                 activeApproval = approval
                 approvalFlow.value = request
 

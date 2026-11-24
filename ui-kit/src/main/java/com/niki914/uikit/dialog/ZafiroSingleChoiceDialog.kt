@@ -69,7 +69,7 @@ fun <T> ZafiroSingleChoiceDialog(
                     SettingsItemSurface(
                         onClick = { onSelect(option) },
                         shape = highlightShape,
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                         minHeight = 48.dp,
                         modifier = Modifier
                             .fillMaxWidth()

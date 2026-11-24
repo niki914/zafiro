@@ -25,7 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.BrokenImage
-import androidx.compose.material3.CircularProgressIndicator
+import com.niki914.uikit.control.ZafiroLoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -97,6 +97,14 @@ fun ViewerPageContent(
 
         is ViewerContent.Image -> {
             ImageViewerContent(
+                content = content,
+                onBack = handleBack,
+                modifier = modifier,
+            )
+        }
+
+        is ViewerContent.Web -> {
+            WebViewerContent(
                 content = content,
                 onBack = handleBack,
                 modifier = modifier,
@@ -295,9 +303,10 @@ private fun SingleImageViewer(
     ) {
         when (state) {
             PathBitmapState.Loading -> {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(36.dp),
+                ZafiroLoadingIndicator(
                     color = MaterialTheme.colorScheme.primary,
+                    size = 36.dp,
+                    petalSize = 48.dp,
                     strokeWidth = 3.dp,
                 )
             }

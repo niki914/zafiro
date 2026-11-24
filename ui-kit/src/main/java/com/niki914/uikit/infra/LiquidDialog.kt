@@ -49,7 +49,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.emptyBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.colorControls
@@ -58,6 +58,9 @@ import com.kyant.backdrop.highlight.Highlight
 import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.infra.shape.G2FieldShape
 import java.util.concurrent.atomic.AtomicLong
+
+/** 选项列表过高时只滚正文，标题和按钮留在外面。 */
+private val DialogBodyMaxHeight = 288.dp
 
 internal class LiquidDialogHostEntry(
     val id: Long,
@@ -156,8 +159,7 @@ private fun LiquidDialogSurface(
     actions: (@Composable RowScope.() -> Unit)? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    val fallbackBackdrop = rememberLayerBackdrop()
-    val resolvedBackdrop = LocalScreenBackdrop.current ?: fallbackBackdrop
+    val resolvedBackdrop = LocalScreenBackdrop.current ?: remember { emptyBackdrop() }
     val isDarkTheme = LocalAppDarkTheme.current
     val colorScheme = MaterialTheme.colorScheme
     val scrimColor = colorScheme.scrim.copy(alpha = 0.42f)
@@ -257,7 +259,6 @@ private fun LiquidDialogSurface(
                     .padding(horizontal = horizontalMargin, vertical = verticalMargin)
                     .widthIn(min = minPanelWidth, max = maxPanelWidth)
                     .heightIn(max = maxPanelHeight)
-                    .verticalScroll(scrollState)
                     .drawBackdrop(
                         backdrop = resolvedBackdrop,
                         shape = { panelShape },
@@ -283,8 +284,19 @@ private fun LiquidDialogSurface(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 title?.invoke()
-                text?.invoke()
-                content?.invoke(this)
+                if (text != null || content != null) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .heightIn(max = DialogBodyMaxHeight)
+                            .verticalScroll(scrollState)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        text?.invoke()
+                        content?.invoke(this)
+                    }
+                }
                 if (actions != null) {
                     Row(
                         modifier = Modifier

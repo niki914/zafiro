@@ -6,44 +6,23 @@ import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
 import com.niki914.logging.Logger
 import com.niki914.xposed.api.util.ContextProvider
-import com.niki914.zafiro.api.McpService
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.crash.CrashRecorder
 import com.niki914.zafiro.app.debug.DebugLogFile
-import com.niki914.zafiro.app.notification.ResidentNotificationManager
-import com.niki914.zafiro.app.notification.TurnNotificationManager
-import com.niki914.zafiro.app.overlay.FloatingBallOverlayManager
-import com.niki914.zafiro.app.screen.PhonePointer
-import com.niki914.zafiro.app.wakelock.AgentWakeLockController
-import com.niki914.zafiro.business.permission.Permission
-import com.niki914.zafiro.business.permission.PermissionManager
-import com.niki914.zafiro.business.permission.PermissionState
-import com.niki914.zafiro.chat.agentic.python.PyRuntime
-import com.niki914.zafiro.repo.UpdateCheckHolder
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.runtime.createAppRuntimeBridge
-import com.niki914.zafiro.service.requireService
 import com.niki914.zafiro.settings.RuntimeEnvironment
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.launch
 import java.io.File
 
 class App : Application() {
 
-    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     override fun onCreate() {
         super.onCreate()
+
         CrashRecorder.install(this)
-        // 日志 debug 门控：release 构建 DEBUG/VERBOSE 全停，仅 INFO+ 输出
         Logger.setDebugProvider { BuildConfig.DEBUG }
-        // 调试构建额外把日志落到 filesDir/logs/（release 不装文件后端）
         DebugLogFile.install(this)
-        // 非主进程（目前只有 `:python`）不初始化主进程状态：上下文与持久化只属于主进程
-        //（否则 ContextProvider 从未 provide，PyRuntime.warmUp 会永远挂起）
+
         if (!isMainProcess()) return
         // A staged FULL backup restore must be applied before any settings file or database is opened.
         com.niki914.zafiro.backup.BackupManager.applyPendingRestore(this)
@@ -51,108 +30,12 @@ class App : Application() {
         XRepo.init(this.applicationContext)
         ConversationRepo.init(this.applicationContext)
         RuntimeEnvironment.install(createAppRuntimeBridge())
-        // 依赖装配只发生在 AppServices（主进程组合根）
+
         AppServices.install(this)
+        AppStartup.start(this)
+
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         DynamicColors.applyToActivitiesIfAvailable(this)
-        applicationScope.launch {
-            UpdateCheckHolder.runOnce(BuildConfig.VERSION_NAME)
-        }
-        StartupWrites.track(
-            applicationScope,
-            { XRepo.tryPutDefaultSettings() },
-            { XRepo.skills.seedDefaults() },
-            { XRepo.seedPyTools() },
-            { runCatching { XRepo.seedTextActions() } },
-            { runCatching { XRepo.seedMcpServers() } },
-            { runCatching { com.niki914.zafiro.repo.WorkspaceManager.seedRoutines(this@App) } },
-        )
-        // OpenRouter 公共目录预热：免鉴权后台抓，30 分钟内不重拉；失败保留旧缓存
-        applicationScope.launch {
-            XRepo.cloudFacts.refreshOpenRouterIfStale()
-        }
-        applicationScope.launch {
-            PyRuntime.warmUp()
-        }
-
-        // Renew MCP OAuth tokens before they expire (checked every 10 minutes while the app process lives).
-        applicationScope.launch {
-            while (true) {
-                runCatching { com.niki914.zafiro.repo.oauth.McpOAuth.refreshDue(this@App) }
-                kotlinx.coroutines.delay(10 * 60_000L)
-            }
-        }
-
-        observeFloatingBall()
-        observeResidentNotification()
-        observeMcpService()
-        observeAgentWakeLock()
-        PhonePointer.watch(applicationScope)
-        TurnNotificationManager.init(this)
-    }
-
-    private fun observeAgentWakeLock() {
-        AgentWakeLockController.start(this, applicationScope)
-    }
-
-    private fun observeMcpService() {
-        applicationScope.launch {
-            val service = requireService<McpService>()
-            val initialConfig = XRepo.mcpService.get()
-            if (initialConfig.enabled) {
-                service.start()
-            }
-            var lastConfig = initialConfig
-            XRepo.mcpService.configFlow.collect { config ->
-                if (config != lastConfig) {
-                    lastConfig = config
-                    if (config.enabled) {
-                        service.restart()
-                    } else {
-                        service.stop()
-                    }
-                }
-            }
-        }
-    }
-
-    private fun observeResidentNotification() = launchFeatureFlagObserver(
-        enabledFlow = XRepo.residentNotificationEnabledSetting,
-        permission = Permission.NOTIFICATION,
-        onPermissionMissing = { XRepo.setResidentNotificationEnabled(false) },
-    ) { enabled ->
-        if (enabled) ResidentNotificationManager.start(this) else ResidentNotificationManager.stop(
-            this
-        )
-    }
-
-    private fun observeFloatingBall() = launchFeatureFlagObserver(
-        enabledFlow = XRepo.floatingBallEnabledSetting,
-        permission = Permission.OVERLAY,
-        onPermissionMissing = { XRepo.setFloatingBallEnabled(false) },
-    ) { enabled ->
-        if (enabled) FloatingBallOverlayManager.show(this) else FloatingBallOverlayManager.dismiss()
-    }
-
-    /**
-     * 开关类功能的统一门禁：开关被打开但缺权限时回滚开关（不静默无效），
-     * 其余情况交回 [onChange] 处理。
-     */
-    private fun launchFeatureFlagObserver(
-        enabledFlow: Flow<Boolean>,
-        permission: Permission,
-        onPermissionMissing: suspend () -> Unit,
-        onChange: (Boolean) -> Unit,
-    ) {
-        applicationScope.launch {
-            enabledFlow.collect { enabled ->
-                if (enabled && requireService<PermissionManager>().status(permission) != PermissionState.GRANTED) {
-                    onPermissionMissing()
-                } else {
-                    onChange(enabled)
-                }
-            }
-        }
     }
 
     /**

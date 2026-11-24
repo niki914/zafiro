@@ -12,7 +12,11 @@ from pathlib import Path
 from core.ignore import extract_file_ignores, extract_line_ignores, is_rule_ignored
 from core.models import Category, CheckResult, Finding, Rule, Severity
 
-EXCLUDE_PREFIXES = ("libs/",)
+EXCLUDE_PREFIXES = (
+    "libs/libterm/",
+    "libs/logging/",
+    "libs/shizuku/",
+)
 TARGET_SUFFIX = ".kt"
 
 LOG_TAG_PREFIX = "niki914_zafiro_"
@@ -36,7 +40,7 @@ ANDROID_LOG_CALL = re.compile(r"(?<![\w.])Log\.[dviwe]\s*\(")
 PRINT_CALL = re.compile(r"(?<![\w.])(?:println|print)\s*\(|System\.out\b")
 TAG_DECL = re.compile(r'(?i)(?:val|var)\s+(\w+)\s*(?::\s*[\w<>?.]+\s*)?=\s*"([^"]*)"')
 LOGGER_LITERAL_TAG = re.compile(r'Logger\.[dviwe]\s*\(\s*"([^"]*)"')
-RUN_CATCHING_WORD = re.compile(r"\brunCatching(?:Cancellable)?\b")
+RUN_CATCHING_WORD = re.compile(r"\b(?:runCatching\w*|try[A-Z]\w*|try)\b")
 REQUIRE_SERVICE_WORD = re.compile(r"\brequireService\b")
 SCOPE_BOUNDARY = re.compile(r"\b(?:fun|class|interface|object)\b")
 UNCANCELLABLE_RUN_CATCHING = re.compile(
@@ -60,6 +64,89 @@ I18N_RESOURCE_CALL = re.compile(
 CONTENT_DESC_LITERAL = re.compile(
     r'\bcontentDescription\s*(?::\s*[\w<>?.]+\s*)?=\s*"([^"]*)"'
 )
+SETTINGS_ITEM_DIVIDER = re.compile(r"\bSettingsItemDivider\b")
+BUSINESS_MAIN_PREFIX = "app/src/main/"
+STORE_REGISTRY_SUFFIX = "com/niki914/store/StoreDescriptorRegistry.kt"
+STORE_DESCRIPTOR_CALL = re.compile(r"\bStoreDescriptor\s*\(")
+STORE_DESCRIPTOR_WITH_ID = re.compile(
+    r"\bStoreDescriptor\s*\(\s*([A-Za-z0-9_]+|\"[^\"]+\")"
+)
+EXCLUDED_STATIC_STORE_IDS = frozenset({
+    "WEB_SETTINGS_ID",
+    "LOCAL_SETTINGS_ID",
+    "AGENT_REGISTRY_ID",
+    "LLM_MODEL_FACTS_ID",
+    "OPENROUTER_CATALOG_ID",
+    "web_settings",
+    "local_settings",
+    "agents.registry",
+    "llm.model_facts",
+    "llm.openrouter_catalog",
+})
+
+_BACKUP_STORE_CACHE: str | None = None
+
+
+def get_backup_store_text() -> str:
+    global _BACKUP_STORE_CACHE
+    if _BACKUP_STORE_CACHE is not None:
+        return _BACKUP_STORE_CACHE
+    try:
+        from core.git import get_repo_root, get_staged_content
+
+        root = get_repo_root()
+        staged = get_staged_content(
+            root, "app/src/main/java/com/niki914/zafiro/backup/BackupStore.kt"
+        )
+        if staged is not None:
+            _BACKUP_STORE_CACHE = staged
+            return _BACKUP_STORE_CACHE
+        local_path = Path(root, "app/src/main/java/com/niki914/zafiro/backup/BackupStore.kt")
+        if local_path.is_file():
+            _BACKUP_STORE_CACHE = local_path.read_text(
+                encoding="utf-8", errors="replace"
+            )
+            return _BACKUP_STORE_CACHE
+    except Exception:
+        pass
+    _BACKUP_STORE_CACHE = ""
+    return _BACKUP_STORE_CACHE
+
+
+def set_backup_store_cache_for_testing(content: str | None) -> None:
+    global _BACKUP_STORE_CACHE
+    _BACKUP_STORE_CACHE = content
+
+
+def extract_store_descriptor_id(line: str, ctx: LineContext) -> str | None:
+    match = STORE_DESCRIPTOR_WITH_ID.search(line)
+    if match:
+        return match.group(1).strip('"')
+    if STORE_DESCRIPTOR_CALL.search(line):
+        for idx in range(ctx.lineno, min(len(ctx.lines), ctx.lineno + 3)):
+            next_line = ctx.lines[idx].strip()
+            if next_line and not next_line.startswith(("//", "*", "/*")):
+                m = re.match(r"^([A-Za-z0-9_]+|\"[^\"]+\")", next_line)
+                if m:
+                    return m.group(1).strip('"')
+    return None
+
+
+def hit_store_backup_pairing(line: str, ctx: LineContext) -> bool:
+    if is_comment(line):
+        return False
+    path = ctx.path.replace("\\", "/")
+    if not path.endswith(STORE_REGISTRY_SUFFIX):
+        return False
+    store_id = extract_store_descriptor_id(line, ctx)
+    if not store_id:
+        return False
+    if store_id in EXCLUDED_STATIC_STORE_IDS:
+        return False
+    backup_text = get_backup_store_text()
+    if not backup_text:
+        return False
+    return store_id not in backup_text
 
 
 @dataclass(frozen=True)
@@ -68,6 +155,7 @@ class LineContext:
     android_log: bool
     lines: tuple[str, ...] = ()
     lineno: int = 0
+    path: str = ""
 
 
 def is_comment(line: str) -> bool:
@@ -281,6 +369,17 @@ def hit_content_description_i18n(line: str, ctx: LineContext) -> bool:
     return False
 
 
+def hit_settings_item_divider(line: str, ctx: LineContext) -> bool:
+    if is_comment(line):
+        return False
+    path = ctx.path.replace("\\", "/")
+    if not path.startswith(BUSINESS_MAIN_PREFIX):
+        return False
+    if "/preview/" in path or path.rsplit("/", 1)[-1].endswith("Preview.kt"):
+        return False
+    return SETTINGS_ITEM_DIVIDER.search(strip_strings(line)) is not None
+
+
 CODE_RULES: list[tuple[Rule, callable]] = [
     # 1. Category.SAFETY
     (
@@ -308,7 +407,7 @@ CODE_RULES: list[tuple[Rule, callable]] = [
             name="run-catching-require-service",
             category=Category.SAFETY,
             severity=Severity.BLOCK,
-            description="使用了 runCatching 包裹 requireService，可选服务应使用 findService",
+            description="使用了异常捕获或容错包装器包裹 requireService，可选服务应使用 findService",
             hint="改用 findService<T>()；确实需要时加 // githooks:ignore run-catching-require-service",
         ),
         hit_run_catching_require_service,
@@ -354,6 +453,16 @@ CODE_RULES: list[tuple[Rule, callable]] = [
         ),
         hit_rounded_corner_shape,
     ),
+    (
+        Rule(
+            name="settings-item-divider",
+            category=Category.UI,
+            severity=Severity.BLOCK,
+            description="业务页面手写了 SettingsItemDivider",
+            hint="设置行改用 SettingsConnectedGroup，接缝由分组按主题绘制；整段文案和空状态继续用 SettingsGroupCard。确实要写时加 // githooks:ignore settings-item-divider",
+        ),
+        hit_settings_item_divider,
+    ),
     # 3. Category.HYGIENE
     (
         Rule(
@@ -385,6 +494,17 @@ CODE_RULES: list[tuple[Rule, callable]] = [
             hint="改用纯英文字符串（如 \"Close\"、\"Clear\"）或 null；确实需要多语言时加 // githooks:ignore content-description-i18n",
         ),
         hit_content_description_i18n,
+    ),
+    # 5. Category.ARCHITECTURE
+    (
+        Rule(
+            name="store-backup-pairing",
+            category=Category.ARCHITECTURE,
+            severity=Severity.BLOCK,
+            description="新增了持久化 StoreDescriptor，但未在 BackupStore 中声明备份映射",
+            hint="在 BackupModels/BackupStore 接入备份；若明确无需备份，在声明处加 // githooks:ignore store-backup-pairing <理由>",
+        ),
+        hit_store_backup_pairing,
     ),
 ]
 
@@ -432,7 +552,7 @@ def check_code_files(
             line_text = lines[lineno - 1]
             line_ignores = extract_line_ignores(lines, lineno)
             allowed = file_ignores | line_ignores
-            line_ctx = LineContext(ctx.imported, ctx.android_log, ctx.lines, lineno)
+            line_ctx = LineContext(ctx.imported, ctx.android_log, ctx.lines, lineno, path)
 
             for rule, hit_fn in target_rules:
                 if not hit_fn(line_text, line_ctx):

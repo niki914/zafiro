@@ -22,6 +22,8 @@ import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionManagerImpl
 import com.niki914.zafiro.app.screen.AppScreens
 import com.niki914.zafiro.business.remote.TelemetryImpl
+import com.niki914.zafiro.app.env.AndroidDeviceStateProvider
+import com.niki914.zafiro.envcontext.DeviceStateProvider
 import com.niki914.zafiro.mcp.service.McpServiceImpl
 import com.niki914.zafiro.mod.feat.ZafiroAccessibilityService
 import com.niki914.zafiro.repo.SharedHttp
@@ -42,7 +44,7 @@ import com.tricreta.zafiro.autonomy.AutonomyInstaller
  * 不认识实现类——**这个文件里不出现服务查找调用**（单测守卫）。
  *
  * 进程级初始化（`XRepo.init` / `ContextProvider` / `RuntimeEnvironment` 等）
- * 不是依赖装配，留在 [App.onCreate]。
+ * 不是依赖装配，留在 [App.onCreate]。后台预热和开关监听在 [AppStartup]。
  */
 object AppServices {
 
@@ -72,6 +74,9 @@ object AppServices {
 
         // 本地配置读取口：给 app 以外的模块按需取用
         installService<XSettings>(XSettingsImpl)
+
+        // 设备状态提供者：机型、电量、网络等环境信息
+        installService<DeviceStateProvider>(AndroidDeviceStateProvider(application))
 
         // MCP 服务：把 Zafiro 的工具暴露成标准 MCP Streamable HTTP 端点
         installService<McpService>(McpServiceImpl { XRepo.mcpService.get() })

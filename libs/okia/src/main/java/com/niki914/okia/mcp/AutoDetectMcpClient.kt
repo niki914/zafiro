@@ -36,9 +36,10 @@ internal class AutoDetectMcpClient(
     override suspend fun callTool(
         server: McpServer,
         toolName: String,
-        argumentsJson: String
+        argumentsJson: String,
+        inputSchemaJson: String?
     ): McpCallResult = when (modeFor(server)) {
-        McpMode.Discovery -> discovery.callTool(server, toolName, argumentsJson)
-        McpMode.Legacy -> legacy.callTool(server, toolName, argumentsJson)
+        McpMode.Discovery -> discovery.callTool(server, toolName, argumentsJson, inputSchemaJson)
+        McpMode.Legacy -> legacy.callTool(server, toolName, argumentsJson, inputSchemaJson)
     }
 }

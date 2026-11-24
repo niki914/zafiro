@@ -4,9 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,12 +20,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.niki914.uikit.control.ZafiroLoadingIndicator
 import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.uikit.dialog.ZafiroDialog
 import com.niki914.uikit.dialog.ZafiroDialogButton
 import com.niki914.uikit.infra.component.SettingToggleItem
-import com.niki914.uikit.infra.component.SettingsGroupCard
-import com.niki914.uikit.infra.component.SettingsItemDivider
+import com.niki914.uikit.infra.component.SettingsConnectedGroup
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.chat.composable.text.ToolResultText
@@ -200,26 +197,33 @@ private fun CustomPyToolIdentitySettingsBlock(
     onNameChange: (String) -> Unit,
     onEnabledChange: (Boolean) -> Unit,
 ) {
-    SettingsGroupCard {
-        SettingControlledExpandableTextItem(
-            field = CustomPyToolEditableField.Name,
-            controller = fieldController,
-            title = stringResource(R.string.custom_py_tool_field_name),
-            value = uiState.formState.name,
-            onValueChange = onNameChange,
-            placeholder = stringResource(R.string.custom_py_tool_field_name_hint),
-            description = customPyToolFieldErrorText(uiState.formState.nameErrorResId),
-            enabled = !uiState.isSaving,
-            minLines = 1,
-            maxLines = 1,
-        )
-        SettingsItemDivider()
-        SettingToggleItem(
-            title = stringResource(R.string.custom_py_tool_field_enabled),
-            checked = uiState.formState.enabled,
-            enabled = !uiState.isSaving,
-            onCheckedChange = onEnabledChange,
-        )
+    SettingsConnectedGroup {
+        item { shape, isStandalone, _ ->
+            SettingControlledExpandableTextItem(
+                field = CustomPyToolEditableField.Name,
+                controller = fieldController,
+                title = stringResource(R.string.custom_py_tool_field_name),
+                value = uiState.formState.name,
+                onValueChange = onNameChange,
+                placeholder = stringResource(R.string.custom_py_tool_field_name_hint),
+                description = customPyToolFieldErrorText(uiState.formState.nameErrorResId),
+                enabled = !uiState.isSaving,
+                shape = shape,
+                isStandaloneCard = isStandalone,
+                minLines = 1,
+                maxLines = 1,
+            )
+        }
+        item { shape, isStandalone, _ ->
+            SettingToggleItem(
+                title = stringResource(R.string.custom_py_tool_field_enabled),
+                checked = uiState.formState.enabled,
+                enabled = !uiState.isSaving,
+                shape = shape,
+                isStandaloneCard = isStandalone,
+                onCheckedChange = onEnabledChange,
+            )
+        }
     }
 }
 
@@ -229,20 +233,24 @@ private fun CustomPyToolCodeSettingsBlock(
     fieldController: EditableDetailFieldController<CustomPyToolEditableField>,
     onCodeChange: (String) -> Unit,
 ) {
-    SettingsGroupCard {
-        SettingControlledExpandableTextItem(
-            field = CustomPyToolEditableField.Code,
-            controller = fieldController,
-            title = stringResource(R.string.custom_py_tool_field_code),
-            value = uiState.formState.code,
-            onValueChange = onCodeChange,
-            placeholder = stringResource(R.string.custom_py_tool_field_code_hint),
-            description = uiState.formState.codeErrorMessage
-                ?: customPyToolFieldErrorText(uiState.formState.codeErrorResId),
-            enabled = !uiState.isSaving,
-            minLines = 6,
-            maxLines = 16,
-        )
+    SettingsConnectedGroup {
+        item { shape, isStandalone, _ ->
+            SettingControlledExpandableTextItem(
+                field = CustomPyToolEditableField.Code,
+                controller = fieldController,
+                title = stringResource(R.string.custom_py_tool_field_code),
+                value = uiState.formState.code,
+                onValueChange = onCodeChange,
+                placeholder = stringResource(R.string.custom_py_tool_field_code_hint),
+                description = uiState.formState.codeErrorMessage
+                    ?: customPyToolFieldErrorText(uiState.formState.codeErrorResId),
+                enabled = !uiState.isSaving,
+                shape = shape,
+                isStandaloneCard = isStandalone,
+                minLines = 6,
+                maxLines = 16,
+            )
+        }
     }
 }
 
@@ -309,7 +317,6 @@ private data class CustomPyToolSaveDialogSpec(
  * 每个状态只有一个按钮，系统返回键等同那个按钮：
  * 校验中 = 取消（真取消，不写盘）、成功 = 完成（返回列表）、失败 = 关闭（留在原页）。
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun CustomPyToolSaveProgressDialog(
     progress: CustomPyToolSaveProgress?,
@@ -351,9 +358,11 @@ private fun CustomPyToolSaveProgressDialog(
         },
         content = {
             if (spec.checking) {
-                LoadingIndicator(
-                    modifier = Modifier.size(28.dp),
+                ZafiroLoadingIndicator(
                     color = MaterialTheme.colorScheme.primary,
+                    size = 22.dp,
+                    petalSize = 28.dp,
+                    strokeWidth = 2.dp,
                 )
             }
             Text(

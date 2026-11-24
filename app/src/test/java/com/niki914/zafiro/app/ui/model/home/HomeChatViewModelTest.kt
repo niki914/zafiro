@@ -21,6 +21,7 @@ import com.niki914.zafiro.app.ui.model.MainDispatcherRule
 import com.niki914.zafiro.app.ui.model.TextPacer
 import com.niki914.zafiro.business.agent.turnIdAt
 import com.niki914.zafiro.repo.LlmConfigsDocument
+import com.niki914.zafiro.repo.RuntimeQuickPrompt
 import com.niki914.zafiro.repo.SavedLlmConfig
 import com.niki914.zafiro.service.ServiceRegistry
 import com.niki914.zafiro.service.installService
@@ -85,6 +86,45 @@ class HomeChatViewModelTest {
         assertEquals(HomeChatEffect.EmptyInputAttempted, effectDeferred.await())
         assertTrue(fixture.agent.sentDrafts.isEmpty())
         assertFalse(fixture.vm.uiStateFlow.value.isGenerating)
+    }
+
+    @Test
+    fun sendCompactCommandWithoutCompactableHistoryEmitsNoCompactableHistoryEffect() = runTest {
+        val fixture = fixture()
+        val effectDeferred = async { fixture.vm.uiEffect.first() }
+        fixture.vm.sendIntent(HomeChatIntent.InputChanged("/compact"))
+        runCurrent()
+        fixture.vm.sendIntent(HomeChatIntent.Send)
+        advanceUntilIdle()
+
+        assertEquals(HomeChatEffect.NoCompactableHistory, effectDeferred.await())
+        assertEquals("/compact", fixture.vm.uiStateFlow.value.input)
+        assertTrue(fixture.agent.sentDrafts.isEmpty())
+        assertFalse(fixture.vm.uiStateFlow.value.isGenerating)
+    }
+
+    @Test
+    fun sendCompactCommandWithCompactableHistoryPassesThroughToAgent() = runTest {
+        val fixture = fixture()
+        fixture.agent.publishConversation(
+            Conversation(
+                id = ConversationId("session-1"),
+                turns = listOf(
+                    ConversationTurn(
+                        id = turnIdAt(0),
+                        userText = "hello",
+                        blocks = listOf(TurnBlock.Text("t0:0", "answer"))
+                    )
+                ),
+            ),
+        )
+        runCurrent()
+        fixture.vm.sendIntent(HomeChatIntent.InputChanged("/compact"))
+        runCurrent()
+        fixture.vm.sendIntent(HomeChatIntent.Send)
+        advanceUntilIdle()
+
+        assertEquals("/compact", fixture.agent.sentDrafts.single().text)
     }
 
     @Test
@@ -515,7 +555,51 @@ class HomeChatViewModelTest {
         assertEquals("c2", fixture.vm.uiStateFlow.value.activeConfigId)
         assertEquals("c2", fixture.agent.boundConfigId)
         assertEquals("c2", fixture.store.boundConfigs["conv-1"])
+        assertTrue(fixture.vm.uiStateFlow.value.isConfigMenuVisible)
+
+        fixture.vm.sendIntent(HomeChatIntent.DismissConfigMenu)
+        advanceUntilIdle()
         assertFalse(fixture.vm.uiStateFlow.value.isConfigMenuVisible)
+    }
+
+    @Test
+    fun selectModelAndUpdateThinkingLevel_updatesUiStateAndPersists() = runTest {
+        var persistedModel: Pair<String, String>? = null
+        var persistedThinking: Pair<String, String>? = null
+        val config = SavedLlmConfig(
+            id = "c1",
+            name = "DeepSeek",
+            provider = "deepseek",
+            endpoint = "https://api.deepseek.com",
+            apiKey = "key1",
+            model = "deepseek-chat",
+            protocol = "",
+            proxy = "",
+            thinkingLevel = "none",
+        )
+        val fixture = fixture(
+            configDependencies = HomeChatConfigDependencies(
+                loadConfigs = {
+                    LlmConfigsDocument(
+                        activeId = "c1",
+                        configs = listOf(config),
+                    )
+                },
+                updateConfigModel = { cid, mid -> persistedModel = cid to mid },
+                updateThinkingLevel = { cid, level -> persistedThinking = cid to level },
+            ),
+        )
+        advanceUntilIdle()
+
+        fixture.vm.sendIntent(HomeChatIntent.SelectModel(configId = "c1", modelId = "deepseek-reasoner"))
+        advanceUntilIdle()
+        assertEquals("deepseek-reasoner", fixture.vm.uiStateFlow.value.displayConfig?.modelId)
+        assertEquals("c1" to "deepseek-reasoner", persistedModel)
+
+        fixture.vm.sendIntent(HomeChatIntent.UpdateThinkingLevel(configId = "c1", wireValue = "high"))
+        advanceUntilIdle()
+        assertEquals("high", fixture.vm.uiStateFlow.value.displayConfig?.thinkingLevel)
+        assertEquals("c1" to "high", persistedThinking)
     }
 
     @Test
@@ -713,5 +797,39 @@ class HomeChatViewModelTest {
         assertEquals("Bug 暴露：旧 Agent 被错误写入！", 0, oldAgent.sentDrafts.size)
         // 断言 2：新 Agent 必须收到 prompt 并发起流式生成
         assertTrue("致命 Bug：新 Agent 根本没有收到 Regenerate 任务！", newAgent.sentDrafts.isNotEmpty())
+    }
+
+    @Test
+    fun expandQuickPrompts_expandsTriggersOnWordBoundaries() {
+        val prompts = listOf(
+            RuntimeQuickPrompt("btw", "by the way", enabled = true),
+            RuntimeQuickPrompt("m", "my prompt", enabled = true),
+            RuntimeQuickPrompt("disabled", "nope", enabled = false),
+        )
+
+        assertEquals("abc by the way hhh", expandQuickPrompts("abc /btw hhh", prompts))
+        assertEquals("my prompt", expandQuickPrompts("/m", prompts))
+        assertEquals("https://example.com/btw", expandQuickPrompts("https://example.com/btw", prompts))
+        assertEquals("abc /disabled hhh", expandQuickPrompts("abc /disabled hhh", prompts))
+    }
+
+    @Test
+    fun send_expandsQuickPromptsBeforePassingToAgent() = runTest {
+        val deps = HomeChatConfigDependencies(
+            loadConfigs = { LlmConfigsDocument() },
+            loadQuickPrompts = {
+                listOf(
+                    RuntimeQuickPrompt("btw", "by the way", enabled = true),
+                    RuntimeQuickPrompt("m", "my prompt", enabled = true),
+                )
+            },
+        )
+        val fixture = fixture(configDependencies = deps)
+        fixture.vm.sendIntent(HomeChatIntent.InputChanged("abc /btw hhh /m"))
+        runCurrent()
+        fixture.vm.sendIntent(HomeChatIntent.Send)
+        advanceUntilIdle()
+
+        assertEquals("abc by the way hhh my prompt", fixture.agent.sentDrafts.single().text)
     }
 }

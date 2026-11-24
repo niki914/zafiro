@@ -126,6 +126,13 @@ class ConversationFormatterTest {
     }
 
     @Test
+    fun previewFromText_dropsMarkersThenFillsTheSameLimit() {
+        val preview = ConversationFormatter.previewFromText("**" + "核".repeat(130))
+
+        assertEquals("核".repeat(120) + "...", preview)
+    }
+
+    @Test
     fun projectLeaf_followsParentChainToRoot() {
         val entries = listOf(
             ConversationEntry("e0", null, 0L, Message.User(listOf(ContentBlock.Text("a")))),
