@@ -59,6 +59,11 @@ fun AssistantOutputText(
     // 两者都用低一级表面，和输入栏的 surfaceContainerHigh 分开。
     val codePlate = MaterialTheme.colorScheme.surfaceContainerLow
 
+    // LaTeX 数学：解析器给出的 INLINE_MATH / BLOCK_MATH 节点由 math
+    // annotator 换成行内占位，公式本体在 rememberMathInlineContent 里预量。
+    val mathAnnotator = rememberMathAnnotator()
+    val mathInlineContent = rememberMathInlineContent(text)
+
     CompositionLocalProvider(LocalUriHandler provides previewUriHandler) {
         SelectionContainer(modifier = modifier.fillMaxWidth()) {
             Markdown(
@@ -69,6 +74,8 @@ fun AssistantOutputText(
                     inlineCodeBackground = codePlate,
                 ),
                 typography = assistantMarkdownTypography(),
+                annotator = mathAnnotator,
+                inlineContent = mathInlineContent,
                 components = assistantMarkdownComponents(),
             )
         }
@@ -110,6 +117,7 @@ private fun assistantMarkdownComponents(): MarkdownComponents = remember {
             }
         },
         checkbox = { model -> MarkdownCheckBox(model.content, model.node, model.typography.text) },
+        paragraph = { model -> MathParagraph(model) },
     )
 }
 
@@ -118,6 +126,8 @@ private fun assistantMarkdownTypography(
     scale: Float = LocalMarkdownScale.current,
 ): MarkdownTypography {
     val bodyStyle = MaterialTheme.typography.bodyLarge.copy(
+        // Upstream issue #442: Persian/Arabic replies must follow their own direction, not the ambient LTR.
+        textDirection = androidx.compose.ui.text.style.TextDirection.Content,
         fontSize = (17f * scale).sp,
         lineHeight = (26f * scale).sp,
     )

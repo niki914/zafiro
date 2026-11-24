@@ -108,8 +108,27 @@ class RunExecutor(
                     }
                 }
                 val stepCounter = launch {
+                    val seenTool = HashSet<String>(); val doneTool = HashSet<String>(); val seenText = HashSet<String>()
                     agent.conversation.collect { conv ->
                         tracker.setSteps(conv.turns.sumOf { turn -> turn.blocks.count { it is TurnBlock.Tool } })
+                        // Live activity for the dashboard's Watch view: what the agent says and which tool it calls, as it happens.
+                        conv.turns.forEach { turn ->
+                            turn.blocks.forEach { b ->
+                                when (b) {
+                                    is TurnBlock.Tool -> {
+                                        val name = b.invocation.label.ifBlank { b.invocation.name }
+                                        if (seenTool.add(b.id)) repo.event(run.id, "tool", "▶ $name ${b.invocation.argumentsJson.orEmpty().replace('\n', ' ').take(110)}".trim())
+                                        if (b.outcome != null && doneTool.add(b.id)) {
+                                            val ok = b.outcome is com.niki914.zafiro.api.model.ToolOutcome.Succeeded
+                                            val text = (b.outcome as? com.niki914.zafiro.api.model.ToolOutcome.Succeeded)?.resultText.orEmpty().replace('\n', ' ').take(140)
+                                            repo.event(run.id, "tool", (if (ok) "✓ " else "✗ ") + name + (if (text.isNotBlank()) ": $text" else ""))
+                                        }
+                                    }
+                                    is TurnBlock.Text -> if (b.text.length > 20 && seenText.add(b.id)) repo.event(run.id, "say", "💬 " + b.text.replace('\n', ' ').take(200))
+                                    else -> Unit
+                                }
+                            }
+                        }
                     }
                 }
                 val tokenCounter = launch {

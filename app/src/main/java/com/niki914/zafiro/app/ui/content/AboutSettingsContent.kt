@@ -153,7 +153,11 @@ private fun AboutSettingsContentBody(
         )
     }
 
+    var showUpdates by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    if (showUpdates) UpdateSourcesDialog { showUpdates = false }
+
     SettingsSpecPageContent(
+        contentBeforeSections = { AboutHeader() },
         spec = aboutSettingsSpec(
             uiState = uiState,
             versionName = BuildConfig.VERSION_NAME,
@@ -162,6 +166,7 @@ private fun AboutSettingsContentBody(
         onAction = { action ->
             when (action) {
                 is SettingsRowAction.Navigate -> {
+                    if (action.id == ABOUT_VERSION_ROW_ID) { showUpdates = true; return@SettingsSpecPageContent }
                     if (action.id == ABOUT_SETTINGS_TELEMETRY_ROW_ID) {
                         onShowPrivacyDialog()
                         return@SettingsSpecPageContent
@@ -207,15 +212,10 @@ private fun aboutSettingsSpec(
             )
         }
     } + listOf(
-        SettingsRowSpec.ToggleNavigation(
-            id = ABOUT_SETTINGS_TELEMETRY_ROW_ID,
-            title = stringResource(R.string.ui_settings_about_telemetry_title),
-            summary = stringResource(R.string.ui_settings_about_telemetry_summary),
-            checked = uiState.telemetryEnabled,
-            leadingIcon = SettingsRowLeadingIcon.Vector(Icons.Default.Analytics),
-        ),
-        SettingsRowSpec.Value(
+        SettingsRowSpec.Navigation(
+            id = ABOUT_VERSION_ROW_ID,
             title = stringResource(R.string.ui_settings_about_version),
+            summary = "Tap to check for updates",
             currentState = versionName,
         ),
     )
@@ -238,6 +238,8 @@ private fun Context.localizedString(@StringRes res: Int, tag: String): String {
     config.setLocale(LocaleListCompat.forLanguageTags(tag).get(0))
     return createConfigurationContext(config).getString(res)
 }
+
+private const val ABOUT_VERSION_ROW_ID = "about.version"
 
 private fun aboutSettingsRowId(id: AboutSettingsItemId): String =
     "$ABOUT_SETTINGS_ROW_ID_PREFIX${id.name}"

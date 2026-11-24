@@ -104,22 +104,12 @@ private fun aboutSettingsItems(): List<AboutSettingsItemUiState> {
         AboutSettingsItemUiState(
             id = AboutSettingsItemId.AuthorHomepage,
             titleRes = R.string.ui_settings_about_author_homepage,
-            uri = "https://github.com/niki914",
+            uri = "https://tricreta.co.ke",
         ),
         AboutSettingsItemUiState(
             id = AboutSettingsItemId.Github,
             titleRes = R.string.ui_settings_about_github,
-            uri = "https://github.com/niki914/zafiro",
-        ),
-        AboutSettingsItemUiState(
-            id = AboutSettingsItemId.Afdian,
-            titleRes = R.string.ui_settings_about_afdian,
-            uri = "https://afdian.com/a/niki914",
-        ),
-        AboutSettingsItemUiState(
-            id = AboutSettingsItemId.Telegram,
-            titleRes = R.string.ui_settings_about_telegram,
-            uri = "https://t.me/+ZPX2xtSl6RwyZGNl",
+            uri = "https://github.com/TricretA/my-zafiro",
         ),
         AboutSettingsItemUiState(
             id = AboutSettingsItemId.FeatureFeedback,
@@ -142,7 +132,7 @@ internal fun buildIssueUri(title: String, body: String): String {
     return Uri.Builder()
         .scheme("https")
         .authority("github.com")
-        .path("/niki914/zafiro/issues/new")
+        .path("/TricretA/my-zafiro/issues/new")
         .appendQueryParameter("title", title)
         .appendQueryParameter("body", body)
         .build()
@@ -151,4 +141,4 @@ internal fun buildIssueUri(title: String, body: String): String {
 
 private const val FEATURE_FEEDBACK_TITLE = "[FEATURE] "
 private const val BUG_FEEDBACK_TITLE = "[BUG] "
-internal const val TELEMETRY_DOC_URL = "https://github.com/niki914/zafiro/blob/main/docs/TELEMETRY.md"
+internal const val TELEMETRY_DOC_URL = "https://github.com/TricretA/my-zafiro/blob/main/docs/TELEMETRY.md"

@@ -25,6 +25,14 @@ HELLO 你好 こんにちは ПРИВЕТ HOLA 안녕하세요 ALLÔ CIAO
 
 `Aa` **Aa** *Aa* あ 永 Ж Ω
 
+Inline ${'$'}E = mc^2${'$'} and ${'$'}x^2 + y^2 = r^2${'$'} stay in the line.
+
+${'$'}${'$'}
+\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+${'$'}${'$'}
+
+Pay ${'$'}100 and ${'$'}50, not math.
+
 ```kotlin
 val hello = "hello 你好 こんにちは ПРИВЕТ"
 repeat(8) { print(hello) }

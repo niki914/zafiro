@@ -16,6 +16,9 @@ post=1, comment=15, reply=25, like=30, follow=8
 ## Engagement tactics
 Reply to every real reply on the owner's own content first, then add one specific, useful comment on a relevant post, then like a few genuinely good posts. Quality over volume; stop for the day at the caps.
 
+## Research and tools for this platform
+Research: Apify 'clockworks/tiktok-scraper' (if on) for trending sounds and top videos in the niche; web_fetch via r.jina.ai on tiktok.com/tag/<tag>. Higgsfield/fal.ai MCP for video clips if switched on; CapCut skill for editing steps.
+
 ## Screen routines (`screen_routine routine=list`)
 `tiktok.open_home`, `tiktok.read_activity`, `tiktok.scan_feed`, `tiktok.comment`, `tiktok.like`.
 The labels in these routines are best-effort guesses for the app's English UI. On the first run each routine may fail with a clear reason: read the screen once, add the real label to `files/routines/tiktok.<name>.json`, and record the fix as a lesson. Do not loop.

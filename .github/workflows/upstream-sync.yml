@@ -1,48 +1,42 @@
 name: upstream-sync
-# Weekly (and on demand): look for new commits in niki914/zafiro so new upstream features are never missed.
-# Clean merge  -> pushes sync/upstream-<date> (ci.yml builds and tests it) and opens an issue to review/merge.
-# Conflict     -> opens an issue listing the new upstream commits; resolve by hand (see UPSTREAM_SYNC.md).
+# Every day (and on demand): replay new commits of niki914/zafiro onto a sync branch, build + test it in ci.yml, and open an
+# issue (clean) or a conflict issue (needs a person). Zafiro Autonomous releases then ship the merged result, so the in-app
+# updater only has to follow OUR releases.
 on:
   schedule:
-    - cron: "17 5 * * 1"
+    - cron: "23 4 * * *"
   workflow_dispatch:
 permissions:
   contents: write
   issues: write
   actions: write
 jobs:
-  check:
+  sync:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: feat/foundation
+          ref: feat/workspaces
           fetch-depth: 0
-      - name: Compare with upstream
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Replay upstream changes
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -u
-          git config user.name "upstream-sync"
-          git config user.email "upstream-sync@users.noreply.github.com"
-          git remote add upstream https://github.com/niki914/zafiro.git
-          git fetch --no-tags upstream
-          BRANCH=$(git ls-remote --symref upstream HEAD | awk '/^ref:/ {sub("refs/heads/","",$2); print $2}')
-          BEHIND=$(git rev-list --count HEAD..upstream/$BRANCH)
-          echo "upstream branch=$BRANCH new commits=$BEHIND"
-          if [ "$BEHIND" = "0" ]; then echo "Up to date with upstream."; exit 0; fi
-          LIST=$(git log --no-merges --pretty='- %h %s' HEAD..upstream/$BRANCH | head -40)
+          git config user.name "upstream-sync"; git config user.email "upstream-sync@users.noreply.github.com"
+          OLD=$(cat UPSTREAM_SYNCED_SHA)
+          set +e; tools/autonomous/upstream_apply.sh; RC=$?; set -e
+          NEW=$(git rev-parse upstream/HEAD 2>/dev/null || git rev-parse upstream/main)
+          LIST=$(git log --no-merges --pretty='- %h %s' "$OLD..$NEW" | head -60)
           DATE=$(date +%Y%m%d)
-          TITLE="Upstream has $BEHIND new commit(s) ($DATE)"
-          if gh issue list --state open --search "Upstream has in:title" --json number --jq '.[0].number' | grep -q .; then
-            echo "An upstream-sync issue is already open; not opening another."; exit 0
-          fi
-          if git merge --no-edit upstream/$BRANCH >/tmp/merge.log 2>&1; then
-            git push origin HEAD:refs/heads/sync/upstream-$DATE
-            gh workflow run ci.yml --ref sync/upstream-$DATE || echo "could not start CI; run it from the Actions tab"
-            BODY=$(printf 'New upstream commits merged cleanly into branch `sync/upstream-%s`. CI is building and testing it.\n\nNext: check the CI result on that branch, run `python3 tools/autonomous/english_only.py` (upstream is Chinese), then merge into feat/foundation.\n\n%s\n' "$DATE" "$LIST")
+          if [ "$RC" = "0" ] && [ "$OLD" = "$NEW" ]; then echo "Up to date."; exit 0; fi
+          if gh issue list --state open --search "Upstream sync in:title" --json number --jq '.[0].number' | grep -q .; then echo "Issue already open."; exit 0; fi
+          if [ "$RC" = "0" ]; then
+            git commit -q -m "sync: upstream niki914/zafiro up to ${NEW:0:8}" && git push -q origin HEAD:refs/heads/sync/upstream-$DATE
+            gh issue create --title "Upstream sync $DATE: ready to merge" --body "$(printf 'Clean replay of upstream into branch `sync/upstream-%s`. CI is running on it; merge it into feat/workspaces when green.\n\nNew upstream commits:\n%s\n' "$DATE" "$LIST")"
           else
-            git merge --abort || true
-            BODY=$(printf 'New upstream commits CONFLICT with this fork. Merge by hand following UPSTREAM_SYNC.md.\n\n%s\n\nConflict output:\n```\n%s\n```\n' "$LIST" "$(head -30 /tmp/merge.log)")
+            gh issue create --title "Upstream sync $DATE: conflicts" --body "$(printf 'These files conflict and need a person (see UPSTREAM_SYNC.md):\n```\n%s\n```\n\nNew upstream commits:\n%s\n' "$(cat /tmp/conflicts.txt)" "$LIST")"
           fi
-          gh issue create --title "$TITLE" --body "$BODY"

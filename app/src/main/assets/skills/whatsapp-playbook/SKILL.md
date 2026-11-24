@@ -16,6 +16,9 @@ dm=10, reply=20
 ## Engagement tactics
 Reply to every real reply on the owner's own content first, then add one specific, useful comment on a relevant post, then like a few genuinely good posts. Quality over volume; stop for the day at the caps.
 
+## Research and tools for this platform
+Use the digest recipe; drafts only for leads.
+
 ## Screen routines (`screen_routine routine=list`)
 `whatsapp.open_home`, `whatsapp.read_activity`, `whatsapp.scan_feed`, `whatsapp.comment`, `whatsapp.like`.
 The labels in these routines are best-effort guesses for the app's English UI. On the first run each routine may fail with a clear reason: read the screen once, add the real label to `files/routines/whatsapp.<name>.json`, and record the fix as a lesson. Do not loop.

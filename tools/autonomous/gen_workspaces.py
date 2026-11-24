@@ -32,6 +32,8 @@ You belong to a workspace team. Work is passed on the shared board, never by mem
 skill("toolbox", "Which tool to use for what: web, files, dates, images, scheduling, screen. Load when unsure how to do something.", """
 # Toolbox
 - **Find information:** `web_search` (no key) then `web_fetch` on the best results; `rss_read` for a blog/Substack/subreddit feed (Substack: https://NAME.substack.com/feed). If a site blocks you, use an MCP search server if one is on, or the screen.
+- **Read any public page cleanly:** `web_fetch` on `https://r.jina.ai/<full url>` returns readable text for many pages that plain fetch cannot parse (articles, profiles, videos with transcripts). Public pages only.
+- **Scrapers without code:** if the Apify MCP is on, search its actors for the platform (YouTube, TikTok, Instagram, Reddit, LinkedIn) and run one; confirm the actor exists before relying on it.
 - **Dates:** never guess. `datetime` (now, add, diff, next_weekday) in the owner's zone.
 - **Files the owner can open:** `save_file` (save, append, read, delete, list). Always show the returned link. Plans and reports: Markdown or HTML.
 - **Images:** `make_card` makes a quote/announcement card PNG (square 1080x1080, portrait 1080x1350, pin 1000x1500). Photos and video need an MCP such as Higgsfield or fal.ai if the owner switched one on.
@@ -210,7 +212,9 @@ def instr(p, role, ids):
         executor=f"MISSION: operate the {n} app ({app}) on the phone, exactly as asked, one job per call. Load skill screen-routines and human-pacing first. Use screen_routine routines ({ws}.*) rather than step-by-step taps. Before any outward action, make sure it has an `engage op=plan` id with gate AUTO or an owner approval. After acting, `engage op=done` with evidence taken from on_screen_now. If the screen is locked, black, in a foreign app, or a verification appears: report NEEDS_HUMAN. Never loop on a failing step.",
         analyst=f"MISSION: measure and learn. Read {n} stats and results (stats routine or notifications), count actions from the action log (`engage op=today`), save a daily numbers file, compare with the plan, and write 1-3 specific lessons with the memory tool. Propose one experiment. Send the daily digest summary to the director. Never make up metrics: write 'not available' when the screen did not show them.",
     )[role]
-    return common + "\n" + d
+    persist = (" PERSISTENCE: do not stop after one job. When an item is done, immediately take the next one (`board op=next`). When the board is empty, create the next three highest-value items toward today's targets (the daily caps in the playbook are your targets: work toward filling them with GOOD work, never with filler), then do them. "
+               "You are judged on outcomes per day (posts that landed, real conversations, results measured), not on the number of steps. If you are blocked, switch to another useful job instead of waiting, and report the block once. Keep a one-line progress note on the board item every few steps so the owner can watch you.")
+    return common + persist + "\n" + d
 
 def tasks_for(p, ids):
     ws, n, off = p["id"], p["name"], p["off"]
@@ -219,7 +223,7 @@ def tasks_for(p, ids):
         return f"{h:02d}:{m:02d}"
     head = f"Workspace \"{ws}\". Load skill team-protocol and {ws}-playbook. "
     T = []
-    T.append(dict(key="heartbeat", name=f"{n}: team heartbeat", agent=ids["director"][0], trigger="INTERVAL", intervalMinutes=90, maxSteps=60, maxMinutes=40,
+    T.append(dict(key="heartbeat", name=f"{n}: team heartbeat", agent=ids["director"][0], trigger="INTERVAL", intervalMinutes=30, maxSteps=100, maxMinutes=45,
                   prompt=head + "Heartbeat: first run `board op=resume`, then `board op=list open_only=true` and do every item created by owner before anything else (owner replies such as approvals or instructions). Then work through the open board items by calling the right specialists until the board is empty or today's caps are reached. If the board is empty, create the next valuable items (engagement targets, a draft that is due, an overdue follow-up) and run them. Do not start a screen job if one is already running; the screen is shared.",
                   criteria="Open board items were advanced or the board was empty, and the result lists what was done with evidence or says SKIPPED with a reason."))
     T.append(dict(key="prebrief", name=f"{n}: morning plan", agent=ids["director"][0], trigger="DAILY", time=t(5, 30), maxSteps=60, maxMinutes=30,
@@ -249,6 +253,22 @@ def tasks_for(p, ids):
                   prompt=head + "Weekly review: what worked, what did not, numbers vs plan, lessons. Write next week's plan as a Markdown file with save_file (`" + ws + "/plans/week-<n>.md`) and show the link. Do not start implementing until the owner says so, except the normal daily tasks.",
                   criteria="A weekly plan file exists and the review names at least one change."))
     return T
+
+
+PLATFORM_TOOLS = {
+ "youtube": "Research: web_search + web_fetch on youtube.com/results?search_query=..., r.jina.ai for a video page, Apify actor 'streamers/youtube-scraper' if the Apify MCP is on. Transcripts of competitors' videos show hooks that work. Publishing: YouTube Studio app via screen routines; thumbnails with make_card.",
+ "tiktok": "Research: Apify 'clockworks/tiktok-scraper' (if on) for trending sounds and top videos in the niche; web_fetch via r.jina.ai on tiktok.com/tag/<tag>. Higgsfield/fal.ai MCP for video clips if switched on; CapCut skill for editing steps.",
+ "instagram": "Research: Apify 'apify/instagram-scraper' (if on) for top posts and hashtags; make_card for carousel slides; Canva MCP if switched on.",
+ "linkedin": "Research: web_search 'site:linkedin.com/posts <topic>', r.jina.ai on public posts; screen routines for comments. Never use third-party automation tools.",
+ "reddit": "Research: subreddit rules via web_fetch on https://r.jina.ai/https://www.reddit.com/r/<sub>/about/rules ; top posts via the app routines.",
+ "substack": "Research: rss_read on https://<writer>.substack.com/feed for each writer in your niche; web_search for niche topics; Notes and comments via screen routines.",
+ "x": "Research: web_search; X is suspended for the owner, keep this workspace off until restored.",
+ "facebook": "Research: group rules via the app; Apify 'apify/facebook-posts-scraper' (if on) for page benchmarks.",
+ "pinterest": "Research: pinterest search suggestions via the app; make_card for pin images in 1000x1500.",
+ "email": "Use Gmail via screen routines; rss_read for newsletters; never bulk-send.",
+ "whatsapp": "Use the digest recipe; drafts only for leads.",
+ "jobhunt": "Research: web_search for remote roles, r.jina.ai for job pages; log every application in applications/tracker.csv with save_file append.",
+}
 
 PLAYBOOK_ENGAGE = {
  "substack": "Notes first: 3-6 Notes a day max. Comments on larger writers' posts in the niche are the best discovery lever: add one specific insight, no pitch. Reply to every comment on the owner's posts. Restack a few good notes with a line of your own.",
@@ -281,6 +301,9 @@ App package: `{p['app']}`. Area: {p['kind']}.
 
 ## Engagement tactics
 {ENGAGE_TEXT}
+
+## Research and tools for this platform
+{PLATFORM_TOOLS.get(ws, 'web_search and web_fetch.')}
 
 ## Screen routines (`screen_routine routine=list`)
 `{ws}.open_home`, `{ws}.read_activity`, `{ws}.scan_feed`, `{ws}.comment`, `{ws}.like`""" + (f", `{ws}.post_text`" if p["can_post"] or ws == "substack" else "") + f""".

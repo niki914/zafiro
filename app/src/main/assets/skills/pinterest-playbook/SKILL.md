@@ -16,6 +16,9 @@ post=5, like=20, follow=10
 ## Engagement tactics
 Reply to every real reply on the owner's own content first, then add one specific, useful comment on a relevant post, then like a few genuinely good posts. Quality over volume; stop for the day at the caps.
 
+## Research and tools for this platform
+Research: pinterest search suggestions via the app; make_card for pin images in 1000x1500.
+
 ## Screen routines (`screen_routine routine=list`)
 `pinterest.open_home`, `pinterest.read_activity`, `pinterest.scan_feed`, `pinterest.comment`, `pinterest.like`.
 The labels in these routines are best-effort guesses for the app's English UI. On the first run each routine may fail with a clear reason: read the screen once, add the real label to `files/routines/pinterest.<name>.json`, and record the fix as a lesson. Do not loop.

@@ -54,7 +54,9 @@ jobs:
           VER=$(grep -m1 'versionName' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
           TAG="v${VER}-auto.${GITHUB_RUN_NUMBER}"
           cp "$APK" "zafiro-autonomous-${TAG}.apk"
+          VER=$(grep -m1 'versionName' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
+          { echo "## What's new in $VER"; awk -v v="$VER" 'index($0,"## ["v"]"){f=1;next} f&&/^## \[/{exit} f' CHANGELOG.md; echo; echo "Includes upstream niki914/zafiro up to $(cut -c1-8 UPSTREAM_SYNCED_SHA)."; echo "Early build: not yet verified on every phone."; } > /tmp/release-notes.md
           gh release create "$TAG" "zafiro-autonomous-${TAG}.apk" --target "$GITHUB_SHA" \
             --title "Zafiro Autonomous ${TAG}" \
-            --notes "Release-signed build of ${GITHUB_REF_NAME} at ${GITHUB_SHA}. See CHANGELOG.md. Not yet verified on every phone: report problems before relying on it."
+            --notes-file /tmp/release-notes.md
           echo "APK_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/zafiro-autonomous-${TAG}.apk" >> "$GITHUB_STEP_SUMMARY"

@@ -16,6 +16,9 @@ note=6, post=1, comment=15, reply=40, like=30, restack=10, follow=10, dm=5
 ## Engagement tactics
 Notes first: 3-6 Notes a day max. Comments on larger writers' posts in the niche are the best discovery lever: add one specific insight, no pitch. Reply to every comment on the owner's posts. Restack a few good notes with a line of your own.
 
+## Research and tools for this platform
+Research: rss_read on https://<writer>.substack.com/feed for each writer in your niche; web_search for niche topics; Notes and comments via screen routines.
+
 ## Screen routines (`screen_routine routine=list`)
 `substack.open_home`, `substack.read_activity`, `substack.scan_feed`, `substack.comment`, `substack.like`, `substack.post_text`.
 The labels in these routines are best-effort guesses for the app's English UI. On the first run each routine may fail with a clear reason: read the screen once, add the real label to `files/routines/substack.<name>.json`, and record the fix as a lesson. Do not loop.

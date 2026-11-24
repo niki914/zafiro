@@ -6,6 +6,8 @@ license: MIT
 
 # Toolbox
 - **Find information:** `web_search` (no key) then `web_fetch` on the best results; `rss_read` for a blog/Substack/subreddit feed (Substack: https://NAME.substack.com/feed). If a site blocks you, use an MCP search server if one is on, or the screen.
+- **Read any public page cleanly:** `web_fetch` on `https://r.jina.ai/<full url>` returns readable text for many pages that plain fetch cannot parse (articles, profiles, videos with transcripts). Public pages only.
+- **Scrapers without code:** if the Apify MCP is on, search its actors for the platform (YouTube, TikTok, Instagram, Reddit, LinkedIn) and run one; confirm the actor exists before relying on it.
 - **Dates:** never guess. `datetime` (now, add, diff, next_weekday) in the owner's zone.
 - **Files the owner can open:** `save_file` (save, append, read, delete, list). Always show the returned link. Plans and reports: Markdown or HTML.
 - **Images:** `make_card` makes a quote/announcement card PNG (square 1080x1080, portrait 1080x1350, pin 1000x1500). Photos and video need an MCP such as Higgsfield or fal.ai if the owner switched one on.
