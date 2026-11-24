@@ -122,6 +122,12 @@ dependencies {
     // Third-party UI
     implementation("com.mikepenz:multiplatform-markdown-renderer-m3:0.41.0")
 
+    // LaTeX math rendering in chat (native Compose, MIT, no WebView).
+    // Pinned to the Kotlin 2.1 compatibility variant: mainline 1.7.0+ needs
+    // Kotlin 2.4, Zafiro is on Kotlin 2.2.0.
+    implementation("io.github.huarangmeng:latex-renderer:1.6.3-kt2.1.0")
+    implementation("io.github.huarangmeng:latex-fonts-katex:1.6.3-kt2.1.0")
+
     // Material & AndroidX
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
