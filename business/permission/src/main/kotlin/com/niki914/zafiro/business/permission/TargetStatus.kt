@@ -1,10 +1,12 @@
 package com.niki914.zafiro.business.permission
 
+import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
+import android.os.PowerManager
 import android.provider.Settings
 
 /**
@@ -38,6 +40,7 @@ internal object TargetStatus {
             }
 
             GrantMechanism.Accessibility -> accessibility(context, accessibilityService)
+            GrantMechanism.BatteryOptimization -> batteryOptimization(context)
         }
 
     /** 一组运行时权限全部到手才算 GRANTED（同权限组的成员系统会一起给）。 */
@@ -68,6 +71,26 @@ internal object TargetStatus {
         } else {
             PermissionState.DENIED_BY_USER
         }
+
+    /**
+     * 忽略电池优化且未被后台限制才算 GRANTED。
+     * [ActivityManager.isBackgroundRestricted] 从 28 起才有；这里的 SDK 判断只给
+     * lint(NewApi=error) 与 26-27 兜底，不是第二个机制分叉点。
+     */
+    fun batteryOptimization(context: Context): PermissionState {
+        val power = context.getSystemService(PowerManager::class.java)
+        val ignoring = power?.isIgnoringBatteryOptimizations(context.packageName) == true
+        val restricted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            context.getSystemService(ActivityManager::class.java)?.isBackgroundRestricted == true
+        } else {
+            false
+        }
+        return if (ignoring && !restricted) {
+            PermissionState.GRANTED
+        } else {
+            PermissionState.DENIED_BY_USER
+        }
+    }
 
     /**
      * [service] 传 ComponentName（调用方用 ComponentName(pkg, cls) 构造即可，

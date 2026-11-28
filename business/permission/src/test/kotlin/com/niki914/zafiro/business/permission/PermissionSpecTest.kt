@@ -1,3 +1,4 @@
+// 保护：权限在各 API 上的授予机制表；映射错会导致命令、弹框或跳转走错路径。
 package com.niki914.zafiro.business.permission
 
 import kotlin.test.Test
@@ -56,6 +57,16 @@ class PermissionSpecTest {
                 mechanism(Permission.OVERLAY, api)
             )
             assertEquals(GrantMechanism.Accessibility, mechanism(Permission.ACCESSIBILITY, api))
+        }
+    }
+
+    @Test
+    fun `battery optimization does not change with api`() {
+        for (api in listOf(26, 28, 34)) {
+            assertEquals(
+                GrantMechanism.BatteryOptimization,
+                mechanism(Permission.BATTERY_OPTIMIZATION, api),
+            )
         }
     }
 

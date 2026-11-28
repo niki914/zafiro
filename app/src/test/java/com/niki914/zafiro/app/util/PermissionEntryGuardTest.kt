@@ -30,6 +30,12 @@ class PermissionEntryGuardTest {
         "canDrawOverlays(" to listOf(
             AllowRule("permission/TargetStatus.kt", ""),
         ),
+        "isIgnoringBatteryOptimizations(" to listOf(
+            AllowRule("permission/TargetStatus.kt", ""),
+        ),
+        "isBackgroundRestricted" to listOf(
+            AllowRule("permission/TargetStatus.kt", ""),
+        ),
         "checkSelfPermission(" to listOf(
             AllowRule("permission/TargetStatus.kt", ""),
             AllowRule("permission/ShizukuHandler.kt", "Shizuku.checkSelfPermission"),

@@ -90,7 +90,8 @@ class PermissionManagerImpl(
     companion object {
         /** PRD 默认链 */
         internal fun defaultChain(permission: Permission): List<Channel> = when (permission) {
-            Permission.OVERLAY, Permission.ACCESSIBILITY ->
+            Permission.OVERLAY, Permission.ACCESSIBILITY,
+            Permission.BATTERY_OPTIMIZATION ->
                 listOf(Channel.ROOT_SHELL, Channel.SHIZUKU, Channel.JUMP_SETTINGS)
 
             Permission.NOTIFICATION ->

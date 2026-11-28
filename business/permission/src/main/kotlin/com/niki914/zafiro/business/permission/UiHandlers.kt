@@ -1,5 +1,7 @@
 package com.niki914.zafiro.business.permission
 
+import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -45,7 +47,10 @@ internal class SystemDialogHandler(
         return when (mechanism) {
             GrantMechanism.None -> PermissionState.GRANTED
             is GrantMechanism.Runtime -> requestRuntimePermissions(permission, mechanism)
-            is GrantMechanism.AppOp, GrantMechanism.Accessibility -> PermissionState.UNAVAILABLE
+            is GrantMechanism.AppOp,
+            GrantMechanism.Accessibility,
+            GrantMechanism.BatteryOptimization,
+            -> PermissionState.UNAVAILABLE
         }
     }
 
@@ -138,9 +143,7 @@ internal class JumpSettingsHandler(
                 return PermissionState.UNKNOWN
             }
         }
-        val intent = defaultIntent(permission)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        runCatching { activity.startActivity(intent) }.onFailure {
+        if (!startFirstAvailable(activity, permission)) {
             Logger.d(TAG, "request($permission): startActivity threw -> FAILED")
             return PermissionState.FAILED
         }
@@ -170,35 +173,68 @@ internal class JumpSettingsHandler(
         const val FOREGROUND_WAIT_MILLIS = 2_000L
     }
 
-    private fun defaultIntent(permission: Permission): Intent =
+    /**
+     * 按顺序尝试跳转，直到有一个 Intent 能启动。电池优化需要这条降级链：
+     * 系统确认框 → 电池优化列表 → 应用详情。其它权限仍只有一个默认页。
+     */
+    private fun startFirstAvailable(activity: Activity, permission: Permission): Boolean {
+        for (intent in intentsFor(permission)) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                activity.startActivity(intent)
+                return true
+            } catch (e: ActivityNotFoundException) {
+                Logger.d(TAG, "request($permission): ${intent.action} not found, try next")
+            } catch (e: SecurityException) {
+                Logger.d(TAG, "request($permission): ${intent.action} rejected, try next")
+            }
+        }
+        return false
+    }
+
+    private fun intentsFor(permission: Permission): List<Intent> =
         when (PermissionSpec.appLevelMechanism(permission, Build.VERSION.SDK_INT)) {
             // 运行时权限里只有通知有专属页；存储（<30）只能进应用详情
             is GrantMechanism.Runtime -> when (permission) {
-                Permission.NOTIFICATION -> Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                    .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                Permission.NOTIFICATION -> listOf(
+                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(Settings.EXTRA_APP_PACKAGE, packageName),
+                )
 
-                else -> appDetails()
+                else -> listOf(appDetails())
             }
 
-            null -> appDetails()
+            null -> listOf(appDetails())
             // 特殊权限各有专属页；AppOp 机制目前只有存储与悬浮窗
             is GrantMechanism.AppOp -> when (permission) {
-                Permission.STORAGE -> Intent(
-                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                    Uri.parse("package:$packageName"),
+                Permission.STORAGE -> listOf(
+                    Intent(
+                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                        Uri.parse("package:$packageName"),
+                    ),
                 )
 
-                Permission.OVERLAY -> Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:$packageName"),
+                Permission.OVERLAY -> listOf(
+                    Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName"),
+                    ),
                 )
 
-                else -> appDetails()
+                else -> listOf(appDetails())
             }
 
-            GrantMechanism.Accessibility -> Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            GrantMechanism.Accessibility -> listOf(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             // <33 的通知恒可用，跳页无意义，给一个落脚点
-            GrantMechanism.None -> appDetails()
+            GrantMechanism.None -> listOf(appDetails())
+            GrantMechanism.BatteryOptimization -> listOf(
+                Intent(
+                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    Uri.parse("package:$packageName"),
+                ),
+                Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+                appDetails(),
+            )
         }
 
     private fun appDetails(): Intent = Intent(
