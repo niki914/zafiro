@@ -1,3 +1,4 @@
+// 保护：各权限默认通道顺序；写错会跳过静默授权或走到没有系统弹框的通道。
 package com.niki914.zafiro.business.permission
 
 import kotlin.test.Test
@@ -41,6 +42,12 @@ class DefaultChainTest {
             ),
             PermissionManagerImpl.defaultChain(Permission.STORAGE),
         )
+    }
+
+    @Test
+    fun `battery optimization defaults to root-shizuku-jump`() {
+        val expected = listOf(Channel.ROOT_SHELL, Channel.SHIZUKU, Channel.JUMP_SETTINGS)
+        assertEquals(expected, PermissionManagerImpl.defaultChain(Permission.BATTERY_OPTIMIZATION))
     }
 
     @Test

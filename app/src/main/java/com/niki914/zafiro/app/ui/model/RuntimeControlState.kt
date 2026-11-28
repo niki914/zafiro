@@ -71,6 +71,7 @@ class RuntimeControlViewModel :
 
     private suspend fun loadSettings() {
         updateState { copy(isLoading = true) }
+        var shouldRequestExemption = false
         runCatching {
             val idleTimeoutSeconds = XRepo.llmIdleTimeoutSeconds()
             val retryMaxAttempts = XRepo.llmRetryMaxAttempts()
@@ -78,6 +79,7 @@ class RuntimeControlViewModel :
             val stopRoundOnCommandDeny = XRepo.stopRoundOnCommandDeny()
             val repetitionSensitivity = XRepo.repetitionSensitivity()
             val compactionThresholdPercent = XRepo.contextCompactionThresholdPercent()
+            shouldRequestExemption = keepScreenOn
             updateState {
                 copy(
                     idleTimeoutSeconds = idleTimeoutSeconds,
@@ -93,6 +95,11 @@ class RuntimeControlViewModel :
             Logger.w(TAG, "load failed ${it.message}")
             updateState { copy(isLoading = false) }
         }
+        // 开关早已打开的用户不会再走从关到开，进入本页时若尚未豁免再申请一次。
+        // 放在 runCatching 外面，避免申请链的取消被吞掉，也不把跳设置当成加载失败。
+        if (shouldRequestExemption) {
+            requestBatteryExemptionIfNeeded()
+        }
     }
 
     private suspend fun selectIdleTimeout(seconds: Long) {
@@ -106,6 +113,7 @@ class RuntimeControlViewModel :
     }
 
     private suspend fun toggleKeepScreenOn(enabled: Boolean) {
+        if (enabled) requestBatteryExemptionIfNeeded()
         updateState { copy(keepScreenOn = enabled) }
         XRepo.setKeepScreenOn(enabled)
     }

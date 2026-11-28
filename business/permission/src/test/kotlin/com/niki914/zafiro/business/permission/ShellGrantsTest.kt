@@ -1,3 +1,4 @@
+// 保护：shell 授权命令文本与收尾状态；命令写错只会在设备上静默失败。
 package com.niki914.zafiro.business.permission
 
 import com.niki914.logging.Backend
@@ -194,5 +195,50 @@ class ShellGrantsTest {
 
         assertEquals(PermissionState.GRANTED, state)
         assertEquals(emptyList(), commands)
+    }
+
+    @Test
+    fun `battery optimization sends whitelist and appops commands then succeeds on verified grant`() {
+        val commands = mutableListOf<String>()
+
+        val state = grant(
+            mechanism = GrantMechanism.BatteryOptimization,
+            verify = { if (commands.size >= 2) PermissionState.GRANTED else PermissionState.DENIED_BY_USER },
+            run = { command ->
+                commands += command
+                ShellOutcome(exitCode = 0)
+            },
+        )
+
+        assertEquals(PermissionState.GRANTED, state)
+        assertEquals(
+            listOf(
+                "dumpsys deviceidle whitelist +com.niki914.zafiro",
+                "appops set --uid com.niki914.zafiro RUN_ANY_IN_BACKGROUND allow",
+            ),
+            commands,
+        )
+    }
+
+    @Test
+    fun `battery optimization reports denied when commands ran but the state stays denied`() {
+        val state = grant(
+            mechanism = GrantMechanism.BatteryOptimization,
+            verify = { PermissionState.DENIED_BY_USER },
+            run = { ShellOutcome(exitCode = 0) },
+        )
+
+        assertEquals(PermissionState.DENIED_BY_USER, state)
+    }
+
+    @Test
+    fun `battery optimization reports failed when no command ran`() {
+        val state = grant(
+            mechanism = GrantMechanism.BatteryOptimization,
+            verify = { PermissionState.DENIED_BY_USER },
+            run = { null },
+        )
+
+        assertEquals(PermissionState.FAILED, state)
     }
 }

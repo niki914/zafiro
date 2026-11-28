@@ -25,6 +25,9 @@ internal sealed interface GrantMechanism {
 
     /** 无障碍：settings secure 写值，唯一不走前两者的机制。 */
     data object Accessibility : GrantMechanism
+
+    /** 忽略电池优化，并解除后台限制。 */
+    data object BatteryOptimization : GrantMechanism
 }
 
 /**
@@ -68,6 +71,7 @@ internal object PermissionSpec {
 
         Permission.OVERLAY -> GrantMechanism.AppOp(OP_SYSTEM_ALERT_WINDOW)
         Permission.ACCESSIBILITY -> GrantMechanism.Accessibility
+        Permission.BATTERY_OPTIMIZATION -> GrantMechanism.BatteryOptimization
         Permission.ROOT, Permission.SHIZUKU -> null
     }
 }

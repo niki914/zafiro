@@ -119,8 +119,7 @@ class McpServiceSettingsViewModel :
             }
 
             is McpServiceSettingsIntent.ToggleTool -> toggleTool(intent.toolName, intent.checked)
-            is McpServiceSettingsIntent.ToggleKeepScreenOn ->
-                XRepo.mcpService.setKeepScreenOnWhileRunning(intent.enabled)
+            is McpServiceSettingsIntent.ToggleKeepScreenOn -> toggleKeepScreenOn(intent.enabled)
         }
     }
 
@@ -140,6 +139,13 @@ class McpServiceSettingsViewModel :
                 tools = allTools,
             )
         }
+        // 开关早已打开的用户不会再走从关到开，进入本页时若尚未豁免再申请一次。
+        if (config.keepScreenOn) requestBatteryExemptionIfNeeded()
+    }
+
+    private suspend fun toggleKeepScreenOn(enabled: Boolean) {
+        if (enabled) requestBatteryExemptionIfNeeded()
+        XRepo.mcpService.setKeepScreenOnWhileRunning(enabled)
     }
 
     private suspend fun toggleServer(enabled: Boolean) {

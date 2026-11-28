@@ -30,6 +30,7 @@ internal object ShellGrants {
         is GrantMechanism.Runtime -> grantRuntime(mechanism, run, packageName, verify)
         is GrantMechanism.AppOp -> grantAppOp(mechanism.op, run, packageName, verify)
         GrantMechanism.Accessibility -> grantAccessibility(run, accessibilityService)
+        GrantMechanism.BatteryOptimization -> grantBattery(run, packageName, verify)
     }
 
     /**
@@ -72,6 +73,28 @@ internal object ShellGrants {
         )
         if (verify() == PermissionState.GRANTED) return PermissionState.GRANTED
         return if (outcome?.isSuccess == true) PermissionState.DENIED_BY_USER else PermissionState.FAILED
+    }
+
+    private suspend fun grantBattery(
+        run: suspend (String) -> ShellOutcome?,
+        packageName: String,
+        verify: () -> PermissionState,
+    ): PermissionState {
+        val commands = listOf(
+            "dumpsys deviceidle whitelist +$packageName",
+            "appops set --uid $packageName RUN_ANY_IN_BACKGROUND allow",
+        )
+        var anyAccepted = false
+        for (command in commands) {
+            val outcome = run(command) ?: continue
+            anyAccepted = anyAccepted || outcome.isSuccess
+            Logger.d(
+                TAG,
+                "exec [$command] exit=${outcome.exitCode} stdoutLines=${outcome.stdout.size}"
+            )
+            if (verify() == PermissionState.GRANTED) return PermissionState.GRANTED
+        }
+        return if (anyAccepted) PermissionState.DENIED_BY_USER else PermissionState.FAILED
     }
 
     private suspend fun grantAccessibility(

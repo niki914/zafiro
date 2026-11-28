@@ -15,6 +15,9 @@ enum class Permission {
      * <30 是 `READ/WRITE_EXTERNAL_STORAGE` 运行时权限。机制与版本的分叉见 [PermissionSpec]。
      */
     STORAGE,
+
+    /** 忽略电池优化，并解除后台限制。状态在系统里。 */
+    BATTERY_OPTIMIZATION,
 }
 
 /** 怎么拿。scope = 通道优先级链 */
